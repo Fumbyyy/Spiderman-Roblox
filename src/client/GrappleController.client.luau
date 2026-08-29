@@ -1,3 +1,15 @@
+--!strict
+--[[
+	GrappleController.client.luau
+	Main Spider-Man Web-Swinging & Movement Coordinator.
+	
+	Modular Architecture:
+	- 🎯 TargetFinder.luau   -> Smart forward-ledge building raycasting & hand matching
+	- 🧗 WallMovement.luau   -> Spider-Man wall-running, crawling, and wall-jumping
+	- ✨ WebVisuals.luau     -> Web silk beam rendering, audio & multiplayer replication
+	- 🎥 CameraController.luau -> Hero over-shoulder view, Dynamic FOV & ShiftLock
+]]
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
@@ -5,274 +17,551 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera")
+local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera") :: Camera
 
+-- Shared Config & Remotes
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GrappleConfig = require(Shared:WaitForChild("GrappleConfig"))
+local RemotesFolder = ReplicatedStorage:WaitForChild("GrappleRemotes")
+local GrappleStartRemote = RemotesFolder:WaitForChild("GrappleStart") :: RemoteEvent
+local GrappleEndRemote = RemotesFolder:WaitForChild("GrappleEnd") :: RemoteEvent
 
--- State variables for active Web Swing
+-- 📦 Client Modules
+local ModulesFolder = script.Parent:WaitForChild("Modules")
+local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
+local TargetFinder = require(ModulesFolder:WaitForChild("TargetFinder"))
+local WallMovement = require(ModulesFolder:WaitForChild("WallMovement"))
+local CameraController = require(ModulesFolder:WaitForChild("CameraController"))
+local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
+
+-- Movement States
 local isSwinging = false
-local activeRope = nil
-local activeHookAttachment = nil
-local activeRootAttachment = nil
-local activeVectorForce = nil
-local currentHookPosition = nil
+local isSlingshot = false
+local isFreeGliding = false
+local swingStartTime = 0
+local lastSwingEndTime = 0
+local currentRopeRadius = 0
+local pendulumVelocity = Vector3.zero
+local glideVelocity = Vector3.zero
+local currentAnchorPosition: Vector3? = nil
 
--- Helper: Safely get current character parts
+-- Active Physics Movers & Visuals
+local activeBodyVelocity: BodyVelocity? = nil
+local activeBodyGyro: BodyGyro? = nil
+local activeWebBeamLeft: Beam? = nil
+local activeWebBeamRight: Beam? = nil
+local activeWorldAttLeft: Attachment? = nil
+local activeWorldAttRight: Attachment? = nil
+
+--------------------------------------------------------------------------------
+-- 🛠️ CHARACTER HELPERS
+--------------------------------------------------------------------------------
+
 local function getCharacterParts()
 	local character = LocalPlayer.Character
-	if not character then
-		return nil, nil, nil
-	end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not character then return nil, nil, nil end
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	return character, rootPart, humanoid
 end
 
--- Stage 1: Shoot 3D laser from camera through mouse
-local function findTarget()
-	local character = LocalPlayer.Character
-	if not character then
-		return nil
-	end
+--------------------------------------------------------------------------------
+-- 🚀 SWING ATTACHMENT & RELEASE
+--------------------------------------------------------------------------------
 
-	local mousePos = UserInputService:GetMouseLocation()
-	local unitRay = Camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = { character }
-
-	local hitResult = Workspace:Raycast(unitRay.Origin, unitRay.Direction * GrappleConfig.MaxDistance, rayParams)
-	return hitResult
-end
-
--- Web Release Fling
-local function stopGrapple(isJumpLaunch)
-	if not isSwinging then
-		return
-	end
+local function stopGrapple(isJumpLaunch: boolean)
+	if not isSwinging and not isSlingshot then return end
+	local wasSlingshot = isSlingshot
 	isSwinging = false
+	isSlingshot = false
+	lastSwingEndTime = os.clock()
 
 	local character, rootPart, humanoid = getCharacterParts()
 
-	-- Read velocity BEFORE detaching web
-	local currentVelocity = rootPart and rootPart.AssemblyLinearVelocity or Vector3.zero
-	local currentSpeed = currentVelocity.Magnitude
-
-	-- Clean up physical constraints and attachments
-	if activeVectorForce then
-		activeVectorForce:Destroy()
-		activeVectorForce = nil
-	end
-	if activeRope then
-		activeRope:Destroy()
-		activeRope = nil
-	end
-	if activeHookAttachment then
-		activeHookAttachment:Destroy()
-		activeHookAttachment = nil
-	end
-	if activeRootAttachment then
-		activeRootAttachment:Destroy()
-		activeRootAttachment = nil
+	-- Read current velocity before web detach
+	local currentVel = pendulumVelocity
+	if rootPart and rootPart.AssemblyLinearVelocity.Magnitude > currentVel.Magnitude then
+		currentVel = rootPart.AssemblyLinearVelocity
 	end
 
-	currentHookPosition = nil
+	-- Clean up visuals & gyros
+	if activeBodyGyro then
+		activeBodyGyro:Destroy()
+		activeBodyGyro = nil
+	end
+	if activeWebBeamLeft then activeWebBeamLeft:Destroy(); activeWebBeamLeft = nil end
+	if activeWebBeamRight then activeWebBeamRight:Destroy(); activeWebBeamRight = nil end
+	if activeWorldAttLeft then activeWorldAttLeft:Destroy(); activeWorldAttLeft = nil end
+	if activeWorldAttRight then activeWorldAttRight:Destroy(); activeWorldAttRight = nil end
+	currentAnchorPosition = nil
 
-	-- Restore Humanoid controls
+	-- Restore Humanoid state
 	if humanoid then
 		humanoid.PlatformStand = false
 		humanoid.AutoRotate = true
-		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+		humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 	end
 
-	-- Spider-Man Fling Launch
+	-- 🍃 Controlled Momentum Inheritance into Mid-Air Aerodynamic Gliding
 	if rootPart then
-		local cameraLook = Camera.CFrame.LookVector
-		local forwardLook = Vector3.new(cameraLook.X, math.max(0.1, cameraLook.Y), cameraLook.Z).Unit
+		local camLook = Camera.CFrame.LookVector
+		local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
 
-		local launchDirection = forwardLook
-		if currentSpeed > 3 and currentVelocity.Magnitude > 0 then
-			launchDirection = (forwardLook * 0.7 + currentVelocity.Unit * 0.3).Unit
+		if wasSlingshot then
+			glideVelocity = currentVel
+		elseif isJumpLaunch then
+			local jumpDir = (forwardFlat * 0.6 + Vector3.new(0, 0.8, 0)).Unit
+			glideVelocity = currentVel + (jumpDir * 28)
+		else
+			glideVelocity = currentVel * GrappleConfig.Launch.VelocityPreservation
 		end
 
-		local boostSpeed = math.clamp(
-			currentSpeed * GrappleConfig.Launch.VelocityPreservation + GrappleConfig.Launch.ForwardBoost,
-			GrappleConfig.Launch.MinimumFlingSpeed,
-			GrappleConfig.Launch.MaxVelocity
-		)
-
-		local upwardBoost = GrappleConfig.Launch.UpwardBoost
-		if isJumpLaunch then
-			upwardBoost = upwardBoost * 1.5 -- Extra height on Spacebar Jump
+		-- Guarantee minimum forward exit speed so you never stall
+		local minSpeed = GrappleConfig.Launch.MinimumFlingSpeed or 80
+		if glideVelocity.Magnitude < minSpeed then
+			glideVelocity = (forwardFlat * minSpeed) + Vector3.new(0, GrappleConfig.Launch.BottomUpwardLift or 30, 0)
 		end
 
-		local finalVelocity = (launchDirection * boostSpeed) + Vector3.new(0, upwardBoost, 0)
-		rootPart.AssemblyLinearVelocity = finalVelocity
-
-		-- ApplyImpulse with full character mass for guaranteed physics launch
-		local mass = rootPart:GetMass()
-		if character then
-			for _, part in character:GetDescendants() do
-				if part:IsA("BasePart") then
-					mass = mass + part:GetMass()
-				end
-			end
+		-- Cap maximum glide speed
+		local maxSpeed = GrappleConfig.Gliding.MaxSpeed or 145
+		if glideVelocity.Magnitude > maxSpeed then
+			glideVelocity = glideVelocity.Unit * maxSpeed
 		end
 
-		rootPart:ApplyImpulse(finalVelocity * mass)
-		print(string.format("🚀 Spider-Man Launch! Speed: %.1f studs/sec", boostSpeed))
-	else
-		print("🪝 Web released.")
+		if not activeBodyVelocity then
+			local bv = Instance.new("BodyVelocity")
+			bv.Name = "WebGlideVelocity"
+			bv.Parent = rootPart
+			activeBodyVelocity = bv
+		end
+
+		activeBodyVelocity.MaxForce = Vector3.new(1e6, 1e5, 1e6)
+		activeBodyVelocity.P = 4000
+		activeBodyVelocity.Velocity = glideVelocity
+		isFreeGliding = true
 	end
+
+	GrappleEndRemote:FireServer()
 end
 
--- Spider-Man Web Swing Attachment
-local function startGrapple(hitPosition)
-	local _, rootPart, humanoid = getCharacterParts()
-	if not rootPart or not humanoid or humanoid.Health <= 0 then
-		return
+-- 🚀 Ground Double-Web Slingshot
+local function startGroundSlingshot(character: Model, rootPart: BasePart, humanoid: Humanoid)
+	isSlingshot = true
+	isSwinging = false
+	isFreeGliding = false
+	swingStartTime = os.clock()
+
+	local camCFrame = Camera.CFrame
+	local camLook = camCFrame.LookVector
+	local camRight = camCFrame.RightVector
+	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+	local origin = rootPart.Position
+
+	local skyLeft = origin + (forwardFlat * 45) - (camRight * GrappleConfig.Slingshot.SpreadWidth) + Vector3.new(0, GrappleConfig.Slingshot.SkyHeight, 0)
+	local skyRight = origin + (forwardFlat * 45) + (camRight * GrappleConfig.Slingshot.SpreadWidth) + Vector3.new(0, GrappleConfig.Slingshot.SkyHeight, 0)
+
+	local worldLeft = Instance.new("Attachment")
+	worldLeft.Name = "SlingshotAnchor_L"
+	worldLeft.WorldPosition = skyLeft
+	worldLeft.Parent = Workspace.Terrain
+	activeWorldAttLeft = worldLeft
+
+	local worldRight = Instance.new("Attachment")
+	worldRight.Name = "SlingshotAnchor_R"
+	worldRight.WorldPosition = skyRight
+	worldRight.Parent = Workspace.Terrain
+	activeWorldAttRight = worldRight
+
+	local handLeft = WebVisuals.getHandAttachment(character, false)
+	local handRight = WebVisuals.getHandAttachment(character, true)
+
+	activeWebBeamLeft = WebVisuals.createWebBeam(handLeft, worldLeft, rootPart)
+	activeWebBeamRight = WebVisuals.createWebBeam(handRight, worldRight, rootPart)
+
+	local launchVel = (forwardFlat * GrappleConfig.Slingshot.ForwardVelocity) + Vector3.new(0, GrappleConfig.Slingshot.UpwardVelocity, 0)
+	pendulumVelocity = launchVel
+
+	if not activeBodyVelocity then
+		activeBodyVelocity = Instance.new("BodyVelocity")
+		activeBodyVelocity.Name = "SlingshotVelocity"
+		activeBodyVelocity.Parent = rootPart
 	end
+	activeBodyVelocity.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+	activeBodyVelocity.P = 5000
+	activeBodyVelocity.Velocity = launchVel
 
-	local initialDistance = (hitPosition - rootPart.Position).Magnitude
-	if initialDistance < GrappleConfig.MinDistance then
-		print("❌ Too close to surface to attach web.")
-		return
-	end
+	local bg = Instance.new("BodyGyro")
+	bg.Name = "SlingshotGyro"
+	bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bg.P = 3500
+	bg.D = 250
+	bg.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + forwardFlat + Vector3.new(0, 0.45, 0))
+	bg.Parent = rootPart
+	activeBodyGyro = bg
 
-	isSwinging = true
-	currentHookPosition = hitPosition
-
-	-- 1. Create anchor attachment at the hit point in the world
-	local hookAttachment = Instance.new("Attachment")
-	hookAttachment.Name = "WebAnchorPoint"
-	hookAttachment.WorldPosition = hitPosition
-	hookAttachment.Parent = Workspace.Terrain
-	activeHookAttachment = hookAttachment
-
-	-- 2. Create attachment inside your character's HumanoidRootPart
-	local rootAttachment = Instance.new("Attachment")
-	rootAttachment.Name = "WebPlayerAnchor"
-	rootAttachment.Position = Vector3.new(0, 0.5, 0)
-	rootAttachment.Parent = rootPart
-	activeRootAttachment = rootAttachment
-
-	-- 3. Create physical RopeConstraint
-	local rope = Instance.new("RopeConstraint")
-	rope.Name = "SpiderWebRope"
-	rope.Attachment0 = rootAttachment
-	rope.Attachment1 = hookAttachment
-	rope.Length = math.max(initialDistance, GrappleConfig.Web.MinLength)
-	rope.Restitution = 0.15
-	rope.Thickness = 0.18
-	rope.Color = BrickColor.new("Cyan")
-	rope.Visible = true
-	rope.Parent = rootPart
-	activeRope = rope
-
-	-- 4. Create VectorForce for Spider-Man inward web tension & forward swoop push
-	local force = Instance.new("VectorForce")
-	force.Name = "WebSwingForce"
-	force.Attachment0 = rootAttachment
-	force.RelativeTo = Enum.ActuatorRelativeTo.World
-	force.Force = Vector3.zero
-	force.Parent = rootPart
-	activeVectorForce = force
-
-	-- 5. Enable freefall state so physics swings character
 	humanoid.PlatformStand = false
-	humanoid.AutoRotate = true
+	humanoid.AutoRotate = false
 	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 
-	print(string.format("🪝 Web Attached! Initial Length: %.1f studs", initialDistance))
+	WebVisuals.playWebSound(rootPart)
+	GrappleStartRemote:FireServer(skyLeft, false)
+	GrappleStartRemote:FireServer(skyRight, true)
 end
 
--- Physics loop: Spider-Man Web Pull & Fast W-Key Reel-In
-RunService.Stepped:Connect(function(_, deltaTime)
-	if not isSwinging or not activeRope or not currentHookPosition then
+-- 🕸️ Air Real Spherical Pendulum Swing
+local function startAirSwing(character: Model, rootPart: BasePart, humanoid: Humanoid, anchorPos: Vector3, isRight: boolean)
+	local initialVector = rootPart.Position - anchorPos
+	local ropeRadius = math.max(initialVector.Magnitude, GrappleConfig.Physics.MinRopeLength)
+
+	isSwinging = true
+	isSlingshot = false
+	isFreeGliding = false
+	swingStartTime = os.clock()
+	currentAnchorPosition = anchorPos
+	currentRopeRadius = ropeRadius
+
+	-- Calculate clean forward swing velocity (Zero opposite-side sideways drift!)
+	local camLook = Camera.CFrame.LookVector
+	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+
+	local incomingVel = isFreeGliding and glideVelocity or rootPart.AssemblyLinearVelocity
+	local incomingSpeed = incomingVel.Magnitude
+	local startSpeed = math.clamp(
+		math.max(incomingSpeed * 1.05, GrappleConfig.Physics.InitialSwingSpeed),
+		GrappleConfig.Physics.InitialSwingSpeed,
+		GrappleConfig.Physics.MaxSpeed
+	)
+
+	local entryY = math.clamp(incomingVel.Y * 0.5, -15, 25)
+	pendulumVelocity = (forwardFlat * startSpeed) + Vector3.new(0, entryY, 0)
+
+	if not activeBodyVelocity then
+		activeBodyVelocity = Instance.new("BodyVelocity")
+		activeBodyVelocity.Name = "WebSwingVelocity"
+		activeBodyVelocity.Parent = rootPart
+	end
+	activeBodyVelocity.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+	activeBodyVelocity.P = 5000
+	activeBodyVelocity.Velocity = pendulumVelocity
+
+	local bg = Instance.new("BodyGyro")
+	bg.Name = "WebSwingGyro"
+	bg.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bg.P = 3500
+	bg.D = 250
+	bg.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + pendulumVelocity.Unit)
+	bg.Parent = rootPart
+	activeBodyGyro = bg
+
+	-- Web Beam & Attachments
+	local worldAtt = Instance.new("Attachment")
+	worldAtt.Name = isRight and "WebWorldAnchor_R" or "WebWorldAnchor_L"
+	worldAtt.WorldPosition = anchorPos
+	worldAtt.Parent = Workspace.Terrain
+
+	local playerAtt = WebVisuals.getHandAttachment(character, isRight)
+	local beam = WebVisuals.createWebBeam(playerAtt, worldAtt, rootPart)
+
+	if isRight then
+		activeWorldAttRight = worldAtt
+		activeWebBeamRight = beam
+	else
+		activeWorldAttLeft = worldAtt
+		activeWebBeamLeft = beam
+	end
+
+	humanoid.PlatformStand = false
+	humanoid.AutoRotate = false
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+
+	WebVisuals.playWebSound(rootPart)
+	GrappleStartRemote:FireServer(anchorPos, isRight)
+end
+
+-- 🎮 Main Grapple Trigger
+local function startGrapple()
+	if WallMovement.isActive() then
+		local _, _, humanoid = getCharacterParts()
+		local launchVel = WallMovement.stopWallRun(humanoid, true, Camera)
+		glideVelocity = launchVel
+		isFreeGliding = true
+		if activeBodyVelocity then activeBodyVelocity.Velocity = launchVel end
 		return
 	end
 
-	local _, rootPart, humanoid = getCharacterParts()
-	if not rootPart or not humanoid or humanoid.Health <= 0 then
+	-- Cooldown Check
+	if (os.clock() - lastSwingEndTime) < (GrappleConfig.Cooldown.SwingCooldown or 0.22) then
+		return
+	end
+
+	if isSwinging or isSlingshot then
 		stopGrapple(false)
+	end
+
+	local character, rootPart, humanoid = getCharacterParts()
+	if not character or not rootPart or not humanoid or humanoid.Health <= 0 then return end
+
+	-- 🛡️ Combat Guard: If actively locked on to an enemy in close combat, suppress web swinging!
+	local lockedEnemy = CombatReticle.getCurrentTarget()
+	if lockedEnemy and lockedEnemy.Parent then
+		local enemyRoot = (lockedEnemy:FindFirstChild("HumanoidRootPart") or lockedEnemy:FindFirstChild("Torso")) :: BasePart?
+		if enemyRoot and (enemyRoot.Position - rootPart.Position).Magnitude <= 45 then
+			return
+		end
+	end
+
+	-- Ground -> Slingshot Launch!
+	if GrappleConfig.Slingshot.Enabled and TargetFinder.isNearGround(rootPart, character) then
+		startGroundSlingshot(character, rootPart, humanoid)
+	else
+		-- Air -> Building Swing!
+		local anchorPos, isRight = TargetFinder.findBuildingAnchor(character, rootPart, Camera)
+		if anchorPos then
+			startAirSwing(character, rootPart, humanoid, anchorPos, isRight)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- 🔄 MAIN RUNSERVICE LOOPS
+--------------------------------------------------------------------------------
+
+RunService.Heartbeat:Connect(function(deltaTime)
+	local character, rootPart, humanoid = getCharacterParts()
+	if not character or not rootPart or not humanoid or humanoid.Health <= 0 then
+		if isSwinging or isSlingshot then stopGrapple(false) end
+		if WallMovement.isActive() then WallMovement.stopWallRun(humanoid, false, Camera) end
 		return
 	end
 
 	local currentPos = rootPart.Position
-	local distToAnchor = (currentHookPosition - currentPos).Magnitude
+	local elapsedTime = os.clock() - swingStartTime
 
-	-- Auto-release if pulled extremely close to anchor point
-	if distToAnchor <= GrappleConfig.Web.MinLength then
-		stopGrapple(false)
+	-- 🕷️ 1. Wall-Running Update
+	if WallMovement.isActive() then
+		local isStillOnWall = WallMovement.update(rootPart, character, humanoid, Camera)
+		if not isStillOnWall then
+			WallMovement.stopWallRun(humanoid, false, Camera)
+		end
 		return
 	end
 
-	-- 1. Fast Reel-In when holding W (Pulls player inward toward the hook point)
-	local isHoldingW = UserInputService:IsKeyDown(Enum.KeyCode.W)
-	local isHoldingClick = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
-
-	if isHoldingW or isHoldingClick then
-		local newLength = math.max(
-			GrappleConfig.Web.MinLength,
-			activeRope.Length - (GrappleConfig.Web.ReelInSpeed * deltaTime)
-		)
-		activeRope.Length = newLength
+	-- 🚀 2. Ground Slingshot Update
+	if isSlingshot then
+		if elapsedTime >= GrappleConfig.Slingshot.Duration then
+			stopGrapple(false)
+		end
+		return
 	end
 
-	-- 2. Spider-Man Physics: Combine Inward Web Pull Vector + Forward Camera Swoop Push!
-	if activeVectorForce then
-		local inwardDir = (currentHookPosition - currentPos).Unit
-		local cameraLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z).Unit
-		local cameraRight = Vector3.new(Camera.CFrame.RightVector.X, 0, Camera.CFrame.RightVector.Z).Unit
+	-- 🕸️ 3. Street Corridor Spherical Pendulum Update
+	if isSwinging and currentAnchorPosition and activeBodyVelocity then
+		-- Check for wall contact -> Auto-trigger Wall-Run!
+		local wallHit, wallNorm = WallMovement.checkWallContact(rootPart, character, Camera)
+		if wallHit and (os.clock() - WallMovement.getLastJumpTime() > 0.4) then
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				stopGrapple(false)
+				WallMovement.startWallRun(character, rootPart, humanoid, wallNorm)
+				return
+			end
+		end
 
-		-- A/D Key Mid-Air Steering
-		local steerDir = Vector3.zero
+		local radialVector = currentPos - currentAnchorPosition
+		local currentDist = radialVector.Magnitude
+		local radialUnit = radialVector.Unit
+
+		-- 🎯 Forward Corridor Direction & Look Steering
+		local camLook = Camera.CFrame.LookVector
+		local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+		local isHoldingW = UserInputService:IsKeyDown(Enum.KeyCode.W)
+
+		local horizVel = Vector3.new(pendulumVelocity.X, 0, pendulumVelocity.Z)
+		local horizSpeed = math.max(horizVel.Magnitude, GrappleConfig.Physics.MinSpeed)
+
+		local steerRate = isHoldingW and GrappleConfig.Physics.CameraSteerResponsiveness or (GrappleConfig.Physics.CameraSteerResponsiveness * 0.5)
+		local targetHoriz = forwardFlat * horizSpeed
+		horizVel = horizVel:Lerp(targetHoriz, math.clamp(steerRate * deltaTime, 0, 1))
+
+		-- Lateral banking with A / D
+		local camRight = Camera.CFrame.RightVector
+		local rightFlat = Vector3.new(camRight.X, 0, camRight.Z).Unit
 		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-			steerDir = steerDir - cameraRight * 0.5
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-			steerDir = steerDir + cameraRight * 0.5
+			horizVel = horizVel - (rightFlat * (GrappleConfig.Physics.AirSteerForce * deltaTime))
+		elseif UserInputService:IsKeyDown(Enum.KeyCode.D) then
+			horizVel = horizVel + (rightFlat * (GrappleConfig.Physics.AirSteerForce * deltaTime))
 		end
 
-		-- Combine inward web pull force (60%) with forward swoop push (40%)
-		local inwardForce = inwardDir * GrappleConfig.Web.InwardPullForce
-		local forwardForce = (cameraLook + steerDir).Unit * GrappleConfig.Web.ForwardSwoopForce
+		-- 🎢 True Pendulum Arc Velocity (Gravity swoop & skyward climb)
+		local forwardRel = (currentPos - currentAnchorPosition):Dot(forwardFlat)
+		local verticalDepth = math.max(currentAnchorPosition.Y - currentPos.Y, 15)
+		local theta = math.atan2(forwardRel, verticalDepth)
 
-		activeVectorForce.Force = inwardForce + forwardForce
+		local pumpAccel = (isHoldingW and GrappleConfig.Physics.ForwardPumpForce or 25) * deltaTime
+		horizSpeed = math.clamp(horizSpeed + pumpAccel, GrappleConfig.Physics.MinSpeed, GrappleConfig.Physics.MaxSpeed)
+
+		local targetY = (horizSpeed * math.sin(theta)) + ((isHoldingW and GrappleConfig.Physics.UpwardClimbLift or 35) * 0.4)
+		local currentY = pendulumVelocity.Y
+		local newY = currentY + (targetY - currentY) * math.clamp(14 * deltaTime, 0, 1)
+
+		-- 🛡️ Zero-Friction Wall Deflection
+		if wallHit and wallNorm then
+			local velIntoWall = horizVel:Dot(wallNorm)
+			if velIntoWall < 0 then
+				horizVel = horizVel - (wallNorm * velIntoWall) + (wallNorm * 15 * deltaTime)
+			end
+		end
+
+		pendulumVelocity = Vector3.new(horizVel.X, newY, horizVel.Z)
+
+		local totalSpeed = pendulumVelocity.Magnitude
+		if totalSpeed > GrappleConfig.Physics.MaxSpeed then
+			pendulumVelocity = pendulumVelocity.Unit * GrappleConfig.Physics.MaxSpeed
+		elseif totalSpeed < GrappleConfig.Physics.MinSpeed and totalSpeed > 0.1 then
+			pendulumVelocity = pendulumVelocity.Unit * GrappleConfig.Physics.MinSpeed
+		end
+
+		-- 🛣️ Dynamic Rope Elasticity & Vertical Weight Support
+		currentRopeRadius = math.max(currentRopeRadius, currentDist * 0.94)
+		local radialError = math.max(currentDist - currentRopeRadius, 0)
+		local tensionY = -radialUnit.Y * (radialError * GrappleConfig.Physics.TensionStiffness)
+		local tensionHoriz = Vector3.new(-radialUnit.X, 0, -radialUnit.Z) * (radialError * (GrappleConfig.Physics.TensionStiffness * 0.20))
+
+		activeBodyVelocity.Velocity = pendulumVelocity + Vector3.new(tensionHoriz.X, tensionY, tensionHoriz.Z)
+		if activeBodyGyro and pendulumVelocity.Magnitude > 5 then
+			activeBodyGyro.CFrame = CFrame.lookAt(currentPos, currentPos + pendulumVelocity.Unit)
+		end
+
+		-- 🚀 70-Degree Apex Auto-Release
+		local downwardVector = Vector3.new(0, -1, 0)
+		local dotDown = math.clamp(radialUnit:Dot(downwardVector), -1, 1)
+		local angleDeg = math.deg(math.acos(dotDown))
+
+		local isMovingForward = pendulumVelocity:Dot(forwardFlat) > 5
+		local isClimbing = pendulumVelocity.Y > 0
+		local isForwardOfAnchor = (currentPos - currentAnchorPosition):Dot(forwardFlat) > 10
+
+		if GrappleConfig.AutoRelease.Enabled and elapsedTime >= (GrappleConfig.AutoRelease.MinSwingDuration or 0.55) then
+			local reached72Degrees = (angleDeg >= (GrappleConfig.AutoRelease.ApexAngleThreshold or 72) and isForwardOfAnchor and isClimbing and isMovingForward)
+			local reachedApexCeiling = (angleDeg >= 82 and isForwardOfAnchor)
+			local reachedTimeout = (elapsedTime >= (GrappleConfig.AutoRelease.MaxSwingDuration or 4.0))
+
+			if reached72Degrees or reachedApexCeiling or reachedTimeout then
+				stopGrapple(false)
+			end
+		elseif elapsedTime >= (GrappleConfig.AutoRelease.MaxSwingDuration or 4.0) then
+			stopGrapple(false)
+		end
+		return
+	end
+
+	-- 🍃 4. Mid-Air Aerodynamic Gliding
+	if isFreeGliding and not isSwinging and not isSlingshot and not WallMovement.isActive() then
+		local wallHit, wallNorm = WallMovement.checkWallContact(rootPart, character, Camera)
+		if wallHit and (os.clock() - WallMovement.getLastJumpTime() > 0.4) then
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+				WallMovement.startWallRun(character, rootPart, humanoid, wallNorm)
+				return
+			end
+		end
+
+		if TargetFinder.isNearGround(rootPart, character) or (humanoid.FloorMaterial ~= Enum.Material.Air) then
+			isFreeGliding = false
+			if activeBodyVelocity then
+				activeBodyVelocity:Destroy()
+				activeBodyVelocity = nil
+			end
+		else
+			local horizVel = Vector3.new(glideVelocity.X, 0, glideVelocity.Z)
+			local horizSpeed = horizVel.Magnitude
+
+			if horizSpeed > 15 then
+				local camLook = Camera.CFrame.LookVector
+				local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+
+				if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+					local steerSpeed = GrappleConfig.Gliding.SteerResponsiveness or 5.5
+					horizVel = horizVel:Lerp(forwardFlat * horizSpeed, math.clamp(steerSpeed * deltaTime, 0, 1))
+				end
+
+				local decay = GrappleConfig.Gliding.DecayRate or 14
+				local decayedSpeed = math.max(horizSpeed - (decay * deltaTime), 15)
+				local newHoriz = horizVel.Unit * decayedSpeed
+
+				local gravMult = GrappleConfig.Gliding.GravityMultiplier or 0.45
+				local newY = glideVelocity.Y - (Workspace.Gravity * gravMult * deltaTime)
+				glideVelocity = Vector3.new(newHoriz.X, newY, newHoriz.Z)
+
+				if wallHit and wallNorm then
+					local velIntoWall = glideVelocity:Dot(wallNorm)
+					if velIntoWall < 0 then
+						glideVelocity = glideVelocity - (wallNorm * velIntoWall) + (wallNorm * 2.0)
+					end
+				end
+
+				if activeBodyVelocity then
+					activeBodyVelocity.Velocity = glideVelocity
+				end
+			else
+				isFreeGliding = false
+				if activeBodyVelocity then
+					activeBodyVelocity:Destroy()
+					activeBodyVelocity = nil
+				end
+			end
+		end
 	end
 end)
 
--- Input Listeners
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then
-		return
-	end
+--------------------------------------------------------------------------------
+-- 🎮 USER INPUT HANDLING
+--------------------------------------------------------------------------------
 
-	if input.UserInputType == GrappleConfig.Keybinds.Primary or input.KeyCode == GrappleConfig.Keybinds.Secondary then
-		local hit = findTarget()
-		if hit and hit.Instance then
-			startGrapple(hit.Position)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+
+	if input.UserInputType == (GrappleConfig.Keybinds.Swing or Enum.UserInputType.MouseButton2) then
+		startGrapple()
+	elseif input.KeyCode == GrappleConfig.Keybinds.JumpKey then
+		if WallMovement.isActive() then
+			local _, rootPart, humanoid = getCharacterParts()
+			local launchVel = WallMovement.stopWallRun(humanoid, true, Camera)
+			glideVelocity = launchVel
+			isFreeGliding = true
+			if activeBodyVelocity then activeBodyVelocity.Velocity = launchVel end
+			if rootPart then WebVisuals.playWebSound(rootPart) end
+		elseif isSwinging or isSlingshot then
+			stopGrapple(true)
 		end
-	elseif input.KeyCode == Enum.KeyCode.Space and isSwinging then
-		stopGrapple(true) -- Spacebar Web Jump Fling!
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input, _)
-	if input.UserInputType == GrappleConfig.Keybinds.Primary or input.KeyCode == GrappleConfig.Keybinds.Secondary then
-		if isSwinging then
-			stopGrapple(false)
-		end
+	if input.UserInputType == (GrappleConfig.Keybinds.Swing or Enum.UserInputType.MouseButton2) and (isSwinging or isSlingshot) then
+		stopGrapple(false)
 	end
 end)
 
-LocalPlayer.CharacterAdded:Connect(function(char)
-	local humanoid = char:WaitForChild("Humanoid")
-	humanoid.Died:Connect(function()
+-- Character setup
+local function onCharacterAdded(char: Model)
+	local hum = char:WaitForChild("Humanoid") :: Humanoid
+	CameraController.setupCharacter(hum)
+	hum.Died:Connect(function()
 		stopGrapple(false)
+		if WallMovement.isActive() then WallMovement.stopWallRun(hum, false, Camera) end
 	end)
+end
+
+if LocalPlayer.Character then onCharacterAdded(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+-- Init multiplayer replication
+WebVisuals.initMultiplayerReplication(RemotesFolder)
+
+-- 🎥 Camera RenderStepped Loop
+RunService.RenderStepped:Connect(function(deltaTime)
+	local _, rootPart, humanoid = getCharacterParts()
+	local isFreeMoving = not isSwinging and not isSlingshot and not isFreeGliding and not WallMovement.isActive()
+	CameraController.update(deltaTime, Camera, rootPart, humanoid, isFreeMoving)
 end)
 
-print("🕸️ Spider-Man Inward Web Pull & Reel-In Controller Loaded Successfully!")
+print("🕸️ Spider-Man Movement Engine active! Clean Modular Architecture online.")

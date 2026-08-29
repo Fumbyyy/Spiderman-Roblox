@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GrappleConfig = require(Shared:WaitForChild("GrappleConfig"))
 
--- Ensure Remotes Folder exists in ReplicatedStorage for clean networking
+-- Ensure Remotes Folder exists in ReplicatedStorage
 local RemotesFolder = ReplicatedStorage:FindFirstChild("GrappleRemotes")
 if not RemotesFolder then
 	local folder = Instance.new("Folder")
@@ -13,8 +13,8 @@ if not RemotesFolder then
 	RemotesFolder = folder
 end
 
--- Create RemoteEvents for client-server communication
-local function getOrCreateRemote(name)
+-- Helper: Get or create RemoteEvent
+local function getOrCreateRemote(name: string): RemoteEvent
 	local remote = RemotesFolder:FindFirstChild(name)
 	if not remote or not remote:IsA("RemoteEvent") then
 		local newRemote = Instance.new("RemoteEvent")
@@ -28,55 +28,56 @@ end
 local GrappleStartRemote = getOrCreateRemote("GrappleStart")
 local GrappleEndRemote = getOrCreateRemote("GrappleEnd")
 
--- Table to track active grapple states on the server to prevent spam / exploit
-local activeGrapples = {}
+-- Server-side tracking to prevent spam or client-side exploits
+local activeGrapples: { [Player]: { HookPosition: Vector3, StartTime: number } } = {}
 
--- When a player hooks onto a point
-GrappleStartRemote.OnServerEvent:Connect(function(player, hookPosition)
-	-- Input Validation: Ensure hookPosition is a valid Vector3
+-- Player shoots a web
+GrappleStartRemote.OnServerEvent:Connect(function(player: Player, hookPosition: any, isRightHand: any)
+	-- Type Validation
 	if typeof(hookPosition) ~= "Vector3" then
 		return
 	end
+	local isRight: boolean = if typeof(isRightHand) == "boolean" then isRightHand else false
 
 	local character = player.Character
 	if not character then
 		return
 	end
 
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not rootPart or not humanoid or humanoid.Health <= 0 then
 		return
 	end
 
-	-- Server-Side Distance Verification (Anti-Cheat check)
+	-- Distance validation (allow extra margin for ping/network latency)
 	local distance = (hookPosition - rootPart.Position).Magnitude
-	if distance > (GrappleConfig.MaxDistance + 20) then -- Allow 20 studs margin for network latency
-		warn(string.format("[GrappleService] %s tried to grapple beyond max distance (%d studs)", player.Name, distance))
+	local maxAllowed = GrappleConfig.Targeting.MaxDistance + 50
+	if distance > maxAllowed then
+		warn(string.format("[GrappleService] Anti-Cheat: %s web distance (%.1f) exceeded max (%.1f)", player.Name, distance, maxAllowed))
 		return
 	end
 
-	-- Record active state
 	activeGrapples[player] = {
 		HookPosition = hookPosition,
 		StartTime = os.clock(),
 	}
 
-	-- Replicate grapple visual to all other players in the server
+	-- Replicate web line visual to all OTHER players
 	for _, otherPlayer in Players:GetPlayers() do
 		if otherPlayer ~= player then
-			GrappleStartRemote:FireClient(otherPlayer, player, hookPosition)
+			GrappleStartRemote:FireClient(otherPlayer, player, hookPosition, isRight)
 		end
 	end
 end)
 
--- When a player releases their grapple
-GrappleEndRemote.OnServerEvent:Connect(function(player)
+-- Player releases web
+GrappleEndRemote.OnServerEvent:Connect(function(player: Player)
 	if activeGrapples[player] then
 		activeGrapples[player] = nil
 	end
 
-	-- Notify other players to remove the visual rope for this player
+	-- Tell other players to remove web visual for this player
 	for _, otherPlayer in Players:GetPlayers() do
 		if otherPlayer ~= player then
 			GrappleEndRemote:FireClient(otherPlayer, player)
@@ -84,8 +85,8 @@ GrappleEndRemote.OnServerEvent:Connect(function(player)
 	end
 end)
 
--- Cleanup when player leaves
-Players.PlayerRemoving:Connect(function(player)
+-- Cleanup when player leaves the server
+Players.PlayerRemoving:Connect(function(player: Player)
 	if activeGrapples[player] then
 		activeGrapples[player] = nil
 		for _, otherPlayer in Players:GetPlayers() do
@@ -94,4 +95,5 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-print("[GrappleService] Server initialized successfully.")
+print("[GrappleService] Server initialized with Web-Rush visual replication.")
+
