@@ -18,6 +18,7 @@ local DodgeRemote = RemotesFolder:WaitForChild("SpiderSenseDodge") :: RemoteEven
 
 local ModulesFolder = script.Parent
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
+local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local CombatDodge = {}
 
@@ -101,17 +102,39 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 
 	-- 🕸️ Point-Blank Web-Counter: Shoot a web pellet into the attacker's face!
 	local threat = activeThreatEnemy
-	if threat and threat.Parent and threat:GetAttribute("IsAttacking") == true then
+	if not threat or not threat.Parent or threat:GetAttribute("IsAttacking") ~= true then
+		local enemiesFolder = Workspace:FindFirstChild("Enemies")
+		if enemiesFolder and rootPart then
+			local bestDist = 55
+			for _, enemy in enemiesFolder:GetChildren() do
+				if enemy:IsA("Model") and enemy:GetAttribute("IsAttacking") == true then
+					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					local eHum = enemy:FindFirstChildOfClass("Humanoid")
+					if eRoot and eHum and eHum.Health > 0 then
+						local d = (eRoot.Position - rootPart.Position).Magnitude
+						if d < bestDist then
+							bestDist = d
+							threat = enemy
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if threat and threat.Parent then
 		local threatRoot = (threat:FindFirstChild("HumanoidRootPart") or threat:FindFirstChild("Torso")) :: BasePart?
 		if threatRoot then
 			local handAtt = WebVisuals.getHandAttachment(character, true)
 			WebVisuals.launchWebPelletProjectile(handAtt, threatRoot.Position + Vector3.new(0, 1.0, 0))
 		end
+
+		CombatStyleHUD.registerHit(12)
 		DodgeRemote:FireServer(threat, true)
 		return nil
 	else
 		DodgeRemote:FireServer(nil, false)
-		return activeThreatEnemy
+		return nil
 	end
 end
 

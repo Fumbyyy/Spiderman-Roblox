@@ -34,6 +34,15 @@ local CombatMelee = require(ModulesFolder:WaitForChild("CombatMelee"))
 local CombatWebs = require(ModulesFolder:WaitForChild("CombatWebs"))
 local CombatDodge = require(ModulesFolder:WaitForChild("CombatDodge"))
 local CombatVFXListener = require(ModulesFolder:WaitForChild("CombatVFXListener"))
+local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
+local CombatUltimate = require(ModulesFolder:WaitForChild("CombatUltimate"))
+local CameraController = require(ModulesFolder:WaitForChild("CameraController"))
+local PoliceRadioHUD = require(ModulesFolder:WaitForChild("PoliceRadioHUD"))
+
+local lastCombatActionTime = 0
+local function registerCombatAction()
+	lastCombatActionTime = os.clock()
+end
 
 -- Character Utility Helper
 local function getCharacterParts(): (Model?, BasePart?, Humanoid?)
@@ -49,6 +58,23 @@ local function getCharacterParts(): (Model?, BasePart?, Humanoid?)
 	return character, rootPart, humanoid
 end
 
+-- Track Damage to drop combo on hit
+local lastPlayerHealth = 100
+local function onCharacterSpawn(char: Model)
+	local hum = char:WaitForChild("Humanoid") :: Humanoid
+	lastPlayerHealth = hum.Health
+	hum.HealthChanged:Connect(function(newHealth)
+		if newHealth < lastPlayerHealth then
+			CombatStyleHUD.onTakeDamage()
+			registerCombatAction()
+		end
+		lastPlayerHealth = newHealth
+	end)
+end
+
+if LocalPlayer.Character then onCharacterSpawn(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(onCharacterSpawn)
+
 -- Initialize Multiplayer VFX Listener
 CombatVFXListener.init(CombatVFXRemote, Camera, getCharacterParts)
 
@@ -57,16 +83,18 @@ local activeThreatEnemy: Model? = nil
 local lastThreatDetectionTime = 0
 
 --------------------------------------------------------------------------------
--- 🎮 USER INPUT HANDLING (Streamlined 4-Button Kit: Left-Click, E, F & R Keys)
+-- 🎮 USER INPUT HANDLING (Dedicated Controls: Left-Click, E, R, F, T, H)
 --------------------------------------------------------------------------------
 
-UserInputService.InputBegan:Connect(function(input, _)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
 	local character, rootPart, humanoid = getCharacterParts()
 	if not character or not rootPart or not humanoid or humanoid.Health <= 0 then return end
 
 	-- 🥊 Left-Click: Tap for Combo (1-2-3), Hold for Uppercut, In-Air for Ground Slam
 	if input.UserInputType == (CombatConfig.Keybinds.Attack or Enum.UserInputType.MouseButton1) then
 		CombatWebs.isHoldingWebPellet = false
+		registerCombatAction()
 
 		if humanoid.FloorMaterial == Enum.Material.Air then
 			CombatMelee.performAirGroundSlam(character, rootPart, humanoid, CombatWebs.createCombatWebLines)
@@ -75,48 +103,53 @@ UserInputService.InputBegan:Connect(function(input, _)
 			CombatMelee.attackPressStartTime = os.clock()
 		end
 
-	-- 🕸️ E Key -> Contextual Smart Web Gadget (Disarm Armed Mobs / Rapid Web Pellets)
+	-- 🕸️ E Key -> Contextual Smart Web Shooters (Rapid Web Pellets / Disarm Snipers)
 	elseif input.KeyCode == (CombatConfig.Keybinds.WebGadget or Enum.KeyCode.E) then
 		if CombatMelee.isHoldingAttack or (os.clock() - CombatMelee.lastMeleeActionTime) < 0.22 then return end
+		registerCombatAction()
 
-		local target = CombatReticle.getCurrentTarget()
-		if target then
-			local isArmed = (target:GetAttribute("IsArmed") == true) or (target:FindFirstChild("Gun") ~= nil)
-			CombatWebs.performSmartWebGadget(character, rootPart, humanoid, Camera, CombatMelee.isHoldingAttack, CombatMelee.lastMeleeActionTime)
+		CombatWebs.performSmartWebGadget(character, rootPart, humanoid, Camera, CombatMelee.isHoldingAttack, CombatMelee.lastMeleeActionTime)
 
-			-- If unarmed, start rapid web-fire loop while holding E
-			if not isArmed then
-				CombatWebs.isHoldingWebPellet = true
-				task.spawn(function()
-					while CombatWebs.isHoldingWebPellet do
-						task.wait(CombatConfig.Moves.WebPellet.Cooldown or 0.24)
-						if CombatWebs.isHoldingWebPellet and not CombatMelee.isHoldingAttack and (os.clock() - CombatMelee.lastMeleeActionTime) >= 0.22 then
-							local char, root, hum = getCharacterParts()
-							local currentTgt = CombatReticle.getCurrentTarget()
-							if char and root and hum and hum.Health > 0 and currentTgt and currentTgt:GetAttribute("IsArmed") ~= true then
-								CombatWebs.performWebPellet(char, root, hum, Camera, CombatMelee.isHoldingAttack, CombatMelee.lastMeleeActionTime)
-							else
-								CombatWebs.isHoldingWebPellet = false
-								break
-							end
-						end
+		-- Continuous rapid web shooting loop while holding E
+		CombatWebs.isHoldingWebPellet = true
+		task.spawn(function()
+			while CombatWebs.isHoldingWebPellet do
+				task.wait(CombatConfig.Moves.WebPellet.Cooldown or 0.24)
+				if CombatWebs.isHoldingWebPellet and not CombatMelee.isHoldingAttack and (os.clock() - CombatMelee.lastMeleeActionTime) >= 0.22 then
+					local char, root, hum = getCharacterParts()
+					if char and root and hum and hum.Health > 0 then
+						CombatWebs.performWebPellet(char, root, hum, Camera, CombatMelee.isHoldingAttack, CombatMelee.lastMeleeActionTime)
+					else
+						CombatWebs.isHoldingWebPellet = false
+						break
 					end
-				end)
+				end
 			end
-		end
+		end)
+
+	-- 🚀 R Key -> 65-Stud Web-Strike Zip Dropkick!
+	elseif input.KeyCode == (CombatConfig.Keybinds.WebStrike or Enum.KeyCode.R) then
+		registerCombatAction()
+		CombatWebs.performWebStrike(character, rootPart, humanoid, Camera)
 
 	-- ⚡ F Key -> Spider-Sense Perfect Dodge & Face-Web Counter (Ground Combat Only!)
 	elseif input.KeyCode == (CombatConfig.Keybinds.Dodge or Enum.KeyCode.F) then
-		-- Prevent dodging while in mid-air, swinging, slingshotting, or wall-running!
 		if humanoid.FloorMaterial == Enum.Material.Air then return end
 		if rootPart:FindFirstChild("WebSwingVelocity") or rootPart:FindFirstChild("SlingshotVelocity") or rootPart:FindFirstChild("WallRunVelocity") or rootPart:FindFirstChild("GlidingVelocity") then
 			return
 		end
+		registerCombatAction()
 		activeThreatEnemy = CombatDodge.performSpiderSenseDodge(character, rootPart, humanoid, Camera, activeThreatEnemy)
 
-	-- 🚀 R Key -> 65-Stud Web-Strike Zip Kick!
-	elseif input.KeyCode == (CombatConfig.Keybinds.WebStrike or Enum.KeyCode.R) then
-		CombatWebs.performWebStrike(character, rootPart, humanoid, Camera)
+	-- 🌪️ T Key -> Continuous 360° Web Cyclone DPS Blender
+	elseif input.KeyCode == (CombatConfig.Keybinds.Ultimate or Enum.KeyCode.T) then
+		registerCombatAction()
+		CombatUltimate.performWebCyclone(character, rootPart, humanoid, Camera)
+
+	-- 💚 H Key -> Quick-Heal (+35 HP)
+	elseif input.KeyCode == (CombatConfig.Keybinds.QuickHeal or Enum.KeyCode.H) then
+		registerCombatAction()
+		CombatUltimate.performQuickHeal(character, rootPart, humanoid)
 	end
 end)
 
@@ -141,12 +174,15 @@ UserInputService.InputEnded:Connect(function(input, _)
 end)
 
 --------------------------------------------------------------------------------
--- 🔄 RENDERSTEPPED LOOP (Target HUD, Reticle & Spider-Sense Threat Scanner)
+-- 🔄 RENDERSTEPPED LOOP (Combat State, Target HUD, Reticle & Spider-Sense)
 --------------------------------------------------------------------------------
 
 RunService.RenderStepped:Connect(function()
 	local character, rootPart, humanoid = getCharacterParts()
 	if rootPart and humanoid and humanoid.Health > 0 then
+		local inCombat = (os.clock() - lastCombatActionTime) < 4.5
+		CameraController.setCombatLocked(inCombat)
+
 		CombatReticle.update(Camera, rootPart)
 
 		-- ⚡ Spider-Sense Threat Scanner
@@ -172,6 +208,7 @@ RunService.RenderStepped:Connect(function()
 
 		if nearestAttacker then
 			activeThreatEnemy = nearestAttacker
+			registerCombatAction()
 			if (os.clock() - lastThreatDetectionTime) > 0.30 and character then
 				lastThreatDetectionTime = os.clock()
 				WebVisuals.createSpiderSenseSparks(character, true)

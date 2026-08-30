@@ -19,8 +19,26 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local ModulesFolder = script.Parent
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
+local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local CombatVFXListener = {}
+
+-- ⏱️ Dynamic Hit-Stop: 2-frame tactile micro-pause on heavy impacts
+local function triggerHitStop(duration: number, camera: Camera, isHeavy: boolean)
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then return end
+
+	local savedVel = root.AssemblyLinearVelocity
+	local microPause = isHeavy and 0.042 or 0.022
+
+	-- Momentary velocity suspension gives that classic fighting-game crunch
+	task.delay(microPause, function()
+		if root and root.Parent then
+			root.AssemblyLinearVelocity = savedVel
+		end
+	end)
+end
 
 function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, getCharacterParts: () -> (Model?, BasePart?, Humanoid?))
 	CombatVFXRemote.OnClientEvent:Connect(function(actionName: string, instigator: any, targetModel: any, extra: any)
@@ -29,7 +47,11 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			local currentStacks = typeof(extra) == "number" and extra or (targetModel:GetAttribute("WebStacks") or 1)
 			WebVisuals.applyProgressiveWebs(targetModel, currentStacks)
 
-			if typeof(instigator) == "Instance" then
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if isLocal then
+				CombatStyleHUD.registerHit(4)
+				triggerHitStop(0.022, camera, false)
+			elseif typeof(instigator) == "Instance" then
 				local sourceChar = instigator:IsA("Player") and instigator.Character or instigator
 				if sourceChar and sourceChar ~= LocalPlayer.Character then
 					local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
@@ -58,8 +80,9 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			WebVisuals.createWeaponImpactSparks(hitPos, hitNormal)
 
 			local _, rootPart = getCharacterParts()
-			if rootPart and (rootPart.Position - hitPos).Magnitude <= 30 then
-				camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.25), math.rad(math.random(-1, 1) * 0.2), 0)
+			if rootPart and (rootPart.Position - hitPos).Magnitude <= 40 then
+				CombatStyleHUD.registerHit(26)
+				triggerHitStop(0.045, camera, true)
 			end
 		end
 
@@ -192,9 +215,10 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			WebVisuals.createCounterImpactShockwave(hitPos, 12)
 			WebVisuals.createWeaponImpactSparks(hitPos, Vector3.new(0, 1, 0))
 
-			local _, rootPart = getCharacterParts()
-			if rootPart and (rootPart.Position - hitPos).Magnitude <= 35 then
-				camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.35), math.rad(math.random(-1, 1) * 0.25), 0)
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if isLocal then
+				CombatStyleHUD.registerHit(12)
+				triggerHitStop(0.045, camera, true)
 			end
 		end
 
@@ -213,6 +237,12 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 				WebVisuals.createMeleeHitSparks(enemyRoot.Position + Vector3.new(0, 0.5, 0), true)
 				WebVisuals.createWeaponImpactSparks(enemyRoot.Position, Vector3.new(0, 1, 0))
 			end
+
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if isLocal then
+				CombatStyleHUD.registerHit(22)
+				triggerHitStop(0.045, camera, true)
+			end
 		end
 
 		-- 🥊 10. Kinetic Hit Replication (Multiplayer Punch Sparks)
@@ -221,6 +251,12 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
 			if enemyRoot then
 				WebVisuals.createMeleeHitSparks(enemyRoot.Position + Vector3.new(0, 0.5, 0), hitNum == 3)
+			end
+
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if isLocal then
+				CombatStyleHUD.registerHit(hitNum == 3 and 18 or 10)
+				triggerHitStop(hitNum == 3 and 0.045 or 0.022, camera, hitNum == 3)
 			end
 		end
 
@@ -231,10 +267,6 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			if enemyRoot then
 				local blockPos = enemyRoot.Position + (enemyRoot.CFrame.LookVector * 1.5) + Vector3.new(0, 0.4, 0)
 				WebVisuals.createBruteBlockSparks(blockPos, -punchDir)
-				local _, rootPart = getCharacterParts()
-				if rootPart and (rootPart.Position - blockPos).Magnitude <= 20 then
-					camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.20), math.rad(math.random(-1, 1) * 0.15), 0)
-				end
 			end
 		end
 
@@ -243,10 +275,6 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			local enemyRoot = (instigator:FindFirstChild("HumanoidRootPart") or instigator:FindFirstChild("Torso")) :: BasePart?
 			if enemyRoot then
 				WebVisuals.createGuardBreakBurst(enemyRoot.Position + Vector3.new(0, 0.5, 0))
-				local _, rootPart = getCharacterParts()
-				if rootPart and (rootPart.Position - enemyRoot.Position).Magnitude <= 30 then
-					camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(-0.35), math.rad(math.random(-1, 1) * 0.2), 0)
-				end
 			end
 		end
 

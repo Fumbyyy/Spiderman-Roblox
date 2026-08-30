@@ -42,6 +42,8 @@ local WebPelletRemote = getOrCreateRemote("WebPellet")
 local DisarmThrowRemote = getOrCreateRemote("DisarmAndThrow")
 local DodgeRemote = getOrCreateRemote("SpiderSenseDodge")
 local WebStrikeRemote = getOrCreateRemote("WebStrike")
+local WebCycloneRemote = getOrCreateRemote("WebCycloneRemote")
+local QuickHealRemote = getOrCreateRemote("QuickHealRemote")
 local CombatVFXRemote = getOrCreateRemote("CombatVFX")
 
 -- 💀 Convert an NPC Model into a full Ragdoll on Defeat
@@ -133,7 +135,7 @@ end
 local function checkAndPinToWall(enemyModel: Model, impactForceDir: Vector3?): boolean
 	local enemyRoot = (enemyModel:FindFirstChild("HumanoidRootPart") or enemyModel:FindFirstChild("Torso")) :: BasePart?
 	local enemyHum = enemyModel:FindFirstChildOfClass("Humanoid")
-	if not enemyRoot or not enemyHum or enemyHum.Health <= 0 or enemyModel:GetAttribute("IsPinned") == true then return false end
+	if not enemyRoot or enemyModel:GetAttribute("IsPinned") == true then return false end
 
 	-- 🕸️ STRICT: ONLY enemies with web stacks / cocoon can be pinned to walls!
 	local isFullyWebbed = enemyModel:GetAttribute("IsWebbed") == true or (enemyModel:GetAttribute("WebStacks") or 0) >= 2
@@ -420,7 +422,7 @@ UppercutRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 end)
 
 --------------------------------------------------------------------------------
--- 3. 💥 WEB-LINE GROUND SLAM (In-Air Finisher)
+-- 3. 💥 WEB-LINE GROUND SLAM (In-Air Finisher & AoE Shockwave)
 --------------------------------------------------------------------------------
 GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, customImpactPos: any)
 	local char = player.Character
@@ -429,39 +431,55 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 
 	local impactPos = typeof(customImpactPos) == "Vector3" and customImpactPos or playerRoot.Position
 
-	-- If target enemy model is provided, whip them down and damage (Strict 16-stud range!)
+	-- 1. If target enemy model is provided and in whip range, smash them down with heavy impact!
+	local primaryHit = false
 	if typeof(targetModel) == "Instance" and targetModel:IsA("Model") and targetModel.Parent then
 		local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
 		local enemyHum = targetModel:FindFirstChildOfClass("Humanoid")
 		if enemyRoot and enemyHum and enemyHum.Health > 0 then
 			local dist = (enemyRoot.Position - playerRoot.Position).Magnitude
-			if dist <= 16 then
+			if dist <= 35 then
 				local floatBv = enemyRoot:FindFirstChild("EnemyAirFloat")
 				if floatBv then floatBv:Destroy() end
 
-				local slamSpeed = CombatConfig.Moves.AirGroundSlam.SlamSpeed
+				local slamSpeed = CombatConfig.Moves.AirGroundSlam.SlamSpeed or 95
 				enemyRoot.AssemblyLinearVelocity = Vector3.new(0, -slamSpeed, 0)
-				damageEnemy(targetModel, CombatConfig.Moves.AirGroundSlam.Damage, Vector3.zero)
+				damageEnemy(targetModel, CombatConfig.Moves.AirGroundSlam.Damage or 24, Vector3.zero)
 				impactPos = enemyRoot.Position
+				primaryHit = true
 				CombatVFXRemote:FireAllClients("GroundSlamWebs", player, targetModel)
-			else
-				-- Target is too far away! Ignore distant target and trigger shockwave directly at player's landing location!
-				targetModel = nil
-				impactPos = playerRoot.Position
 			end
 		end
 	end
 
-	-- Trigger AoE Radial Shockwave to all surrounding enemies (radius = 22 studs)
-	local radius = CombatConfig.Moves.AirGroundSlam.ShockwaveRadius or 22
-	for _, otherEnemy in Workspace.Enemies:GetChildren() do
-		if otherEnemy:IsA("Model") and otherEnemy ~= targetModel then
+	-- 2. Trigger AoE Radial Shockwave to all surrounding enemies (radius = 24 studs)
+	local radius = CombatConfig.Moves.AirGroundSlam.ShockwaveRadius or 24
+	local allEnemies: { Model } = {}
+
+	for _, enemy in CollectionService:GetTagged("Enemy") do
+		if enemy:IsA("Model") and not table.find(allEnemies, enemy) then
+			table.insert(allEnemies, enemy)
+		end
+	end
+	local enemiesFolder = Workspace:FindFirstChild("Enemies")
+	if enemiesFolder then
+		for _, enemy in enemiesFolder:GetChildren() do
+			if enemy:IsA("Model") and not table.find(allEnemies, enemy) then
+				table.insert(allEnemies, enemy)
+			end
+		end
+	end
+
+	for _, otherEnemy in allEnemies do
+		if otherEnemy ~= targetModel or not primaryHit then
 			local otherRoot = (otherEnemy:FindFirstChild("HumanoidRootPart") or otherEnemy:FindFirstChild("Torso")) :: BasePart?
-			if otherRoot then
-				local offset = otherRoot.Position - impactPos
-				if offset.Magnitude <= radius then
-					local pushDir = (offset.Unit + Vector3.new(0, 0.4, 0)).Unit
-					damageEnemy(otherEnemy, CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15, pushDir * 14)
+			local otherHum = otherEnemy:FindFirstChildOfClass("Humanoid")
+			if otherRoot and otherHum and otherHum.Health > 0 then
+				local horizDist = Vector3.new(otherRoot.Position.X - impactPos.X, 0, otherRoot.Position.Z - impactPos.Z).Magnitude
+				local vertDiff = math.abs(otherRoot.Position.Y - impactPos.Y)
+				if horizDist <= radius and vertDiff <= 16 then
+					local pushDir = Vector3.new(otherRoot.Position.X - impactPos.X, 0.4, otherRoot.Position.Z - impactPos.Z).Unit
+					damageEnemy(otherEnemy, CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15, pushDir * 18)
 				end
 			end
 		end
@@ -814,4 +832,134 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 	end
 end)
 
-print("⚔️ 6-Move Spider-Man Combat Service online! All server mechanics active.")
+-- 🌪️ 360° Web Cyclone Finisher Remote Listener (Continuous Multi-Hit AoE DPS)
+WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any, targetModel: any, extraData: any)
+	local character = player.Character
+	local playerRoot = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not playerRoot then return end
+
+	if (actionType == "CycloneTick" or actionType == "StartCyclone") and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
+		local cycloneRadius = 14.5
+		local tickDamage = 6 -- Ticking damage per 0.20s revolution (60 total DPS across 10 ticks)
+		local enemiesFolder = Workspace:FindFirstChild("Enemies")
+
+		if enemiesFolder then
+			for _, enemy in enemiesFolder:GetChildren() do
+				if enemy:IsA("Model") then
+					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					local eHum = enemy:FindFirstChildOfClass("Humanoid")
+					if eRoot and eHum and eHum.Health > 0 then
+						local dist = (eRoot.Position - playerRoot.Position).Magnitude
+						if dist <= cycloneRadius then
+							local flingDir = (eRoot.Position - playerRoot.Position).Magnitude > 0.1 and (eRoot.Position - playerRoot.Position).Unit + Vector3.new(0, 0.25, 0) or Vector3.new(0, 1, 0)
+							if enemy:GetAttribute("Archetype") == "Brute" then
+								enemy:SetAttribute("GuardBroken", true)
+								CombatVFXRemote:FireAllClients("GuardBreakVFX", enemy)
+							end
+							damageEnemy(enemy, tickDamage, flingDir * 12)
+							CombatVFXRemote:FireAllClients("KineticHit", player, enemy, 1)
+						end
+					end
+				end
+			end
+		end
+
+	elseif actionType == "ThrowTarget" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
+		local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
+		local enemyHum = targetModel:FindFirstChildOfClass("Humanoid")
+		if not enemyRoot then return end
+
+		local throwDir = typeof(extraData) == "Vector3" and extraData or playerRoot.CFrame.LookVector
+		local throwSpeed = 135
+
+		-- Mark as webbed so wall-pinning matrix can trigger on wall impact
+		targetModel:SetAttribute("IsWebbed", true)
+		targetModel:SetAttribute("WebStacks", 3)
+
+		-- Launch target into wall with finisher damage & velocity
+		if enemyHum and enemyHum.Health > 0 then
+			damageEnemy(targetModel, 25, throwDir * throwSpeed)
+		else
+			-- Enemy was defeated mid-spin: still physically rocket ragdoll into the wall!
+			local existingBv = enemyRoot:FindFirstChild("CycloneThrowImpulse")
+			if existingBv then existingBv:Destroy() end
+			local bv = Instance.new("BodyVelocity")
+			bv.Name = "CycloneThrowImpulse"
+			bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+			bv.Velocity = throwDir * throwSpeed
+			bv.Parent = enemyRoot
+			Debris:AddItem(bv, 0.45)
+		end
+
+		CombatVFXRemote:FireAllClients("WebStrikeHit", player, targetModel)
+
+		-- Check Wall Pin after high-speed flight
+		task.delay(0.10, function()
+			if targetModel.Parent then
+				checkAndPinToWall(targetModel, throwDir)
+			end
+		end)
+	end
+end)
+
+-- ⚡ Spider-Sense Dodge Server Listener (i-Frames, Attack-Cancels & Face-Web Counter)
+DodgeRemote.OnServerEvent:Connect(function(player: Player, targetEnemy: any, isCounter: any)
+	local character = player.Character
+	if not character then return end
+	local rootPart = (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")) :: BasePart?
+	if not rootPart then return end
+
+	-- 1. 🛡️ Grant Player True Invulnerability Frames (0.45s i-Frames)
+	character:SetAttribute("IsInvulnerable", true)
+	task.delay(0.45, function()
+		if character and character.Parent then
+			character:SetAttribute("IsInvulnerable", false)
+		end
+	end)
+
+	-- 2. ⚡ Cancel attacks & laser telegraphs on all mobs threatening this player within 60 studs!
+	local enemiesFolder = Workspace:FindFirstChild("Enemies")
+	if enemiesFolder then
+		for _, enemy in enemiesFolder:GetChildren() do
+			if enemy:IsA("Model") then
+				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+				local isAttacking = enemy:GetAttribute("IsAttacking") == true
+				if eRoot and isAttacking and (eRoot.Position - rootPart.Position).Magnitude <= 60 then
+					enemy:SetAttribute("AttackDodged", true)
+					enemy:SetAttribute("IsAttacking", false)
+				end
+			end
+		end
+	end
+
+	-- 3. 🕸️ Apply Face-Web Counter & Stagger to the primary attacking threat
+	if typeof(targetEnemy) == "Instance" and targetEnemy:IsA("Model") then
+		local enemyHum = targetEnemy:FindFirstChildOfClass("Humanoid")
+		local enemyRoot = (targetEnemy:FindFirstChild("HumanoidRootPart") or targetEnemy:FindFirstChild("Torso")) :: BasePart?
+		if enemyHum and enemyHum.Health > 0 and enemyRoot then
+			targetEnemy:SetAttribute("AttackDodged", true)
+			targetEnemy:SetAttribute("IsAttacking", false)
+
+			-- Point-Blank Web Counter Damage & Knockback
+			local counterDmg = CombatConfig.Moves.SpiderSenseDodge and CombatConfig.Moves.SpiderSenseDodge.CounterDamage or 12
+			damageEnemy(targetEnemy, counterDmg, -enemyRoot.CFrame.LookVector * 14)
+
+			-- Add web stack on face-web counter
+			local curStacks = (targetEnemy:GetAttribute("WebStacks") or 0) + 1
+			targetEnemy:SetAttribute("WebStacks", curStacks)
+			CombatVFXRemote:FireAllClients("WebPelletHit", player, targetEnemy, curStacks)
+		end
+	end
+end)
+
+-- 💚 Quick-Heal Remote Listener
+QuickHealRemote.OnServerEvent:Connect(function(player: Player, healAmount: any)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		local amount = typeof(healAmount) == "number" and math.clamp(healAmount, 10, 50) or 35
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + amount)
+	end
+end)
+
+print("⚔️ Spider-Man Combat Service (with 360° Web Cyclone, Spider-Sense Dodge & Quick-Heal) online!")

@@ -1,135 +1,191 @@
-# 🕸️ Spider-Man: Web of Destiny — Master Game Workflow & Roadmap
+# 🕸️ Spider-Man: Web of Destiny — Master Development Workflow
 
-> **Core Vision:** A fast-paced, physics-driven Spider-Man sandbox combining seamless **Web Rush swinging**, **GTA-style interactive combat & web-pulling**, **Peter Parker apartment life-sim**, and **co-op Spider-Verse multiplayer**.
-
----
-
-## 🌆 Game Concept & Lore: The Spider-Verse Solution
-**Why are there multiple Spider-Men?**
-* **The Spider-Society / Multiverse Convergence:** Players are Spider-Heroes across different dimensions (Classic Peter, Miles, Spider-Gwen, 2099, Noir, or Custom Avatars).
-* **Multiplayer Crime System (Fixing the "Catching Criminals" Problem):**
-  1. **Distributed City Crimes:** Crimes spawn dynamically across different city districts (Downtown Bank Heist, Harlem Mugging, Queens Rooftop Thugs), so players aren't crowded in one spot.
-  2. **Co-Op Scaled Events:** If 2–4 Spider-Heroes arrive at the same crime scene, the wave dynamically spawns more criminals / brute mini-bosses so everyone gets in on the action and shares XP/Cash rewards.
-  3. **Spider-Scanner (Personal Dispatch):** Players can tune into the police scanner at Peter's apartment or on rooftops to take on solo crime missions or team up with friends.
+> **Vision:** A fast-paced, physics-driven Spider-Man sandbox combining seamless **Web-Swinging traversal**, **tactile action combat**, and **co-op Spider-Verse gameplay**.
 
 ---
 
-## 📋 Master Phase-by-Phase Roadmap
+## 👥 Clear Division of Roles
+
+* **🔨 Creator (You):**
+  * **3D World & City Building:** Constructing the city, skyscrapers, streets, alleys, and landmarks in Roblox Studio.
+  * **3D Models & Interior Props:** Peter's apartment furniture, water towers, billboards, and weapon models.
+  * **Custom Art & Media Assets:** Custom character animations (R6/R15), sound audio IDs, and custom UI badges.
+* **🤖 AI Coding Assistant:**
+  * **Code & Systems Architecture:** Writing the Luau scripts, physics engines, procedural spawner algorithms, server networking/anti-cheat, combat mechanics, enemy AI behavior trees, and UI scripting that automatically adapt to your 3D world!
+
+---
+
+## 🗺️ Master Release Roadmap (Non-Overwhelming Overview)
 
 ```mermaid
 graph TD
-    P1["Phase 1: Web-Rush Swinging Physics (100% Done)"] --> P2["Phase 4.1: Modular 4-Button Combat Engine (100% Done)"]
-    P2 --> P3["Phase 4.2: Tactical Enemy AI Archetypes (100% Done)"]
-    P3 --> P4["Phase 4.3: Combat Feel, Combo Counter & Style HUD"]
-    P4 --> P5["Phase 5: Focus Meter & 360° Web Cyclone Ultimate"]
-    P5 --> P6["Phase 6: Dynamic City Crimes & Co-Op Missions"]
-    P6 --> P7["Phase 7: Peters Apartment Life-Sim & Spider-Suits"]
-    P7 --> P8["Phase 8: Iconic Spider-Man Movie Boss Battles & Material Drops"]
+    subgraph BETA["🚀 CURRENT BETA MILESTONE (Focus Here Now!)"]
+        B1["Phase 1: Web-Swinging Physics (✅ 100% Done)"]
+        B2["Phase 2: 6-Move Tactical Combat Engine (✅ 100% Done)"]
+        B3["Phase 3: Tactical Enemy AI & Sandbox Dummies (✅ 100% Done)"]
+        B4["Phase 4: Game Feel, Style HUD & Contextual Cam (✅ 100% Done)"]
+        B5["Phase 5: Dynamic City Crimes & Police Scanner (⏳ ACTIVE NEXT)"]
+        B6["Phase 6: Beta Polish & Basic Suit Wardrobe (🎯 BETA LAUNCH)"]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6
+    end
+
+    subgraph FUTURE["🌟 FUTURE POST-BETA EXPANSIONS (Build After Beta Release)"]
+        U1["Update 1.0: Spider-Verse Skills & Peter's Apartment"]
+        U2["Update 2.0: Sinister Movie Bosses (Doc Ock, Lizard, Goblin)"]
+        U3["Update 3.0: Multiverse Portals & Spider-Society Clans"]
+        B6 -.-> U1 -.-> U2 -.-> U3
+    end
 ```
 
 ---
 
-### 🟢 Phase 1: Fluid Web-Swinging Mechanics (✅ 100% COMPLETE)
-* [x] **1.1 Smart Building Anchor System (Proximity Street Auto-Targeting)**
-  * Auto Building Raycast with object-space Left/Right hand anchor matching (120 studs).
-* [x] **1.2 Ground Double-Web Slingshot Launch (Zero Floor Drag)**
-  * Ground launch fires dual web beams, rocketing the player upward into the air anywhere.
-* [x] **1.3 Tangential Momentum & Street Corridor Pendulum Physics**
-  * True trigonometric pendulum arc curve ($\sin\theta$) accelerating up to +90 studs/s with `WASD` banking.
-* [x] **1.4 Dynamic 70° Apex Auto-Release & High-Speed Launch**
-  * Auto-releases cleanly at 70° climb apex into a high-speed forward glide (115–185 studs/s).
-* [x] **1.5 🕷️ Spider-Man Wall-Run & Wall-Crawl System**
-  * Automatic vertical building wall-sprint and wall-jump off facades.
-* [x] **1.6 Server Visual Replication & Dynamic FOV Rush**
+# 🚀 PART 1: THE CURRENT BETA LAUNCH (Playable Public Release)
+
+Everything needed to launch a complete, highly replayable, viral **Public Beta** on Roblox!
+
+### ✅ 1. Fluid Web-Swinging & Traversal Engine (100% COMPLETED)
+- [x] **Smart Building Anchor Detection:** 120-stud street proximity auto-targeting with left/right hand matching.
+- [x] **Double-Web Slingshot Launch:** Ground launch catapulting the player into the sky from anywhere.
+- [x] **Tangential Pendulum Physics:** True $\sin\theta$ gravity swoop accelerating up to 185 studs/s with `WASD` banking.
+- [x] **Floaty 68° Apex Auto-Release:** Automatic smooth release into high-speed aerodynamic gliding.
+- [ ] **🪂 1.7 Dynamic In-Air Aerodynamics & Skydiving State Machine:**
+  * **State A: High-Altitude Skyscraper Leap (Spread-Eagle & Air Drag):**
+    * When leaping off a building into open air, Spider-Man naturally assumes a spread-eagle skydiving pose.
+    * Air resistance limits downward terminal velocity (~110 studs/s) with gentle forward gliding lift and subtle wind rush audio.
+  * **State B: Steep Bullet Dive-Bomb (`Left-Shift` or Falling Velocity $> 85$ studs/s for $> 0.5$s):**
+    * Tucks limbs into a steep head-first bullet dive bomb plunging at **165+ studs/s**!
+    * Dynamic roaring wind audio + speed line particles + camera tightens for high-speed intensity.
+  * **State C: Gravitational Kinetic Swing Transfer:**
+    * Latching a web swing out of a dive bomb or freefall converts raw vertical gravity into an explosive, slingshot-level forward pendulum launch!
+  * **State D: Low-Altitude Street Web-Save & Parkour Landing Roll:**
+    * Approaching the pavement at high falling speeds automatically performs a last-second low-altitude web swoop or smooth forward parkour landing roll without splatting.
+
+### ✅ 2. 6-Move Tactical Combat Engine (100% COMPLETED)
+- [x] **`Left-Click` (Melee Combo & Air Slam):** 1-2-3 Kinetic Punch Combo (ground) / 24-stud AoE Ground Slam Shockwave (in-air).
+- [x] **`Hold Left-Click` (Uppercut Launcher):** Skyward launcher with air juggle float.
+- [x] **`E Key` (Smart Web Gadget):** Rapid Web-Pellets & Wall-Pinning / Gunner Weapon Disarm & Spiral Throw.
+- [x] **`R Key` (Web-Strike Zip Kick):** 65-stud crosshair lock-on zip dropkick at 120 studs/s.
+- [x] **`F Key` (Spider-Sense Dodge):** 0.45s invulnerability frames + point-blank face-web counter.
+- [x] **`T Key` (360° Web Cyclone Blender):** Continuous 10-hit AoE DPS blender + 135 studs/s centrifugal wall slam.
+- [x] **`H Key` (Quick-Heal):** Instant +35 HP recharge with real-time ability cooldown hotbar tray.
+
+### ✅ 3. Tactical Enemy Archetypes & Training Dojo (100% COMPLETED)
+- [x] **Armed Gunner / Rooftop Sniper:** Laser aim telegraph, long-range fire, disarmable with `E`.
+- [x] **Heavy Armored Brute:** Sturdy build (160 HP), raises guard to block frontal attacks, breakable with `R` or `E`.
+- [x] **Street Brawler Mob:** Basic melee grunts (80 HP) with surround/flank coordination.
+- [x] **Training Dojo Sandbox:** `Dummy_Static`, `Dummy_Attacking`, and `Dummy_Infinite` (99,999 HP).
+- [x] **Clean Depth-Sorted Overhead Health Bars:** Compact billboard design with 45-stud proximity limits (zero screen clutter).
+
+### ✅ 4. Game Feel, Style HUD & Contextual Camera (100% COMPLETED)
+- [x] **Contextual Smart Camera:** 100% Free Camera for traversal/swinging $\rightarrow$ seamless Shift-Lock for combat brawling.
+- [x] **Zero Micro-Stutter Pivot:** Pure vertical eye-level pivot with dynamic speed FOV (70 to 82 FOV).
+- [x] **Hit-Stop Impact Frames:** 2-frame tactile micro-pause (`0.042s`) on heavy finishers.
+- [x] **Arcade Style Meter:** Dynamic combo rank scaling (`D` $\rightarrow$ `C` $\rightarrow$ `B` $\rightarrow$ `A` $\rightarrow$ `S` $\rightarrow$ `SPIDER-TIER!`).
 
 ---
 
-### 🟢 Phase 4.1: Streamlined 4-Button Combat Kit & Architecture (✅ 100% COMPLETE)
-* [x] **Modular Architecture Refactoring:**
-  * Clean decoupled client modules: `CombatMelee.luau`, `CombatWebs.luau`, `CombatDodge.luau`, `CombatVFXListener.luau`, and `CombatController.client.luau` (~135 lines).
-* [x] **Universal Strike & Ground Slam (`L-Click`):**
-  * Ground: 1-2-3 Kinetic Punch Combo (tight 5.8-stud hitbox, rhythmic 0.26s cadence).
-  * In-Air: 22-stud Web Ground Slam shockwave.
-* [x] **Web-Strike Zip Kick (`R` Key):**
-  * 65-stud crosshair lock-on zip dropkick at 120 studs/s with anti-clipping positioning lock.
-* [x] **Contextual Smart Web Gadget (`E` Key):**
-  * Target Armed $\rightarrow$ Web-Yank Disarm & Weapon Orbit Throw (`26 DMG`).
-  * Target Unarmed $\rightarrow$ Rapid Web-Pellets $\rightarrow$ Cocoon & 8-stud Wall-Pin.
-* [x] **Spider-Sense Acrobatic Dodge (`F` Key):**
-  * Straight 8.8-stud flat retreat slide with frame-locked forward orientation + point-blank face-web counter.
-* [x] **HUD Clean-Up:**
-  * Zero screen text clutter, silent background targeting engine with Aim-Priority & Threat Weighting.
+### ✅ 5. Dynamic City Crimes & Police Scanner (100% COMPLETED)
+* [x] **5.1 Procedural Random City Crimes (`CrimeService.server.luau`):**
+  * **Bank Heist (Downtown):** 2 Gunners + 1 Armored Brute + 2 Brawlers raiding a bank entrance.
+  * **Rooftop Arms Deal (High-Rise):** 2 Snipers on water towers + 1 Brute with throwable military crates (`E`).
+  * **Alleyway Mugging (Street Level):** Innocent civilian cowering surrounded by 3 fast Brawlers.
+  * **High-Speed Getaway Van (Street Chase):** Speeding armored van. Spider-Man can web-zip (`R`), disable engine (`E`), and stop the getaway!
+* [x] **5.2 Police Radio Scanner & 3D Waypoint Beacons (`PoliceRadioHUD.luau`):**
+  * Sleek NYPD dispatch notification banner: *"10-31 in progress at First National Bank..."*
+  * 3D holographic waypoint beacon showing crime icon and distance (`🚨 BANK HEIST • 140m`) with off-screen edge clamping.
+* [x] **5.3 Co-Op Scaled Waves & Hero Cash / XP Rewards:**
+  * Scales enemy reinforcements if multiple Spider-Heroes join the fight ($\le 120\text{ studs}$).
+  * Victory screen: `🎉 CRIME STOPPED! +150 XP | +$250 HERO CASH`.
 
 ---
 
-### 🟢 Phase 4.2: Tactical Enemy Archetypes & AI Behaviors (✅ 100% COMPLETE)
-* [x] **4.2.1 🔫 Armed Gunner / Rooftop Sniper (Ranged Threat)**
-  * Keeps distance (25–45 studs), aims with a thin red laser telegraph line (0.9s charge).
-  * Firing deals sharp damage and interrupts player combos.
-  * **Counter:** Press **`E` (Smart Web Gadget)** from afar to snatch their gun and smash them with it!
-* [x] **4.2.2 🛡️ Heavy Armored Brute (Defensive Threat)**
-  * Sturdy build (160 HP), raises guard stance to block and parry straight frontal punches with metallic sparks.
-  * Heavy telegraphed club swing that demands a dodge.
-  * **Counter:** Press **`E`** to cocoon his guard in webs, or **`R` (Web-Strike Zip Kick)** to break his stance!
-* [x] **4.2.3 🦹 Street Brawler Mob (Swarm Threat)**
-  * Basic melee grunts (80 HP) that coordinate dynamic circular surround/flank positioning and rhythmic swarms.
-  * **Counter:** Stagger with 1-2-3 punch combos, Spider-Sense dodge (`F`), and in-air Ground Slams (`Air L-Click`).
+### 🎨 6. Creator Asset & Polish Hub (Animations, VFX, SFX & Custom UI)
+*(Creator's custom asset checklist — paste your custom Roblox Asset IDs & Models right into the Config files!)*
+
+* **🎬 Custom Character Animations (R6 / R15):**
+  * [ ] Web Swing Hang, Apex Apex Launch & Aerial Flips
+  * [ ] Skydiving Spread-Eagle Pose & Steep Bullet Dive-Bomb Pose
+  * [ ] 1-2-3 Kinetic Punch Combo & Uppercut Launcher
+  * [ ] 65-Stud Web-Strike Zip Dropkick
+  * [ ] Spider-Sense Perfect Dodge Retreat Slide & Counter
+  * [ ] 360° Web Cyclone Spin Loop & Centrifugal Launch
+* **🎵 Custom SFX Sound Suite (Paste Asset IDs in `GrappleConfig` & `CombatConfig`):**
+  * [ ] Web-Shoot / Web-Thwip Sound ID
+  * [ ] Melee Punch Impact Thuds & Heavy Finishers
+  * [ ] Wind Rush Whoosh Loop (High-Speed Swings & Dive-Bombs)
+  * [ ] NYPD Police Radio Squelch & Dispatch Sirens
+  * [ ] Gunner Laser Charge & Sniper Fire
+  * [ ] Brute Metallic Shield Block Clang
+* **✨ Custom Visual FX (VFX & Particles):**
+  * [ ] Custom Web Silk Beams & Wall-Pin Cocoons
+  * [ ] Comic-Book Kinetic Hit Sparks
+  * [ ] Bio-Electric Sparks (Spider-Sense & Miles Venom)
+  * [ ] High-Speed Screen Speed Lines
+* **🖼️ Custom UI Artwork & Badges:**
+  * [ ] Custom Style Rank Badges (`D` $\rightarrow$ `SPIDER-TIER!`)
+  * [ ] Custom Police Scanner HUD Banner & Ability Tray Icons
+  * [ ] Custom 3D Spider-Compass Waypoint Reticles
 
 ---
 
-### 🟠 Phase 4.3: Visceral Combat Feel, Hit-Stop & Style HUD
-* [ ] **4.3.1 Dynamic Hit-Stop (Micro-Freeze Impact Frames)**
-  * 2-frame tactile micro-pause (`0.035s`) on heavy finishers (Punch 3, Web-Strike, Ground Slam, Disarm Impact).
-* [ ] **4.3.2 Combo Multiplier & Style Meter HUD**
-  * Sleek right-hand arcade combo counter (`12x COMBO!`) with stylish rank ratings:
-    * `D (Decent)` $\rightarrow$ `C (Cool)` $\rightarrow$ `B (Brutal)` $\rightarrow$ `A (Amazing)` $\rightarrow$ `S (Spectacular)` $\rightarrow$ `SPIDER-TIER!`
-* [ ] **4.3.3 Directional Spider-Sense Halo Cue**
-  * Subtle comic-book red/white squiggle particles over Spider-Man's head before an enemy strikes.
+### 🎯 7. Beta Launch & Public Release (BETA MILESTONE)
+* [ ] **7.1 NYC City Environment & Props:**
+  * High-rise skyscrapers, glass facades, Times Square animated billboard screens, street lampposts, water towers, and alley dumpsters.
+* [ ] **7.2 Basic Suit Wardrobe Selector & Stats:**
+  * Quick UI to switch between **Classic Suit**, **Miles Morales**, and **Symbiote Black Suit**.
+  * Display Player Level, Hero Cash, and Total Crimes Stopped.
+* [ ] **7.3 Public Beta Release:**
+  * Ready for Roblox public playtesting, YouTube devlogs, and viral TikTok showcase clips!
 
 ---
 
-### 🟣 Phase 5: Focus Meter & 360° Web Cyclone Ultimate
-* [ ] **5.1 Focus Bar System**
-  * Fills up by landing combos and executing perfect dodges.
-* [ ] **5.2 🌪️ 360° Web Cyclone / Web Tornado Finisher (`T` Key)**
-  * When Focus is 100%, press `T` to grab a webbed enemy by the ankles, spin them around in a 360° tornado clearing all nearby thugs, and hurl them into a building wall!
-* [ ] **5.3 Focus Quick-Heal Option (`H` Key)**
-  * Spend 50% Focus to patch up health mid-combat.
+# 🌟 PART 2: FUTURE POST-BETA EXPANSIONS (Future Updates)
+
+*Do NOT worry about these right now—these are scheduled for major content updates after the Beta is live!*
 
 ---
 
-### 🔵 Phase 6: Dynamic City Crime Generation & Co-Op Events
-* [ ] **6.1 Procedural City Crime Spawner**
-  * Bank Heist in progress, Alleyway Mugging, Rooftop Arms Deal, Car Chase getaway.
-* [ ] **6.2 Police Radio Scanner**
-  * Real-time audio/text dispatch alerts guiding players to active crimes.
-* [ ] **6.3 Co-Op Scaled Waves & Shared XP / Hero Cash Rewards**
+### ⚡ Update 1.0: "Across the Spider-Verse & Peter's Apartment"
+* **🏠 Peter Parker's NYC Loft Apartment (Base of Operations):**
+  * Fully interactive Manhattan apartment: living room, rest bed for instant HP recharge, comic photo board, suit display wardrobe, and a **window dive exit** straight into skyscraper web-swinging!
+* **⚡ Spider-Verse Signature Unique Skill Trees:**
+  * **⚡ Miles Morales (*Across the Spider-Verse*):**
+    * *Venom Strike / Mega Venom Blast:* Yellow/blue bio-electric fists that paralyze enemies and chain lightning across crowds.
+    * *Venom Jump:* Mid-air explosive electric burst propelling Miles higher during web-swings.
+    * *Active Camouflage:* Invisibility for stealth takedowns on rooftop snipers.
+  * **🖤 Symbiote Black Suit (*Spider-Man 3 / Marvel's Spider-Man 2*):**
+    * *Symbiote Tendril Surge:* Giant dark tendrils grab 4–5 enemies and slam them into the pavement.
+    * *Symbiote Rage Mode:* Super armor against bullets, increased melee damage, black web silk.
+  * **🔴 Spider-Man 2099 (*Miguel O'Hara*):**
+    * *Sonic Talons & Red Plasma Blades:* Piercing claw melee combo that shreds Armored Brute shields.
+    * *After-Image Hyperspeed Dash:* High-velocity holographic decoy sprint dodging all incoming lasers.
+* **🔧 Workbench Crafting & Gadget Upgrades:**
+  * Use dropped materials to craft web capacity upgrades, electric web mods, and suit enhancements.
+* **🤸 In-Air Acrobatic Trick System (`T` Key in Air):**
+  * Perform stylish backflips, corkscrews, and dive rolls while swinging for bonus style XP!
 
 ---
 
-### 🟤 Phase 7: Peter Parker's Apartment Life-Sim & Spider-Verse Suits
-* [ ] **7.1 Peter Parker's Apartment Interior**
-  * Living room / bedroom with rest spots, workbench, and window dive exit into city web-swinging.
-* [ ] **7.2 Spider-Verse Wardrobe & Suit Perks**
-  * Classic Suit, Miles Morales (Bio-Electricity), Symbiote Black Suit (Tendril Rage), Spider-Man 2099 (After-Image Dash), Noir (Stealth).
-* [ ] **7.3 Workbench Crafting & Gadget Upgrades**
-  * Use dropped villain materials to forge new web formula upgrades, suit mods, and custom gadgets.
-
----
-
-### 🔴 Phase 8: Iconic Spider-Man Movie Boss Battles & Material Drops
-* [ ] **8.1 🐙 Doctor Octopus (Doc Ock) Rooftop Boss Encounter**
+### 🐙 Update 2.0: "The Sinister Movie Boss Raids"
+* **8.1 🐙 Doctor Octopus (Doc Ock) Rooftop Raid Encounter:**
   * 4 articulating mechanical tentacles (25-stud sweep reach, rooftop climbing, vehicle/generator hurling).
   * Phase 2 Overdrive: High-speed tentacle flurry and ground shockwaves.
-  * **Counter:** Web-pin tentacles to ground with **`E` (Web-Pellets)**, then **`R` (Web-Strike)** into Ock's chest!
-  * **Boss Drops:** *Octavius Nanotech Cores*, *Hydraulic Actuator Relays*.
-* [ ] **8.2 🦎 The Lizard (Dr. Curt Connors) Sewer/Street Ambush Encounter**
-  * Brutal predatory strength: high-speed wall lunges, heavy tail-whip AoE shockwave, and regenerative healing.
-  * **Counter:** Rapid punch staggering combos (`L-Click`) and dense web-cocooning (`E`) to halt regeneration.
+  * **Counter:** Web-pin tentacles to ground with `E`, then dropkick (`R`) into Ock's chest!
+  * **Boss Drops:** *Octavius Nanotech Cores*, *Hydraulic Actuators*.
+* **8.2 🦎 The Lizard (Dr. Curt Connors) Sewer/Street Ambush:**
+  * High-speed wall lunges, heavy tail-whip AoE shockwave, regenerative healing.
+  * **Counter:** Rapid punch combos (`L-Click`) and dense web-cocooning (`E`) to stop regeneration.
   * **Boss Drops:** *Reptilian Bio-Vials*, *Regenerative Scale Plates*.
-* [ ] **8.3 🎃 Green Goblin (Norman Osborn) Aerial Glider Dogfight Encounter**
-  * High-velocity glider strafing runs, pumpkin bomb cluster bombardments, and razor-bat swarms.
-  * **Counter:** In-Air Ground Slam (`Air L-Click`) onto glider, snatch pumpkin bombs mid-air and hurl them back (`E`).
+* **8.3 🎃 Green Goblin (Norman Osborn) Aerial Glider Dogfight:**
+  * High-velocity glider strafing runs, pumpkin bomb cluster bombardments, razor-bat swarms.
+  * **Counter:** In-Air Ground Slam (`Air L-Click`) onto glider, catch pumpkin bombs mid-air and throw back (`E`).
   * **Boss Drops:** *Goblin Glider Micro-Turbines*, *Oscorp Nitro Compounds*.
-* [ ] **8.4 💎 Boss Material Drop & Physical Loot Pickup Engine**
-  * Dynamic physical material token spawns on boss defeat with magnetic suction pickup into player inventory.
+* **8.4 Physical Loot Pickup Engine:**
+  * Physical glowing material tokens with magnetic suction pickup into player inventory.
+
+---
+
+### 🌌 Update 3.0: "Multiverse Convergence & Spider-Clans"
+* **Spider-Society Headquarters (Central Hub Lobby).**
+* **Dimension Portals & Co-Op Raids.**
+* **Spider-Clan Guilds & Shared Leaderboards.**

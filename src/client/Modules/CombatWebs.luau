@@ -3,7 +3,7 @@
 	CombatWebs.luau
 	Handles all Spider-Man tactical web-based combat moves:
 	1. 🕸️ Rapid Web-Pellets & Wall-Pinning (E Key)
-	2. 🔫 Web-Yank Disarm & Weapon Throw (Q Key)
+	2. 🔫 Web-Yank Disarm & Weapon Throw (Q / Smart E Key)
 	3. 🚀 Web-Strike Zip Kick (R Key)
 ]]
 
@@ -35,7 +35,51 @@ CombatWebs.isHoldingWebPellet = false
 CombatWebs.isWebStriking = false
 CombatWebs.isRightHandWeb = false
 
--- ✨ Create temporary visual combat web beams between character and target
+--------------------------------------------------------------------------------
+-- 🔍 INTERNAL TARGETING HELPERS
+--------------------------------------------------------------------------------
+
+local function isArmedEnemy(enemy: Model): boolean
+	return (enemy:GetAttribute("IsArmed") == true) or (enemy:FindFirstChild("Gun") ~= nil)
+end
+
+-- Scan camera view cone for valid enemy targets (fallback when reticle target is nil)
+local function findEnemyInCone(rootPart: BasePart, camera: Camera, maxDist: number, minDot: number, requireArmed: boolean?): Model?
+	local enemies = CollectionService:GetTagged("Enemy")
+	local camCFrame = camera.CFrame
+	local bestTarget: Model? = nil
+	local bestDist = maxDist
+
+	for _, enemy in enemies do
+		if enemy:IsA("Model") then
+			if requireArmed and not isArmedEnemy(enemy) then
+				continue
+			end
+
+			local eHum = enemy:FindFirstChildOfClass("Humanoid")
+			local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+			if eHum and eHum.Health > 0 and eRoot then
+				local offset = eRoot.Position - rootPart.Position
+				local d = offset.Magnitude
+				if d <= maxDist and d < bestDist then
+					local toEnemy = (eRoot.Position - camCFrame.Position).Unit
+					local dot = camCFrame.LookVector:Dot(toEnemy)
+					if dot > minDot then
+						bestTarget = enemy
+						bestDist = d
+					end
+				end
+			end
+		end
+	end
+
+	return bestTarget
+end
+
+--------------------------------------------------------------------------------
+-- ✨ VISUAL WEB HELPERS
+--------------------------------------------------------------------------------
+
 function CombatWebs.createCombatWebLines(sourceModel: Model, targetModel: Model, dualWebs: boolean, duration: number)
 	local sourceRoot = sourceModel:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local targetRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso") or targetModel:FindFirstChild("Head")) :: BasePart?
@@ -66,17 +110,17 @@ function CombatWebs.createCombatWebLines(sourceModel: Model, targetModel: Model,
 	end)
 end
 
+--------------------------------------------------------------------------------
 -- 1. 🕸️ RAPID WEB-PELLETS (E Key)
+--------------------------------------------------------------------------------
+
 function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera, isHoldingAttack: boolean, lastMeleeActionTime: number)
 	local now = os.clock()
 	local cooldown = CombatConfig.Moves.WebPellet.Cooldown or 0.32
 	if (now - CombatWebs.lastWebPelletTime) < cooldown then return end
-
-	-- Action Exclusivity: Cannot shoot webs while punching
 	if isHoldingAttack or (now - lastMeleeActionTime) < 0.22 then return end
 
-	-- Target must be locked in reticle
-	local target = CombatReticle.getCurrentTarget()
+	local target = CombatReticle.getCurrentTarget() or findEnemyInCone(rootPart, camera, 55, 0.35, false)
 	if not target then return end
 
 	local maxDist = CombatConfig.Moves.WebPellet.MaxDistance or 50
@@ -92,51 +136,24 @@ function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, human
 	WebPelletRemote:FireServer(target)
 	WebVisuals.launchWebPelletProjectile(handAtt, targetWorldPos)
 	WebVisuals.playWebSound(rootPart)
-
-	-- Tactile micro camera recoil
-	camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.18), (CombatWebs.isRightHandWeb and math.rad(-0.12) or math.rad(0.12)), 0)
 end
 
+--------------------------------------------------------------------------------
 -- 2. 🔫 WEB-YANK DISARM & WEAPON THROW (Q / Smart E Key)
+--------------------------------------------------------------------------------
+
 function CombatWebs.performWebDisarm(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera, isHoldingAttack: boolean, lastMeleeActionTime: number)
 	local now = os.clock()
 	local cooldown = CombatConfig.Moves.DisarmAndThrow.Cooldown or 2.5
 	if (now - CombatWebs.lastDisarmTime) < cooldown then return end
-
 	if isHoldingAttack or (now - lastMeleeActionTime) < 0.22 then return end
 
-	-- 1. Find Target: Active Reticle Target OR Fallback Camera Cone Sweep for Armed Gunners (Up to 55 studs)
 	local target = CombatReticle.getCurrentTarget()
-	local isTargetArmed = target and ((target:GetAttribute("IsArmed") == true) or (target:FindFirstChild("Gun") ~= nil))
-
-	if not isTargetArmed then
-		local enemies = CollectionService:GetTagged("Enemy")
-		local camCFrame = camera.CFrame
-		local bestDist = 55
-		for _, enemy in enemies do
-			if enemy:IsA("Model") and ((enemy:GetAttribute("IsArmed") == true) or (enemy:FindFirstChild("Gun") ~= nil)) then
-				local eHum = enemy:FindFirstChildOfClass("Humanoid")
-				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-				if eHum and eHum.Health > 0 and eRoot then
-					local offset = eRoot.Position - rootPart.Position
-					local d = offset.Magnitude
-					if d <= 55 and d < bestDist then
-						local toEnemy = (eRoot.Position - camCFrame.Position).Unit
-						local dot = camCFrame.LookVector:Dot(toEnemy)
-						if dot > 0.40 then
-							target = enemy
-							bestDist = d
-						end
-					end
-				end
-			end
-		end
+	if not target or not isArmedEnemy(target) then
+		target = findEnemyInCone(rootPart, camera, 55, 0.40, true)
 	end
 
-	if not target then return end
-
-	local isArmed = (target:GetAttribute("IsArmed") == true) or (target:FindFirstChild("Gun") ~= nil)
-	if not isArmed then return end
+	if not target or not isArmedEnemy(target) then return end
 
 	local maxDist = CombatConfig.Moves.DisarmAndThrow.MaxDistance or 50
 	local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
@@ -154,7 +171,7 @@ function CombatWebs.performWebDisarm(character: Model, rootPart: BasePart, human
 	DisarmThrowRemote:FireServer(target)
 	WebVisuals.playWebSound(rootPart)
 
-	-- Camera tension pulse
+	-- Dynamic Camera tension pulse
 	local camTweenIn = TweenService:Create(camera, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		FieldOfView = 74,
 	})
@@ -165,87 +182,46 @@ function CombatWebs.performWebDisarm(character: Model, rootPart: BasePart, human
 			FieldOfView = 70,
 		})
 		camTweenOut:Play()
-		camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.40), 0, 0)
 	end)
 end
 
--- 🕸️ 3. CONTEXTUAL SMART WEB GADGET (E Key)
--- Automatically executes Web-Disarm if target is holding a gun or an armed sniper is aiming in view, or fires Rapid Web-Pellets!
+--------------------------------------------------------------------------------
+-- 3. 🕸️ CONTEXTUAL SMART WEB GADGET (E Key)
+--------------------------------------------------------------------------------
+
 function CombatWebs.performSmartWebGadget(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera, isHoldingAttack: boolean, lastMeleeActionTime: number)
 	local target = CombatReticle.getCurrentTarget()
 
-	-- Check if there is an active armed sniper aiming in view that should take priority for Disarm
-	local armedThreat: Model? = nil
-	local enemies = CollectionService:GetTagged("Enemy")
-	local camCFrame = camera.CFrame
-
-	for _, enemy in enemies do
-		if enemy:IsA("Model") and ((enemy:GetAttribute("IsArmed") == true) or (enemy:FindFirstChild("Gun") ~= nil)) then
-			local eHum = enemy:FindFirstChildOfClass("Humanoid")
-			local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-			if eHum and eHum.Health > 0 and eRoot then
-				local d = (eRoot.Position - rootPart.Position).Magnitude
-				if d <= 55 then
-					local toEnemy = (eRoot.Position - camCFrame.Position).Unit
-					local dot = camCFrame.LookVector:Dot(toEnemy)
-					if dot > 0.55 or (enemy:GetAttribute("IsAttacking") == true and dot > 0.35) then
-						armedThreat = enemy
-						break
-					end
-				end
-			end
-		end
-	end
-
+	-- Priority 1: Check for active armed snipers in view
+	local armedThreat = findEnemyInCone(rootPart, camera, 55, 0.45, true)
 	if armedThreat then
 		CombatWebs.performWebDisarm(character, rootPart, humanoid, camera, isHoldingAttack, lastMeleeActionTime)
 		return
 	end
 
+	-- Priority 2: Reticle target
 	if target then
-		local isArmed = (target:GetAttribute("IsArmed") == true) or (target:FindFirstChild("Gun") ~= nil)
-		if isArmed then
+		if isArmedEnemy(target) then
 			CombatWebs.performWebDisarm(character, rootPart, humanoid, camera, isHoldingAttack, lastMeleeActionTime)
 		else
 			CombatWebs.performWebPellet(character, rootPart, humanoid, camera, isHoldingAttack, lastMeleeActionTime)
 		end
 	else
-		-- Fallback to WebPellet search
+		-- Priority 3: Fallback cone search for unarmed mobs
 		CombatWebs.performWebPellet(character, rootPart, humanoid, camera, isHoldingAttack, lastMeleeActionTime)
 	end
 end
 
+--------------------------------------------------------------------------------
 -- 4. 🚀 WEB-STRIKE ZIP KICK (R Key)
+--------------------------------------------------------------------------------
+
 function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera)
 	local now = os.clock()
 	local cooldown = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.Cooldown or 2.0
 	if CombatWebs.isWebStriking or (now - CombatWebs.lastWebStrikeTime) < cooldown then return end
 
-	-- 1. Find Target: Active Reticle Target OR Fallback Camera Cone Sweep (Up to 65 studs!)
-	local target = CombatReticle.getCurrentTarget()
-	if not target then
-		local enemies = CollectionService:GetTagged("Enemy")
-		local camCFrame = camera.CFrame
-		local bestDist = 65
-		for _, enemy in enemies do
-			if enemy:IsA("Model") then
-				local eHum = enemy:FindFirstChildOfClass("Humanoid")
-				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-				if eHum and eHum.Health > 0 and eRoot then
-					local offset = eRoot.Position - rootPart.Position
-					local d = offset.Magnitude
-					if d <= 65 and d < bestDist then
-						local dot = camCFrame.LookVector:Dot(offset.Unit)
-						if dot > 0.60 then
-							target = enemy
-							bestDist = d
-						end
-					end
-				end
-			end
-		end
-	end
-
+	local target = CombatReticle.getCurrentTarget() or findEnemyInCone(rootPart, camera, 65, 0.55, false)
 	if not target then return end
 
 	local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
@@ -254,13 +230,13 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 
 	local maxDist = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.MaxDistance or 65
 	local dist = (targetRoot.Position - rootPart.Position).Magnitude
-	if dist > maxDist or dist < 2.5 then return end
+	if dist > maxDist or dist < 1.5 then return end
 
 	CombatWebs.isWebStriking = true
 	CombatWebs.lastWebStrikeTime = now
 	CombatWebs.isHoldingWebPellet = false
 
-	-- Clean up old movement constraints
+	-- Clean up previous movement constraints
 	for _, oldLv in rootPart:GetChildren() do
 		if oldLv.Name == "WebStrikeLinearVelocity" or oldLv.Name == "DodgeLinearVelocity" then
 			oldLv:Destroy()
@@ -290,7 +266,6 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	local originalAutoRotate = humanoid.AutoRotate
 	humanoid.AutoRotate = false
 
-	-- FOV speed pull
 	local fovTweenIn = TweenService:Create(camera, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		FieldOfView = 76,
 	})
@@ -322,7 +297,7 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 		rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + Vector3.new(zipDir.X, 0, zipDir.Z))
 		lv.VectorVelocity = zipDir * zipSpeed
 
-		-- 💥 Impact Threshold: Reach target OR any intervening mob in the cluster!
+		-- Impact Threshold: Target contact or cluster collision
 		local hitCandidate: Model? = nil
 		if currentDist <= 5.5 then
 			hitCandidate = target
@@ -333,8 +308,7 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 					local eHum = enemy:FindFirstChildOfClass("Humanoid")
 					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
 					if eHum and eHum.Health > 0 and eRoot then
-						local d = (eRoot.Position - rootPart.Position).Magnitude
-						if d <= 4.8 then
+						if (eRoot.Position - rootPart.Position).Magnitude <= 4.8 then
 							hitCandidate = enemy
 							break
 						end
@@ -360,7 +334,6 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 
 			WebStrikeRemote:FireServer(hitCandidate)
 			WebVisuals.createMeleeHitSparks(hitRoot.Position + Vector3.new(0, 0.5, 0), true)
-			camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(-0.5), math.rad(math.random(-1, 1) * 0.3), 0)
 
 			local fovTweenOut = TweenService:Create(camera, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				FieldOfView = 70,

@@ -530,6 +530,51 @@ function WebVisuals.createCounterImpactShockwave(hitPos: Vector3, radius: number
 	Debris:AddItem(shockRing, 0.35)
 end
 
+-- 🍃 Looping Wind Rush Sound
+local windLoopSound: Sound? = nil
+
+function WebVisuals.updateWindSound(rootPart: BasePart?, speed: number)
+	if not rootPart then return end
+
+	local soundId = GrappleConfig.Visuals and GrappleConfig.Visuals.WindSoundId or ""
+	if not soundId or soundId == "" then
+		if windLoopSound then
+			windLoopSound:Stop()
+			windLoopSound:Destroy()
+			windLoopSound = nil
+		end
+		return
+	end
+
+	if not windLoopSound or not windLoopSound.Parent then
+		local s = Instance.new("Sound")
+		s.Name = "WindRushLoop"
+		s.SoundId = soundId
+		s.Looped = true
+		s.Volume = 0
+		s.PlaybackSpeed = 1.0
+		s.Parent = rootPart
+		s:Play()
+		windLoopSound = s
+	end
+
+	local minSpeed = 50
+	if speed > minSpeed then
+		local ratio = math.clamp((speed - minSpeed) / 110, 0, 1)
+		local targetVol = 0.50 * ratio
+		local targetPitch = 0.85 + (ratio * 0.45)
+
+		windLoopSound.Volume = windLoopSound.Volume + (targetVol - windLoopSound.Volume) * 0.25
+		windLoopSound.PlaybackSpeed = targetPitch
+		if not windLoopSound.IsPlaying then windLoopSound:Play() end
+	else
+		windLoopSound.Volume = math.max(0, windLoopSound.Volume - 0.1)
+		if windLoopSound.Volume <= 0.01 and windLoopSound.IsPlaying then
+			windLoopSound:Stop()
+		end
+	end
+end
+
 -- 👥 Multiplayer Replication Listener
 function WebVisuals.initMultiplayerReplication(remotesFolder: Folder)
 	local GrappleStartRemote = remotesFolder:WaitForChild("GrappleStart") :: RemoteEvent

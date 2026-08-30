@@ -10,6 +10,7 @@
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
@@ -143,7 +144,7 @@ end
 -- 3. 💥 WEB-LINE GROUND SLAM (In-Air Attack / 4th Attack after 1-2-3 Combo)
 function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, humanoid: Humanoid, createWebLinesFunc: ((Model, Model, boolean, number) -> ())?)
 	local now = os.clock()
-	local slamCooldown = CombatConfig.Moves.AirGroundSlam.Cooldown or 2.0
+	local slamCooldown = CombatConfig.Moves.AirGroundSlam.Cooldown or 1.4
 	if (now - CombatMelee.lastGroundSlamTime) < slamCooldown then return end
 
 	CombatMelee.lastGroundSlamTime = now
@@ -155,11 +156,11 @@ function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, 
 	if existingFloat then existingFloat:Destroy() end
 
 	local target = CombatReticle.getCurrentTarget()
-	local slamSpeed = CombatConfig.Moves.AirGroundSlam.SlamSpeed or 85
+	local slamSpeed = CombatConfig.Moves.AirGroundSlam.SlamSpeed or 95
 
 	if target then
 		local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
-		if not targetRoot or (targetRoot.Position - rootPart.Position).Magnitude > 22 then
+		if not targetRoot or (targetRoot.Position - rootPart.Position).Magnitude > 35 then
 			target = nil
 		end
 	end
@@ -174,10 +175,43 @@ function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, 
 		WebVisuals.playWebSound(rootPart)
 	end
 
-	-- Execute shockwave on ground contact
-	task.delay(0.10, function()
-		if rootPart and rootPart.Parent then
-			GroundSlamRemote:FireServer(target, rootPart.Position)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { character }
+
+	-- Monitor descent and trigger shockwave as soon as floor is reached
+	local slamStartTime = os.clock()
+	local landed = false
+
+	local landingConn: RBXScriptConnection? = nil
+	local function triggerLandingImpact()
+		if landed then return end
+		landed = true
+		if landingConn then landingConn:Disconnect() end
+
+		local finalPos = rootPart.Position
+		local curGroundRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -8, 0), rayParams)
+		if curGroundRay then
+			finalPos = curGroundRay.Position
+		end
+
+		GroundSlamRemote:FireServer(target, finalPos)
+		WebVisuals.createWeaponImpactSparks(finalPos, Vector3.new(0, 1, 0))
+	end
+
+	landingConn = RunService.Heartbeat:Connect(function()
+		if not rootPart.Parent or humanoid.Health <= 0 then
+			if landingConn then landingConn:Disconnect() end
+			return
+		end
+
+		if humanoid.FloorMaterial ~= Enum.Material.Air or (os.clock() - slamStartTime) > 0.60 then
+			triggerLandingImpact()
+		else
+			local checkRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -5, 0), rayParams)
+			if checkRay then
+				triggerLandingImpact()
+			end
 		end
 	end)
 end

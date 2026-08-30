@@ -37,10 +37,10 @@ local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: 
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "HealthGui"
-	billboard.Size = UDim2.new(4.2, 0, 1.3, 0)
-	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 3.5 or 2.8, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 85
+	billboard.Size = UDim2.new(3.4, 0, 0.9, 0)
+	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 3.2 or 2.5, 0)
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 45
 	billboard.Parent = head
 
 	local frame = Instance.new("Frame")
@@ -519,8 +519,234 @@ local function spawnCriminal(position: Vector3, archetype: EnemyArchetype, enemy
 	return character
 end
 
--- 🌆 Initialize Default City Spawn Locations with Tactical Archetypes
+-- 🥋 Phase 4.4: Spawn Training Dummies (Custom Part Placement Supported!)
+local function spawnTrainingDummyAtCFrame(spawnCFrame: CFrame, dummyType: "Static" | "Aggressive" | "Infinite")
+	local dummy = Instance.new("Model")
+	local name = (dummyType == "Static" and "Training Dummy [Standard]")
+		or (dummyType == "Aggressive" and "Practice Dummy [Attacker]")
+		or "Infinite Dummy [Sandbox]"
+	dummy.Name = name
+
+	dummy:SetAttribute("Archetype", "Brawler")
+	dummy:SetAttribute("IsDummy", true)
+	dummy:SetAttribute("DummyType", dummyType)
+	dummy:SetAttribute("IsAttacking", false)
+	dummy:SetAttribute("AttackDodged", false)
+	dummy:SetAttribute("IsWebbed", false)
+	dummy:SetAttribute("IsPinned", false)
+	dummy:SetAttribute("WebStacks", 0)
+
+	local maxHp = dummyType == "Infinite" and 99999 or 100
+
+	-- Torso
+	local torso = Instance.new("Part")
+	torso.Name = "Torso"
+	torso.Size = Vector3.new(2, 2, 1)
+	torso.CFrame = spawnCFrame * CFrame.new(0, 3, 0)
+	torso.Color = dummyType == "Infinite" and Color3.fromRGB(175, 85, 255)
+		or dummyType == "Aggressive" and Color3.fromRGB(255, 90, 90)
+		or Color3.fromRGB(220, 200, 150)
+	torso.Material = Enum.Material.WoodPlanks
+	torso.CanCollide = true
+	torso.Parent = dummy
+
+	local hrp = Instance.new("Part")
+	hrp.Name = "HumanoidRootPart"
+	hrp.Size = Vector3.new(2, 2, 1)
+	hrp.CFrame = torso.CFrame
+	hrp.Transparency = 1
+	hrp.CanCollide = false
+	hrp.Parent = dummy
+
+	local rootWeld = Instance.new("WeldConstraint")
+	rootWeld.Part0 = hrp
+	rootWeld.Part1 = torso
+	rootWeld.Parent = hrp
+
+	-- Head
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.Position = torso.Position + Vector3.new(0, 1.5, 0)
+	head.Color = dummyType == "Infinite" and Color3.fromRGB(200, 120, 255)
+		or dummyType == "Aggressive" and Color3.fromRGB(255, 120, 120)
+		or Color3.fromRGB(235, 215, 170)
+	head.Material = Enum.Material.WoodPlanks
+	head.CanCollide = false
+	head.Parent = dummy
+
+	local headWeld = Instance.new("WeldConstraint")
+	headWeld.Part0 = torso
+	headWeld.Part1 = head
+	headWeld.Parent = head
+
+	-- Humanoid
+	local humanoid = Instance.new("Humanoid")
+	humanoid.MaxHealth = maxHp
+	humanoid.Health = maxHp
+	humanoid.WalkSpeed = 0
+	humanoid.Parent = dummy
+
+	dummy.PrimaryPart = hrp
+	CollectionService:AddTag(dummy, "Enemy")
+
+	-- Overhead Health & Info Tag
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "HealthGui"
+	billboard.Size = UDim2.new(3.8, 0, 0.95, 0)
+	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 45
+	billboard.Parent = head
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 13
+	nameLabel.TextStrokeTransparency = 0.15
+	nameLabel.TextColor3 = dummyType == "Infinite" and Color3.fromRGB(215, 125, 255)
+		or dummyType == "Aggressive" and Color3.fromRGB(255, 100, 100)
+		or Color3.fromRGB(240, 220, 160)
+	nameLabel.Text = string.format("🥋 %s", name)
+	nameLabel.Parent = billboard
+
+	local barBackground = Instance.new("Frame")
+	barBackground.Size = UDim2.new(1, 0, 0.35, 0)
+	barBackground.Position = UDim2.new(0, 0, 0.55, 0)
+	barBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	barBackground.BorderSizePixel = 0
+	barBackground.Parent = billboard
+
+	local corner1 = Instance.new("UICorner")
+	corner1.CornerRadius = UDim.new(0, 4)
+	corner1.Parent = barBackground
+
+	local healthFill = Instance.new("Frame")
+	healthFill.Name = "HealthFill"
+	healthFill.Size = UDim2.new(1, 0, 1, 0)
+	healthFill.BackgroundColor3 = dummyType == "Infinite" and Color3.fromRGB(185, 95, 255)
+		or dummyType == "Aggressive" and Color3.fromRGB(255, 80, 80)
+		or Color3.fromRGB(75, 225, 120)
+	healthFill.BorderSizePixel = 0
+	healthFill.Parent = barBackground
+
+	local corner2 = Instance.new("UICorner")
+	corner2.CornerRadius = UDim.new(0, 4)
+	corner2.Parent = healthFill
+
+	local totalDamageTaken = 0
+	local isDead = false
+
+	humanoid.HealthChanged:Connect(function(newHealth)
+		if dummyType == "Infinite" then
+			if newHealth < maxHp then
+				local dmg = maxHp - newHealth
+				totalDamageTaken += dmg
+				nameLabel.Text = string.format("🛡️ INFINITE DUMMY [Total DMG: %d]", totalDamageTaken)
+				humanoid.Health = maxHp
+			end
+		else
+			local healthPercent = math.clamp(newHealth / humanoid.MaxHealth, 0, 1)
+			healthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+		end
+	end)
+
+	if dummyType ~= "Infinite" then
+		humanoid.Died:Connect(function()
+			if isDead then return end
+			isDead = true
+			billboard:Destroy()
+			task.delay(2.0, function()
+				if dummy.Parent then
+					dummy:Destroy()
+				end
+				spawnTrainingDummyAtCFrame(spawnCFrame, dummyType)
+			end)
+		end)
+	end
+
+	dummy.Parent = EnemiesFolder
+
+	-- Aggressive Dummy: Continuous telegraph loop to practice Spider-Sense dodges
+	if dummyType == "Aggressive" then
+		task.spawn(function()
+			while dummy.Parent and humanoid.Health > 0 do
+				task.wait(2.4)
+				if not dummy.Parent or humanoid.Health <= 0 then break end
+				if dummy:GetAttribute("IsWebbed") ~= true and dummy:GetAttribute("IsPinned") ~= true then
+					dummy:SetAttribute("IsAttacking", true)
+					dummy:SetAttribute("AttackDodged", false)
+
+					-- Telegraph 0.85s (Triggers Spider-Sense warning cue on player)
+					local tStart = os.clock()
+					while (os.clock() - tStart) < 0.85 do
+						task.wait(0.04)
+						if not dummy.Parent or humanoid.Health <= 0 then break end
+						if dummy:GetAttribute("AttackDodged") == true or dummy:GetAttribute("IsWebbed") == true then break end
+					end
+
+					-- Reset strike
+					dummy:SetAttribute("IsAttacking", false)
+					dummy:SetAttribute("AttackDodged", false)
+				end
+			end
+		end)
+	end
+
+	return dummy
+end
+
+-- 🌆 Initialize Default City Spawn Locations & Training Dojo Dummies
 local function initEnemyWaves()
+	-- Clean up any preexisting dummy models
+	if EnemiesFolder then
+		for _, child in EnemiesFolder:GetChildren() do
+			if child:GetAttribute("IsDummy") == true then
+				child:Destroy()
+			end
+		end
+	end
+
+	-- 🔍 Check if the creator has placed custom Dummy spawn parts in Workspace!
+	local placedStatic = false
+	local placedAttacking = false
+	local placedInfinite = false
+
+	for _, descendant in Workspace:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local lowerName = string.lower(descendant.Name)
+			if lowerName == "dummy_static" or lowerName == "dummystatic" or lowerName == "trainingdummy_static" then
+				descendant.Transparency = 1
+				descendant.CanCollide = false
+				spawnTrainingDummyAtCFrame(descendant.CFrame, "Static")
+				placedStatic = true
+			elseif lowerName == "dummy_attacking" or lowerName == "dummyattacking" or lowerName == "dummy_aggressive" or lowerName == "trainingdummy_attacking" then
+				descendant.Transparency = 1
+				descendant.CanCollide = false
+				spawnTrainingDummyAtCFrame(descendant.CFrame, "Aggressive")
+				placedAttacking = true
+			elseif lowerName == "dummy_infinite" or lowerName == "dummyinfinite" or lowerName == "trainingdummy_infinite" then
+				descendant.Transparency = 1
+				descendant.CanCollide = false
+				spawnTrainingDummyAtCFrame(descendant.CFrame, "Infinite")
+				placedInfinite = true
+			end
+		end
+	end
+
+	-- Fallback: If no custom parts placed yet in map, spawn default spread
+	if not placedStatic then
+		spawnTrainingDummyAtCFrame(CFrame.new(-12, 3, -12), "Static")
+	end
+	if not placedAttacking then
+		spawnTrainingDummyAtCFrame(CFrame.new(0, 3, -12), "Aggressive")
+	end
+	if not placedInfinite then
+		spawnTrainingDummyAtCFrame(CFrame.new(12, 3, -12), "Infinite")
+	end
+
+	-- 🦹 Active Tactical Criminal Waves
 	local spawnPoints = {
 		-- 🔫 Armed Gunners & Snipers (Ranged Threat)
 		{ Pos = Vector3.new(35, 3, -40), Archetype = "Gunner" :: EnemyArchetype, Name = "Mob Gunner" },
@@ -542,4 +768,4 @@ local function initEnemyWaves()
 end
 
 initEnemyWaves()
-print("🦹 Phase 4.2 Tactical Enemy Archetypes active! (Gunner, Heavy Brute, Street Brawler)")
+print("🥋 Training Dummies & Tactical Enemy Archetypes active! (Custom Part Spawners Supported)")

@@ -29,10 +29,10 @@ end
 
 -- 🎯 Find the best elevated building anchor ahead of the player in the street corridor
 function TargetFinder.findBuildingAnchor(character: Model, rootPart: BasePart, camera: Camera): (Vector3?, boolean)
-	local camCFrame = camera.CFrame
+	local scanCFrame = camera.CFrame
 	local origin = rootPart.Position
-	local camLook = camCFrame.LookVector
-	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+	local scanLook = scanCFrame.LookVector
+	local forwardFlat = Vector3.new(scanLook.X, 0, scanLook.Z).Unit
 
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -48,7 +48,7 @@ function TargetFinder.findBuildingAnchor(character: Model, rootPart: BasePart, c
 	local bestScore = -999999
 
 	for _, angle in scanAngles do
-		local angleDir = (camCFrame * CFrame.Angles(0, math.rad(angle), 0)).LookVector
+		local angleDir = (scanCFrame * CFrame.Angles(0, math.rad(angle), 0)).LookVector
 		for _, height in scanHeights do
 			local targetDir = (angleDir * 100 + Vector3.new(0, height, 0)).Unit
 			local hit = Workspace:Raycast(origin, targetDir * maxDist, rayParams)

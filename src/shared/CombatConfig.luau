@@ -7,12 +7,14 @@
 ]]
 
 local CombatConfig = {
-	-- 🎮 Active 4-Button Controls & Keybinds
+	-- 🎮 Active Controls & Keybinds (Clean, dedicated inputs with zero conflict)
 	Keybinds = {
 		Attack = Enum.UserInputType.MouseButton1, -- L-Click: 1-2-3 Punch Combo (Ground) / Ground Slam (Air)
-		WebGadget = Enum.KeyCode.E,               -- E Key: Contextual Smart Web (Disarm Armed Mobs / Shoot Web Pellets)
+		WebGadget = Enum.KeyCode.E,               -- E Key: Contextual Web Shooters (Rapid Web Pellets / Disarm Snipers)
+		WebStrike = Enum.KeyCode.R,               -- R Key: 65-Stud Web-Strike Zip Dropkick!
 		Dodge = Enum.KeyCode.F,                   -- F Key: Spider-Sense Perfect Dodge & Face-Web Counter
-		WebStrike = Enum.KeyCode.R,               -- R Key: 65-Stud Web-Strike Zip Kick!
+		Ultimate = Enum.KeyCode.T,                -- T Key: 360° Web Cyclone Continuous DPS Blender
+		QuickHeal = Enum.KeyCode.H,               -- H Key: Quick-Heal +35 HP
 	},
 
 	-- 🎯 Freeflow Targeting Settings (Smooth camera, comfortable range)
@@ -150,6 +152,38 @@ local CombatConfig = {
 			SurroundRadius = 7.5,                 -- Flanking orbit distance
 			WalkSpeed = 15,                       -- Agile jog
 		},
+	},
+
+	-- 🔥 Phase 4.3: Combo Multiplier & Style Meter HUD Settings
+	StyleMeter = {
+		DecayTime = 3.6,                          -- Seconds before combo resets without landing hits
+		Ranks = {
+			{ MinHits = 1,  Name = "DECENT",      Rank = "D",  Color = Color3.fromRGB(190, 195, 205) },
+			{ MinHits = 5,  Name = "COOL",        Rank = "C",  Color = Color3.fromRGB(75, 225, 120) },
+			{ MinHits = 10, Name = "BRUTAL",      Rank = "B",  Color = Color3.fromRGB(60, 175, 255) },
+			{ MinHits = 16, Name = "AMAZING",     Rank = "A",  Color = Color3.fromRGB(200, 85, 255) },
+			{ MinHits = 24, Name = "SPECTACULAR", Rank = "S",  Color = Color3.fromRGB(255, 205, 45) },
+			{ MinHits = 32, Name = "SPIDER-TIER!",Rank = "SS", Color = Color3.fromRGB(255, 55, 75) },
+		},
+		HitStop = {
+			LightHitDuration = 0.025,             -- 1-frame micro-pause on light hits
+			HeavyHitDuration = 0.045,             -- 2-frame tactile impact freeze on finishers
+		},
+	},
+
+	-- 🟣 Phase 5: Focus Meter & 360° Web Cyclone Ultimate Settings
+	Focus = {
+		MaxFocus = 100,                           -- 100 Focus pool
+		LightHitGain = 4,                         -- Focus gained per light punch / pellet
+		HeavyHitGain = 9,                         -- Focus gained per heavy finisher (Punch 3, Web-Strike)
+		DodgeGain = 16,                           -- Focus gained per Spider-Sense perfect dodge
+		HealCost = 50,                            -- Focus spent to Quick-Heal
+		HealAmount = 35,                          -- HP restored per Quick-Heal
+		CycloneCost = 100,                        -- Focus required to activate 360° Web Cyclone
+		CycloneRadius = 14.5,                     -- Radial sweep area (studs)
+		CycloneDuration = 2.2,                    -- Seconds of continuous centrifugal spinning
+		CycloneDamage = 30,                       -- Massive AoE damage dealt to swept mobs
+		CycloneThrowSpeed = 135,                  -- Velocity when hurling target into skyscraper wall
 	},
 }
 
