@@ -45,7 +45,7 @@ local GrappleConfig = {
 		UpwardClimbLift = 65,          -- Upward climb buoyancy lifting player high above street level
 		CameraSteerResponsiveness = 8.5, -- Look-to-Steer: How quickly holding W curves your swing towards camera look
 		InitialSwingSpeed = 115,       -- Fast, thrilling initial swing entry speed
-		AirSteerForce = 60,            -- A/D lateral banking steering force
+		AirSteerForce = 50,            -- A/D lateral banking steering force
 		MinSpeed = 60,                 -- Minimum speed to keep pendulum flowing smoothly
 		MaxSpeed = 185,                -- High-speed, thrilling top pendulum velocity
 		TensionStiffness = 28,         -- Radial tension keeping the web line 100% taut
@@ -56,8 +56,8 @@ local GrappleConfig = {
 	-- 🚀 Dynamic Peak Height Auto-Release (Auto-releases cleanly at 70-degree apex!)
 	AutoRelease = {
 		Enabled = true,          -- Auto-release enabled
-		ApexAngleThreshold = 70, -- 🎯 Auto-releases cleanly at 70 degrees at peak height!
-		MinSwingDuration = 0.50, -- Ensures you complete the bottom swoop before apex release
+		ApexAngleThreshold = 72, -- 🎯 Auto-releases cleanly at 70-72 degrees at peak height!
+		MinSwingDuration = 0.55, -- Ensures you complete the bottom swoop before apex release
 		MaxSwingDuration = 4.00, -- Generous safety timeout
 	},
 
@@ -90,7 +90,7 @@ local GrappleConfig = {
 			Enabled = true,
 			BaseFOV = 70,                               -- Resting FOV
 			MaxFOV = 82,                                -- Balanced high-speed swinging FOV
-			LerpSpeed = 6,                              -- Smoothness of FOV transitions
+			LerpSpeed = 5,                              -- Smoothness of FOV transitions
 		},
 	},
 
@@ -108,8 +108,7 @@ local GrappleConfig = {
 	Visuals = {
 		RopeColor = Color3.fromRGB(245, 248, 255), -- White spider-web silk
 		RopeThickness = 0.12,
-		WebShootSoundId = "", -- 🎵 Paste your custom Web Shoot Sound ID here (e.g. "rbxassetid://123456789")
-		WindSoundId = "",     -- 🎵 Paste your custom Wind Rush Sound ID here (e.g. "rbxassetid://123456789")
+		WebShootSoundId = "", -- 🎵 Paste your custom Roblox Sound Asset ID here (e.g. "rbxassetid://123456789")
 	},
 }
 
