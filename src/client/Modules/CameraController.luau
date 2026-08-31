@@ -32,9 +32,11 @@ end
 function CameraController.update(deltaTime: number, camera: Camera, rootPart: BasePart?, humanoid: Humanoid?, isFreeMoving: boolean)
 	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
 
-	-- 🔒 Action Camera Shift-Lock: Always lock mouse to center so moving the mouse rotates camera freely without holding right-click!
-	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-	if GrappleConfig.Camera.HideCursor then
+	-- 🔒 Action Camera Shift-Lock: Smoothly keep mouse locked without constant property re-assignment flickering
+	if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+	end
+	if GrappleConfig.Camera.HideCursor and UserInputService.MouseIconEnabled then
 		UserInputService.MouseIconEnabled = false
 	end
 
