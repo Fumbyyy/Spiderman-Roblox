@@ -23,10 +23,11 @@ graph TD
         B1["Phase 1: Web-Swinging Physics (✅ 100% Done)"]
         B2["Phase 2: 6-Move Tactical Combat Engine (✅ 100% Done)"]
         B3["Phase 3: Tactical Enemy AI & Sandbox Dummies (✅ 100% Done)"]
-        B4["Phase 4: Game Feel, Style HUD & Contextual Cam (✅ 100% Done)"]
-        B5["Phase 5: Dynamic City Crimes & Police Scanner (⏳ ACTIVE NEXT)"]
-        B6["Phase 6: Beta Polish & Basic Suit Wardrobe (🎯 BETA LAUNCH)"]
-        B1 --> B2 --> B3 --> B4 --> B5 --> B6
+        B4["Phase 4: Game Feel, Style HUD & Action Cam (✅ 100% Done)"]
+        B5["Phase 5: Brand New Day Police Call HUD (⏳ ACTIVE NEXT)"]
+        B6["Phase 6: Suit Wardrobe & Hero Cash Shop (🎯 PROGRESSION)"]
+        B7["Phase 7: Zero-Dead-Zone Polish & Public Beta Launch (🚀 LIVE!)"]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7
     end
 
     subgraph FUTURE["🌟 FUTURE POST-BETA EXPANSIONS (Build After Beta Release)"]
@@ -84,26 +85,50 @@ Everything needed to launch a complete, highly replayable, viral **Public Beta**
 
 ---
 
-### ✅ 5. Dynamic City Crimes & Police Scanner (100% COMPLETED)
-* [x] **5.1 Procedural Random City Crimes (`CrimeService.server.luau`):**
-  * **Bank Heist (Downtown):** 2 Gunners + 1 Armored Brute + 2 Brawlers raiding a bank entrance.
-  * **Rooftop Arms Deal (High-Rise):** 2 Snipers on water towers + 1 Brute with throwable military crates (`E`).
-  * **Alleyway Mugging (Street Level):** Innocent civilian cowering surrounded by 3 fast Brawlers.
-  * **High-Speed Getaway Van (Street Chase):** Speeding armored van. Spider-Man can web-zip (`R`), disable engine (`E`), and stop the getaway!
-* [x] **5.2 Police Radio Scanner & 3D Waypoint Beacons (`PoliceRadioHUD.luau`):**
-  * Sleek NYPD dispatch notification banner: *"10-31 in progress at First National Bank..."*
-  * 3D holographic waypoint beacon showing crime icon and distance (`🚨 BANK HEIST • 140m`) with off-screen edge clamping.
-* [x] **5.3 Co-Op Scaled Waves & Hero Cash / XP Rewards:**
-  * Scales enemy reinforcements if multiple Spider-Heroes join the fight ($\le 120\text{ studs}$).
-  * Victory screen: `🎉 CRIME STOPPED! +150 XP | +$250 HERO CASH`.
+### ⏳ 5. The "Brand New Day" Police Call & Mission HUD (ACTIVE NEXT STEP)
+> **Why this matters:** Instead of a generic 2-second red notification, this turns procedural city crimes into **cinematic, narrative-driven emergency calls** from Captain Yuri / NYPD Dispatch directly to Spider-Man's in-suit comms!
+
+* [ ] **5.1 Captain Yuri / NYPD Suit Comm Call Widget (`PoliceRadioHUD.luau`):**
+  * **Glassmorphic Comm Card (Top-Right / Top-Center):** Translucent acrylic card with comic-book borders.
+  * **Call States:** `📞 INCOMING CALL: CAPTAIN YURI` $\rightarrow$ `🟢 CONNECTED [00:06]` $\rightarrow$ `🔴 CALL ENDED`.
+  * **Typewriter Subtitles (6–8s Display Duration):** Narrative dialogue scrolls across the screen with authentic police radio intel:
+    > *"Spider-Man! We've got a 10-70 on the high-rise rooftop—heavy weapon arms deal in progress! Snipers on the water towers. Can you intercept before SWAT gets pinned down?"*
+  * **Audio Waveform Visualizer:** Animated pulsating frequency bars while the radio is speaking.
+* [ ] **5.2 3D Holographic Waypoints with Elevation Tracking:**
+  * Displays crime icon, title, and distance in meters/studs (`🚨 ROOFTOP ARMS DEAL • 53m`).
+  * **Elevation Arrow:** Shows $\uparrow$ if the crime is on a high rooftop or $\downarrow$ if down in a street alley so the player knows whether to climb or dive!
 
 ---
 
-### 🎨 6. Creator Asset & Polish Hub (Animations, VFX, SFX & Custom UI)
+### 🎯 6. The "Spend Your Cash" Progression & Suit Wardrobe Hub
+> **Why this matters:** A game without rewards loses 70% of players in 15 minutes. This closes the core gameplay loop by giving players tangible reasons to stop crimes and earn Hero Cash/XP!
+
+* [ ] **6.1 Suit Wardrobe & Hero Cash Shop UI:**
+  * **Classic Red & Blue Suit:** Unlocked by default.
+  * **⚡ Miles Morales Suit (*Across the Spider-Verse*):** Unlocked at Level 3 / $500 Hero Cash.
+  * **🖤 Symbiote Black Suit (*Spider-Man 3*):** Unlocked at Level 5 / $1,000 Hero Cash.
+* [ ] **6.2 Progression & Level-Up Stat Curve:**
+  * Earning XP levels up the player with a celebratory fanfare: `⭐ LEVEL UP! [LEVEL 2] +15 Max HP`.
+* [ ] **6.3 Minimalist Hero HUD Badge (De-Cluttering):**
+  * Replaces the bulky default Roblox leaderboard with a sleek top-left Hero Card (Avatar, Level, XP Bar, Hero Cash).
+
+---
+
+### 🏙️ 7. Zero-Dead-Zone City Traversal & Beta Launch (BETA MILESTONE)
+> **Why this matters:** Guarantees that even if buildings are far apart on wide avenues, Spider-Man never falls awkwardly to the ground.
+
+* [ ] **7.1 Wide-Avenue Street Anchor Fallback (`TargetFinder.luau`):**
+  * Smart multi-height raycasts ensuring building ledges are caught smoothly from up to 145 studs away.
+* [ ] **7.2 Public Beta Launch:**
+  * Ready for Roblox public playtesting, YouTube devlogs, and viral TikTok showcase clips!
+
+---
+
+### 🎨 8. Creator Asset & Polish Hub (Animations, VFX, SFX & Custom UI)
 *(Creator's custom asset checklist — paste your custom Roblox Asset IDs & Models right into the Config files!)*
 
 * **🎬 Custom Character Animations (R6 / R15):**
-  * [ ] Web Swing Hang, Apex Apex Launch & Aerial Flips
+  * [ ] Web Swing Hang, Apex Launch & Aerial Flips
   * [ ] Skydiving Spread-Eagle Pose & Steep Bullet Dive-Bomb Pose
   * [ ] 1-2-3 Kinetic Punch Combo & Uppercut Launcher
   * [ ] 65-Stud Web-Strike Zip Dropkick
@@ -125,17 +150,6 @@ Everything needed to launch a complete, highly replayable, viral **Public Beta**
   * [ ] Custom Style Rank Badges (`D` $\rightarrow$ `SPIDER-TIER!`)
   * [ ] Custom Police Scanner HUD Banner & Ability Tray Icons
   * [ ] Custom 3D Spider-Compass Waypoint Reticles
-
----
-
-### 🎯 7. Beta Launch & Public Release (BETA MILESTONE)
-* [ ] **7.1 NYC City Environment & Props:**
-  * High-rise skyscrapers, glass facades, Times Square animated billboard screens, street lampposts, water towers, and alley dumpsters.
-* [ ] **7.2 Basic Suit Wardrobe Selector & Stats:**
-  * Quick UI to switch between **Classic Suit**, **Miles Morales**, and **Symbiote Black Suit**.
-  * Display Player Level, Hero Cash, and Total Crimes Stopped.
-* [ ] **7.3 Public Beta Release:**
-  * Ready for Roblox public playtesting, YouTube devlogs, and viral TikTok showcase clips!
 
 ---
 

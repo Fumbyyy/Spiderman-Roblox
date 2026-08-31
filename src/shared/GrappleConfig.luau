@@ -41,13 +41,13 @@ local GrappleConfig = {
 	-- 🕸️ True Spherical Pendulum Physics (Energy Conservation & Centripetal Arc)
 	Physics = {
 		GravityForce = 150,            -- Gravitational acceleration pulling down into the swing arc (studs/s^2)
-		ForwardPumpForce = 75,         -- Fast forward acceleration force when holding W / looking forward
-		UpwardClimbLift = 65,          -- Upward climb buoyancy lifting player high above street level
+		ForwardPumpForce = 90,         -- 🚀 Enhanced forward acceleration surge when holding W / swinging forward
+		UpwardClimbLift = 75,          -- 🕊️ Floaty upward climb buoyancy lifting player high above street level
 		CameraSteerResponsiveness = 8.5, -- Look-to-Steer: How quickly holding W curves your swing towards camera look
-		InitialSwingSpeed = 115,       -- Fast, thrilling initial swing entry speed
-		AirSteerForce = 50,            -- A/D lateral banking steering force
-		MinSpeed = 60,                 -- Minimum speed to keep pendulum flowing smoothly
-		MaxSpeed = 185,                -- High-speed, thrilling top pendulum velocity
+		InitialSwingSpeed = 125,       -- Fast, thrilling initial swing entry speed
+		AirSteerForce = 55,            -- A/D lateral banking steering force
+		MinSpeed = 65,                 -- Minimum speed to keep pendulum flowing smoothly
+		MaxSpeed = 195,                -- High-speed, thrilling top pendulum velocity
 		TensionStiffness = 28,         -- Radial tension keeping the web line 100% taut
 		MinRopeLength = 20,            -- Minimum rope length (studs)
 		WallClearanceDistance = 7,     -- Buffer distance from building walls to prevent dragging
@@ -56,29 +56,29 @@ local GrappleConfig = {
 	-- 🚀 Dynamic Peak Height Auto-Release (Auto-releases cleanly at 70-degree apex!)
 	AutoRelease = {
 		Enabled = true,          -- Auto-release enabled
-		ApexAngleThreshold = 72, -- 🎯 Auto-releases cleanly at 70-72 degrees at peak height!
+		ApexAngleThreshold = 74, -- 🎯 Floaty auto-release at 74 degrees at peak height!
 		MinSwingDuration = 0.55, -- Ensures you complete the bottom swoop before apex release
 		MaxSwingDuration = 4.00, -- Generous safety timeout
 	},
 
 	-- 💨 Fast Release Fling (High-momentum Spider-Man launch!)
 	Launch = {
-		PeakHeightUpwardBoost = 75,     -- Upward catapult boost at peak height (soars cleanly over buildings)
-		PeakHeightForwardSpeed = 85,    -- Fast forward gliding speed when releasing at peak height
-		BottomForwardBoost = 65,        -- Fast forward boost when releasing at bottom
-		BottomUpwardLift = 30,          -- Healthy trajectory lift so you never drop straight down
+		PeakHeightUpwardBoost = 82,     -- Floaty upward catapult boost at peak height (soars cleanly over buildings)
+		PeakHeightForwardSpeed = 95,    -- Fast forward gliding speed when releasing at peak height
+		BottomForwardBoost = 75,        -- Fast forward boost when releasing at bottom
+		BottomUpwardLift = 35,          -- Healthy trajectory lift so you never drop straight down
 		VelocityPreservation = 0.98,    -- High momentum preservation
 		JumpBoostMultiplier = 1.50,     -- Extra height boost when pressing Spacebar
-		MinimumFlingSpeed = 80,         -- Fast forward exit speed so you always glide with high speed
-		MaxVelocity = 160,              -- High-speed velocity cap
+		MinimumFlingSpeed = 85,         -- Fast forward exit speed so you always glide with high speed
+		MaxVelocity = 175,              -- High-speed velocity cap
 	},
 
 	-- 🍃 Mid-Air Aerodynamic Gliding (Fast, thrilling flight between swings)
 	Gliding = {
-		MaxSpeed = 145,                 -- Fast glide speed cap (exhilarating flight)
-		DecayRate = 14,                 -- Aerodynamic speed reduction rate (studs/s^2)
-		GravityMultiplier = 0.45,       -- Gentle downward gravity curve while gliding
-		SteerResponsiveness = 5.5,      -- Mid-air camera steer responsiveness
+		MaxSpeed = 155,                 -- Fast glide speed cap (exhilarating flight)
+		DecayRate = 11,                 -- 🕊️ Low drag decay rate to preserve forward speed longer
+		GravityMultiplier = 0.38,       -- 🕊️ Floaty gentle downward gravity curve while gliding
+		SteerResponsiveness = 6.0,      -- Mid-air camera steer responsiveness
 	},
 
 	-- 🎥 Camera & Dynamic FOV Settings (Web Rush action cam)
