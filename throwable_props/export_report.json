@@ -1,0 +1,229 @@
+{
+  "generator": "generate_throwable_props.py",
+  "blender_version": "5.1.2",
+  "stud_to_meters": 0.28,
+  "triangle_budget": [
+    600,
+    1400
+  ],
+  "pivot_method": "Uniform-density volume centroid of exact Boolean union; temporary union discarded before export.",
+  "fbx_settings": {
+    "mesh_smooth_type": "FACE",
+    "axis_forward": "-Z",
+    "axis_up": "Y",
+    "physical_geometry_units": "meters"
+  },
+  "assets": [
+    {
+      "asset": "manhole_cover",
+      "file": "manhole_cover.fbx",
+      "mesh_objects": [
+        "ManholeCover"
+      ],
+      "triangles": 1152,
+      "dimensions_studs_xyz": [
+        1.6,
+        1.6,
+        0.12
+      ],
+      "dimensions_meters_xyz": [
+        0.448,
+        0.448,
+        0.0336
+      ],
+      "pivot_meters": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uncentered_com_studs_xyz": [
+        0.0,
+        -0.0,
+        -0.0085314
+      ],
+      "union_volume_studs_cubed": 0.19462354,
+      "union_volume_meters_cubed": 0.0042723759,
+      "bounds_meters_after_centering": {
+        "minimum_xyz": [
+          -0.224,
+          -0.224,
+          -0.0144112
+        ],
+        "maximum_xyz": [
+          0.224,
+          0.224,
+          0.0191888
+        ]
+      }
+    },
+    {
+      "asset": "trash_can",
+      "file": "trash_can.fbx",
+      "mesh_objects": [
+        "TrashCan_Body",
+        "TrashCan_Lid"
+      ],
+      "triangles": 1260,
+      "dimensions_studs_xyz": [
+        1.9050001,
+        1.62,
+        2.1374998
+      ],
+      "dimensions_meters_xyz": [
+        0.5334001,
+        0.4536,
+        0.5985
+      ],
+      "pivot_meters": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uncentered_com_studs_xyz": [
+        -0.0030952,
+        -0.0023069,
+        1.0998749
+      ],
+      "union_volume_studs_cubed": 0.84579446,
+      "union_volume_meters_cubed": 0.0185668801,
+      "bounds_meters_after_centering": {
+        "minimum_xyz": [
+          -0.2658333,
+          -0.2261541,
+          -0.307965
+        ],
+        "maximum_xyz": [
+          0.2675667,
+          0.2274459,
+          0.290535
+        ]
+      }
+    },
+    {
+      "asset": "wooden_crate",
+      "file": "wooden_crate.fbx",
+      "mesh_objects": [
+        "WoodenCrate"
+      ],
+      "triangles": 1008,
+      "dimensions_studs_xyz": [
+        2.2,
+        2.2,
+        2.2
+      ],
+      "dimensions_meters_xyz": [
+        0.616,
+        0.616,
+        0.616
+      ],
+      "pivot_meters": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uncentered_com_studs_xyz": [
+        1e-07,
+        -1e-07,
+        0.0
+      ],
+      "union_volume_studs_cubed": 2.70995239,
+      "union_volume_meters_cubed": 0.0594888748,
+      "bounds_meters_after_centering": {
+        "minimum_xyz": [
+          -0.308,
+          -0.308,
+          -0.308
+        ],
+        "maximum_xyz": [
+          0.308,
+          0.308,
+          0.308
+        ]
+      }
+    },
+    {
+      "asset": "construction_barrel",
+      "file": "construction_barrel.fbx",
+      "mesh_objects": [
+        "ConstructionBarrel"
+      ],
+      "triangles": 944,
+      "dimensions_studs_xyz": [
+        1.5934868,
+        1.84,
+        1.8
+      ],
+      "dimensions_meters_xyz": [
+        0.4461763,
+        0.5152,
+        0.5039999
+      ],
+      "pivot_meters": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uncentered_com_studs_xyz": [
+        0.0,
+        0.0,
+        0.7512998
+      ],
+      "union_volume_studs_cubed": 2.41090936,
+      "union_volume_meters_cubed": 0.0529242823,
+      "bounds_meters_after_centering": {
+        "minimum_xyz": [
+          -0.2230881,
+          -0.2576,
+          -0.2103639
+        ],
+        "maximum_xyz": [
+          0.2230881,
+          0.2576,
+          0.293636
+        ]
+      }
+    },
+    {
+      "asset": "street_mailbox",
+      "file": "street_mailbox.fbx",
+      "mesh_objects": [
+        "StreetMailbox"
+      ],
+      "triangles": 844,
+      "dimensions_studs_xyz": [
+        1.4,
+        1.4,
+        2.5999999
+      ],
+      "dimensions_meters_xyz": [
+        0.392,
+        0.392,
+        0.7279999
+      ],
+      "pivot_meters": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "uncentered_com_studs_xyz": [
+        -0.0,
+        0.092711,
+        0.1987312
+      ],
+      "union_volume_studs_cubed": 3.10652471,
+      "union_volume_meters_cubed": 0.0681944305,
+      "bounds_meters_after_centering": {
+        "minimum_xyz": [
+          -0.196,
+          -0.2219591,
+          -0.4196447
+        ],
+        "maximum_xyz": [
+          0.196,
+          0.1700409,
+          0.3083552
+        ]
+      }
+    }
+  ]
+}
