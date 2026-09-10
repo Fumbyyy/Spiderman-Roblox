@@ -1,0 +1,561 @@
+{
+  "generator": "generate_thug_weapons.py",
+  "blender_version": "5.1.2",
+  "meters_per_stud": 0.28,
+  "authoring_axes": {
+    "up": "+Z",
+    "pistol_muzzle": "+X",
+    "shield_front": "-Y"
+  },
+  "fbx_axes": {
+    "forward": "-Z",
+    "up": "Y"
+  },
+  "notes": [
+    "All mesh origins are the intended hand-grip center.",
+    "Roblox Tool.Grip rotation still depends on the character rig.",
+    "Do not recenter imported mesh pivots to geometry bounds.",
+    "FBX stores constant material colors; Roblox may not reproduce every Principled BSDF metallic/roughness parameter.",
+    "Disconnected intersecting mesh components are intentional game-prop construction, not a watertight manufacturing mesh."
+  ],
+  "assets": [
+    {
+      "name": "baseball_bat",
+      "file": "baseball_bat.fbx",
+      "triangles": 1040,
+      "vertices": 548,
+      "dimensions_studs_xyz": [
+        0.4933832585811615,
+        0.5123595595359802,
+        3.200000047683716
+      ],
+      "dimensions_meters_xyz": [
+        0.13814731240272524,
+        0.14346067667007448,
+        0.8960000133514405
+      ],
+      "grip_pivot_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_euler_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "primary_dimension_axis": "Z",
+      "primary_dimension_studs": 3.2,
+      "materials": [
+        {
+          "name": "Warm Ash Wood",
+          "base_color_rgba": [
+            0.49000000953674316,
+            0.23499999940395355,
+            0.07500000298023224,
+            1.0
+          ],
+          "roughness": 0.7799999713897705,
+          "metallic": 0.0
+        },
+        {
+          "name": "Dark Wood Accent",
+          "base_color_rgba": [
+            0.23999999463558197,
+            0.08500000089406967,
+            0.02500000037252903,
+            1.0
+          ],
+          "roughness": 0.8600000143051147,
+          "metallic": 0.0
+        },
+        {
+          "name": "Worn Ivory Tape",
+          "base_color_rgba": [
+            0.8799999952316284,
+            0.8399999737739563,
+            0.6700000166893005,
+            1.0
+          ],
+          "roughness": 0.8999999761581421,
+          "metallic": 0.0
+        },
+        {
+          "name": "Dark Reinforcing Iron",
+          "base_color_rgba": [
+            0.07000000029802322,
+            0.0949999988079071,
+            0.11999999731779099,
+            1.0
+          ],
+          "roughness": 0.6399999856948853,
+          "metallic": 0.550000011920929
+        },
+        {
+          "name": "Rust Orange",
+          "base_color_rgba": [
+            0.4000000059604645,
+            0.10499999672174454,
+            0.02500000037252903,
+            1.0
+          ],
+          "roughness": 0.9100000262260437,
+          "metallic": 0.15000000596046448
+        },
+        {
+          "name": "Ash Cut End",
+          "base_color_rgba": [
+            0.7200000286102295,
+            0.4300000071525574,
+            0.1599999964237213,
+            1.0
+          ],
+          "roughness": 0.800000011920929,
+          "metallic": 0.0
+        }
+      ]
+    },
+    {
+      "name": "crowbar",
+      "file": "crowbar.fbx",
+      "triangles": 844,
+      "vertices": 452,
+      "dimensions_studs_xyz": [
+        0.9460070133209229,
+        0.23332108557224274,
+        2.8000001907348633
+      ],
+      "dimensions_meters_xyz": [
+        0.26488196372985845,
+        0.06532990396022798,
+        0.7840000534057618
+      ],
+      "grip_pivot_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_euler_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "primary_dimension_axis": "Z",
+      "primary_dimension_studs": 2.8,
+      "materials": [
+        {
+          "name": "Industrial Safety Yellow",
+          "base_color_rgba": [
+            0.9800000190734863,
+            0.5699999928474426,
+            0.017999999225139618,
+            1.0
+          ],
+          "roughness": 0.6600000262260437,
+          "metallic": 0.0
+        },
+        {
+          "name": "Matte Steel",
+          "base_color_rgba": [
+            0.23999999463558197,
+            0.3100000023841858,
+            0.3700000047683716,
+            1.0
+          ],
+          "roughness": 0.4699999988079071,
+          "metallic": 0.6499999761581421
+        },
+        {
+          "name": "Exposed Steel Chamfer",
+          "base_color_rgba": [
+            0.5600000023841858,
+            0.6499999761581421,
+            0.699999988079071,
+            1.0
+          ],
+          "roughness": 0.3499999940395355,
+          "metallic": 0.7200000286102295
+        },
+        {
+          "name": "Tactical Carbon",
+          "base_color_rgba": [
+            0.017999999225139618,
+            0.02500000037252903,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.8199999928474426,
+          "metallic": 0.0
+        },
+        {
+          "name": "Deep Crimson",
+          "base_color_rgba": [
+            0.47999998927116394,
+            0.017999999225139618,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.5899999737739563,
+          "metallic": 0.15000000596046448
+        }
+      ]
+    },
+    {
+      "name": "combat_knife",
+      "file": "combat_knife.fbx",
+      "triangles": 768,
+      "vertices": 420,
+      "dimensions_studs_xyz": [
+        0.3230098485946655,
+        0.2087140679359436,
+        1.3000000715255737
+      ],
+      "dimensions_meters_xyz": [
+        0.09044275760650636,
+        0.058439939022064215,
+        0.3640000200271607
+      ],
+      "grip_pivot_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_euler_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "primary_dimension_axis": "Z",
+      "primary_dimension_studs": 1.3,
+      "materials": [
+        {
+          "name": "Blade Gunmetal",
+          "base_color_rgba": [
+            0.08500000089406967,
+            0.12999999523162842,
+            0.18000000715255737,
+            1.0
+          ],
+          "roughness": 0.4300000071525574,
+          "metallic": 0.699999988079071
+        },
+        {
+          "name": "Exposed Steel Chamfer",
+          "base_color_rgba": [
+            0.5600000023841858,
+            0.6499999761581421,
+            0.699999988079071,
+            1.0
+          ],
+          "roughness": 0.3499999940395355,
+          "metallic": 0.7200000286102295
+        },
+        {
+          "name": "Dark Reinforcing Iron",
+          "base_color_rgba": [
+            0.07000000029802322,
+            0.0949999988079071,
+            0.11999999731779099,
+            1.0
+          ],
+          "roughness": 0.6399999856948853,
+          "metallic": 0.550000011920929
+        },
+        {
+          "name": "Matte Steel",
+          "base_color_rgba": [
+            0.23999999463558197,
+            0.3100000023841858,
+            0.3700000047683716,
+            1.0
+          ],
+          "roughness": 0.4699999988079071,
+          "metallic": 0.6499999761581421
+        },
+        {
+          "name": "Deep Crimson",
+          "base_color_rgba": [
+            0.47999998927116394,
+            0.017999999225139618,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.5899999737739563,
+          "metallic": 0.15000000596046448
+        },
+        {
+          "name": "Crimson Edge Accent",
+          "base_color_rgba": [
+            0.7599999904632568,
+            0.03500000014901161,
+            0.054999999701976776,
+            1.0
+          ],
+          "roughness": 0.5099999904632568,
+          "metallic": 0.0
+        },
+        {
+          "name": "Tactical Carbon",
+          "base_color_rgba": [
+            0.017999999225139618,
+            0.02500000037252903,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.8199999928474426,
+          "metallic": 0.0
+        }
+      ]
+    },
+    {
+      "name": "handgun",
+      "file": "handgun.fbx",
+      "triangles": 844,
+      "vertices": 500,
+      "dimensions_studs_xyz": [
+        1.0,
+        0.3228181004524231,
+        0.8412197828292847
+      ],
+      "dimensions_meters_xyz": [
+        0.28,
+        0.09038906812667848,
+        0.23554153919219972
+      ],
+      "grip_pivot_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_euler_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "primary_dimension_axis": "X",
+      "primary_dimension_studs": 1.0,
+      "materials": [
+        {
+          "name": "Deep Crimson",
+          "base_color_rgba": [
+            0.47999998927116394,
+            0.017999999225139618,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.5899999737739563,
+          "metallic": 0.15000000596046448
+        },
+        {
+          "name": "Crimson Edge Accent",
+          "base_color_rgba": [
+            0.7599999904632568,
+            0.03500000014901161,
+            0.054999999701976776,
+            1.0
+          ],
+          "roughness": 0.5099999904632568,
+          "metallic": 0.0
+        },
+        {
+          "name": "Tactical Carbon",
+          "base_color_rgba": [
+            0.017999999225139618,
+            0.02500000037252903,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.8199999928474426,
+          "metallic": 0.0
+        },
+        {
+          "name": "Dark Reinforcing Iron",
+          "base_color_rgba": [
+            0.07000000029802322,
+            0.0949999988079071,
+            0.11999999731779099,
+            1.0
+          ],
+          "roughness": 0.6399999856948853,
+          "metallic": 0.550000011920929
+        },
+        {
+          "name": "Matte Steel",
+          "base_color_rgba": [
+            0.23999999463558197,
+            0.3100000023841858,
+            0.3700000047683716,
+            1.0
+          ],
+          "roughness": 0.4699999988079071,
+          "metallic": 0.6499999761581421
+        },
+        {
+          "name": "Recess Black",
+          "base_color_rgba": [
+            0.004999999888241291,
+            0.00800000037997961,
+            0.012000000104308128,
+            1.0
+          ],
+          "roughness": 0.9599999785423279,
+          "metallic": 0.0
+        },
+        {
+          "name": "Exposed Steel Chamfer",
+          "base_color_rgba": [
+            0.5600000023841858,
+            0.6499999761581421,
+            0.699999988079071,
+            1.0
+          ],
+          "roughness": 0.3499999940395355,
+          "metallic": 0.7200000286102295
+        },
+        {
+          "name": "Industrial Safety Yellow",
+          "base_color_rgba": [
+            0.9800000190734863,
+            0.5699999928474426,
+            0.017999999225139618,
+            1.0
+          ],
+          "roughness": 0.6600000262260437,
+          "metallic": 0.0
+        }
+      ]
+    },
+    {
+      "name": "riot_shield",
+      "file": "riot_shield.fbx",
+      "triangles": 1096,
+      "vertices": 582,
+      "dimensions_studs_xyz": [
+        2.2498786449432373,
+        0.4977825880050659,
+        4.0
+      ],
+      "dimensions_meters_xyz": [
+        0.6299660205841066,
+        0.13937912464141847,
+        1.12
+      ],
+      "grip_pivot_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_euler_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale_xyz": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "primary_dimension_axis": "Z",
+      "primary_dimension_studs": 4.0,
+      "materials": [
+        {
+          "name": "Tactical Carbon",
+          "base_color_rgba": [
+            0.017999999225139618,
+            0.02500000037252903,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.8199999928474426,
+          "metallic": 0.0
+        },
+        {
+          "name": "Dark Reinforcing Iron",
+          "base_color_rgba": [
+            0.07000000029802322,
+            0.0949999988079071,
+            0.11999999731779099,
+            1.0
+          ],
+          "roughness": 0.6399999856948853,
+          "metallic": 0.550000011920929
+        },
+        {
+          "name": "Matte Steel",
+          "base_color_rgba": [
+            0.23999999463558197,
+            0.3100000023841858,
+            0.3700000047683716,
+            1.0
+          ],
+          "roughness": 0.4699999988079071,
+          "metallic": 0.6499999761581421
+        },
+        {
+          "name": "Exposed Steel Chamfer",
+          "base_color_rgba": [
+            0.5600000023841858,
+            0.6499999761581421,
+            0.699999988079071,
+            1.0
+          ],
+          "roughness": 0.3499999940395355,
+          "metallic": 0.7200000286102295
+        },
+        {
+          "name": "Hazard Stencil White",
+          "base_color_rgba": [
+            0.9399999976158142,
+            0.949999988079071,
+            0.8700000047683716,
+            1.0
+          ],
+          "roughness": 0.7699999809265137,
+          "metallic": 0.0
+        },
+        {
+          "name": "Deep Crimson",
+          "base_color_rgba": [
+            0.47999998927116394,
+            0.017999999225139618,
+            0.03500000014901161,
+            1.0
+          ],
+          "roughness": 0.5899999737739563,
+          "metallic": 0.15000000596046448
+        },
+        {
+          "name": "Worn Ivory Tape",
+          "base_color_rgba": [
+            0.8799999952316284,
+            0.8399999737739563,
+            0.6700000166893005,
+            1.0
+          ],
+          "roughness": 0.8999999761581421,
+          "metallic": 0.0
+        }
+      ]
+    }
+  ]
+}
