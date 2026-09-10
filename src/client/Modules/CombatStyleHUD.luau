@@ -33,6 +33,7 @@ local rankLetter: TextLabel? = nil
 local rankTitle: TextLabel? = nil
 local decayBarFill: Frame? = nil
 local decayBarBackground: Frame? = nil
+local activeSlideTween: Tween? = nil
 
 -- 🎨 Build GUI Elements Programmatically
 local function createHUD()
@@ -46,12 +47,12 @@ local function createHUD()
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 10
 
-	-- Style Container (Right-Center Screen Anchor)
+	-- Style Container (Right-Center Screen Anchor with safe edge margin)
 	local container = Instance.new("Frame")
 	container.Name = "StyleContainer"
 	container.AnchorPoint = Vector2.new(1, 0.5)
-	container.Position = UDim2.new(0.97, 0, 0.44, 0)
-	container.Size = UDim2.new(0, 220, 0, 110)
+	container.Position = UDim2.new(1, -36, 0.44, 0)
+	container.Size = UDim2.new(0, 230, 0, 110)
 	container.BackgroundTransparency = 1
 	container.Visible = false
 	container.Parent = gui
@@ -98,7 +99,7 @@ local function createHUD()
 	local rTitle = Instance.new("TextLabel")
 	rTitle.Name = "RankTitle"
 	rTitle.Position = UDim2.new(0, 74, 0, 10)
-	rTitle.Size = UDim2.new(0, 140, 0, 20)
+	rTitle.Size = UDim2.new(0, 150, 0, 20)
 	rTitle.BackgroundTransparency = 1
 	rTitle.Font = Enum.Font.GothamBold
 	rTitle.Text = "DECENT"
@@ -111,7 +112,7 @@ local function createHUD()
 	local cLabel = Instance.new("TextLabel")
 	cLabel.Name = "ComboLabel"
 	cLabel.Position = UDim2.new(0, 74, 0, 26)
-	cLabel.Size = UDim2.new(0, 80, 0, 42)
+	cLabel.Size = UDim2.new(0, 85, 0, 42)
 	cLabel.BackgroundTransparency = 1
 	cLabel.Font = Enum.Font.GothamBlack
 	cLabel.Text = "1x"
@@ -128,7 +129,7 @@ local function createHUD()
 	-- "COMBO" Sub-label
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "HitsSubLabel"
-	subLabel.Position = UDim2.new(0, 145, 0, 36)
+	subLabel.Position = UDim2.new(0, 160, 0, 36)
 	subLabel.Size = UDim2.new(0, 65, 0, 24)
 	subLabel.BackgroundTransparency = 1
 	subLabel.Font = Enum.Font.GothamBold
@@ -142,7 +143,7 @@ local function createHUD()
 	local decayBg = Instance.new("Frame")
 	decayBg.Name = "DecayBarBackground"
 	decayBg.Position = UDim2.new(0, 74, 0, 72)
-	decayBg.Size = UDim2.new(0, 136, 0, 6)
+	decayBg.Size = UDim2.new(0, 146, 0, 6)
 	decayBg.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
 	decayBg.BackgroundTransparency = 0.3
 	decayBg.BorderSizePixel = 0
@@ -171,6 +172,7 @@ local function createHUD()
 	abilityTray.Position = UDim2.new(0.98, 0, 0.96, 0)
 	abilityTray.Size = UDim2.new(0, 180, 0, 26)
 	abilityTray.BackgroundTransparency = 1
+	abilityTray.Visible = false
 	abilityTray.Parent = gui
 
 	local trayLayout = Instance.new("UIListLayout")
@@ -346,6 +348,7 @@ function CombatStyleHUD.registerHit(damage: number?)
 	end
 
 	local now = os.clock()
+	local wasInactive = not CombatStyleHUD.isActive
 	CombatStyleHUD.currentCombo += 1
 	CombatStyleHUD.lastHitTime = now
 	CombatStyleHUD.isActive = true
@@ -355,7 +358,18 @@ function CombatStyleHUD.registerHit(damage: number?)
 	CombatStyleHUD.currentRankIndex = rankIdx
 
 	if mainContainer and comboLabel and rankLetter and rankTitle and rankBadge and decayBarFill then
-		mainContainer.Visible = true
+		if wasInactive then
+			if activeSlideTween then activeSlideTween:Cancel() end
+			mainContainer.Position = UDim2.new(1, 80, 0.44, 0)
+			mainContainer.Visible = true
+			activeSlideTween = TweenService:Create(mainContainer, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Position = UDim2.new(1, -36, 0.44, 0),
+			})
+			activeSlideTween:Play()
+		else
+			mainContainer.Visible = true
+			mainContainer.Position = UDim2.new(1, -36, 0.44, 0)
+		end
 
 		-- Update text
 		comboLabel.Text = tostring(CombatStyleHUD.currentCombo) .. "x"
@@ -384,14 +398,15 @@ function CombatStyleHUD.resetCombo()
 	CombatStyleHUD.currentRankIndex = 1
 
 	if mainContainer then
-		local fadeTween = TweenService:Create(mainContainer, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(1.05, 0, 0.44, 0),
+		if activeSlideTween then activeSlideTween:Cancel() end
+		activeSlideTween = TweenService:Create(mainContainer, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 80, 0.44, 0),
 		})
-		fadeTween:Play()
-		fadeTween.Completed:Connect(function()
+		activeSlideTween:Play()
+		activeSlideTween.Completed:Connect(function()
 			if not CombatStyleHUD.isActive and mainContainer then
 				mainContainer.Visible = false
-				mainContainer.Position = UDim2.new(0.97, 0, 0.44, 0)
+				mainContainer.Position = UDim2.new(1, -36, 0.44, 0)
 			end
 		end)
 	end
@@ -421,9 +436,10 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- Quick-Heal Cooldown Update
-	if screenGui then
-		local healPill = screenGui:FindFirstChild("AbilityTray") and screenGui.AbilityTray:FindFirstChild("HealPill") :: Frame?
+	-- Cooldown Hotbar Updates (Optimized: only executes when AbilityTray is visible)
+	local abilityTray = screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?
+	if abilityTray and abilityTray.Visible then
+		local healPill = abilityTray:FindFirstChild("HealPill") :: Frame?
 		if healPill then
 			local healLabel = healPill:FindFirstChild("HealLabel") :: TextLabel?
 			local healOverlay = healPill:FindFirstChild("CooldownOverlay") :: Frame?
@@ -449,7 +465,7 @@ RunService.RenderStepped:Connect(function()
 		end
 
 		-- Web Cyclone Cooldown Update
-		local cyclonePill = screenGui:FindFirstChild("AbilityTray") and screenGui.AbilityTray:FindFirstChild("CyclonePill") :: Frame?
+		local cyclonePill = abilityTray:FindFirstChild("CyclonePill") :: Frame?
 		if cyclonePill then
 			local cycloneLabel = cyclonePill:FindFirstChild("CycloneLabel") :: TextLabel?
 			local cycloneOverlay = cyclonePill:FindFirstChild("CooldownOverlay") :: Frame?

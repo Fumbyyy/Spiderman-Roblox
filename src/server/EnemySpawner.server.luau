@@ -35,12 +35,13 @@ local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: 
 	local humanoid = enemyModel:FindFirstChildOfClass("Humanoid")
 	if not head or not humanoid then return end
 
+	-- 🎯 Sleek, low-profile tactical billboard (Zero phone emojis)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "HealthGui"
-	billboard.Size = UDim2.new(3.4, 0, 0.9, 0)
-	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 3.2 or 2.5, 0)
+	billboard.Size = UDim2.new(2.8, 0, 0.42, 0)
+	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 2.8 or 2.2, 0)
 	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 45
+	billboard.MaxDistance = 55
 	billboard.Parent = head
 
 	local frame = Instance.new("Frame")
@@ -49,44 +50,48 @@ local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: 
 	frame.Parent = billboard
 
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	nameLabel.Size = UDim2.new(1, 0, 0.52, 0)
+	nameLabel.Position = UDim2.new(0, 0, 0, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 13
-	nameLabel.TextStrokeTransparency = 0.15
+	nameLabel.TextSize = 10
+	nameLabel.TextStrokeTransparency = 0.4
 
-	if archetype == "Gunner" then
-		nameLabel.TextColor3 = Color3.fromRGB(255, 85, 85)
-		nameLabel.Text = string.format("🔫 %s [%d HP]", enemyName, maxHp)
-	elseif archetype == "Brute" then
-		nameLabel.TextColor3 = Color3.fromRGB(115, 210, 255)
-		nameLabel.Text = string.format("🛡️ %s [%d HP]", enemyName, maxHp)
-	else
-		nameLabel.TextColor3 = Color3.fromRGB(255, 190, 70)
-		nameLabel.Text = string.format("🥊 %s [%d HP]", enemyName, maxHp)
-	end
+	local archetypeTag = if archetype == "Gunner" then "MARKSMAN" elseif archetype == "Brute" then "ENFORCER" else "BRAWLER"
+	local defaultTextColor = if archetype == "Gunner" then Color3.fromRGB(255, 95, 95) elseif archetype == "Brute" then Color3.fromRGB(120, 215, 255) else Color3.fromRGB(240, 245, 255)
+
+	nameLabel.TextColor3 = defaultTextColor
+	nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
 	nameLabel.Parent = frame
 
+	-- Sleek, dark glassmorphic health bar frame
 	local barBackground = Instance.new("Frame")
-	barBackground.Size = UDim2.new(1, 0, 0.35, 0)
-	barBackground.Position = UDim2.new(0, 0, 0.55, 0)
-	barBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	barBackground.Size = UDim2.new(1, 0, 0.28, 0)
+	barBackground.Position = UDim2.new(0, 0, 0.65, 0)
+	barBackground.BackgroundColor3 = Color3.fromRGB(14, 18, 26)
+	barBackground.BackgroundTransparency = 0.25
 	barBackground.BorderSizePixel = 0
 	barBackground.Parent = frame
 
+	local barStroke = Instance.new("UIStroke")
+	barStroke.Thickness = 1.0
+	barStroke.Color = Color3.fromRGB(35, 50, 75)
+	barStroke.Transparency = 0.5
+	barStroke.Parent = barBackground
+
 	local corner1 = Instance.new("UICorner")
-	corner1.CornerRadius = UDim.new(0, 4)
+	corner1.CornerRadius = UDim.new(0, 2)
 	corner1.Parent = barBackground
 
 	local healthFill = Instance.new("Frame")
 	healthFill.Name = "HealthFill"
 	healthFill.Size = UDim2.new(1, 0, 1, 0)
-	healthFill.BackgroundColor3 = archetype == "Brute" and Color3.fromRGB(65, 175, 245) or Color3.fromRGB(235, 55, 55)
+	healthFill.BackgroundColor3 = if archetype == "Brute" then Color3.fromRGB(60, 180, 255) elseif archetype == "Gunner" then Color3.fromRGB(240, 65, 65) else Color3.fromRGB(225, 75, 75)
 	healthFill.BorderSizePixel = 0
 	healthFill.Parent = barBackground
 
 	local corner2 = Instance.new("UICorner")
-	corner2.CornerRadius = UDim.new(0, 4)
+	corner2.CornerRadius = UDim.new(0, 2)
 	corner2.Parent = healthFill
 
 	-- Listen for health & attribute changes
@@ -102,13 +107,13 @@ local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: 
 		local isBroken = enemyModel:GetAttribute("GuardBroken") == true
 		if archetype == "Brute" and humanoid.Health > 0 then
 			if isBroken then
-				nameLabel.Text = string.format("⚡ %s [GUARD BROKEN!]", enemyName)
-				nameLabel.TextColor3 = Color3.fromRGB(255, 140, 40)
-				healthFill.BackgroundColor3 = Color3.fromRGB(255, 160, 40)
+				nameLabel.Text = string.format("%s // [GUARD BROKEN]", string.upper(enemyName))
+				nameLabel.TextColor3 = Color3.fromRGB(255, 175, 50)
+				healthFill.BackgroundColor3 = Color3.fromRGB(255, 175, 50)
 			else
-				nameLabel.Text = string.format("🛡️ %s [%d HP]", enemyName, maxHp)
-				nameLabel.TextColor3 = Color3.fromRGB(115, 210, 255)
-				healthFill.BackgroundColor3 = Color3.fromRGB(65, 175, 245)
+				nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
+				nameLabel.TextColor3 = defaultTextColor
+				healthFill.BackgroundColor3 = Color3.fromRGB(60, 180, 255)
 			end
 		end
 	end)
@@ -735,37 +740,8 @@ local function initEnemyWaves()
 		end
 	end
 
-	-- Fallback: If no custom parts placed yet in map, spawn default spread
-	if not placedStatic then
-		spawnTrainingDummyAtCFrame(CFrame.new(-12, 3, -12), "Static")
-	end
-	if not placedAttacking then
-		spawnTrainingDummyAtCFrame(CFrame.new(0, 3, -12), "Aggressive")
-	end
-	if not placedInfinite then
-		spawnTrainingDummyAtCFrame(CFrame.new(12, 3, -12), "Infinite")
-	end
-
-	-- 🦹 Active Tactical Criminal Waves
-	local spawnPoints = {
-		-- 🔫 Armed Gunners & Snipers (Ranged Threat)
-		{ Pos = Vector3.new(35, 3, -40), Archetype = "Gunner" :: EnemyArchetype, Name = "Mob Gunner" },
-		{ Pos = Vector3.new(-40, 3, -30), Archetype = "Gunner" :: EnemyArchetype, Name = "Rooftop Sniper" },
-
-		-- 🛡️ Armored Heavy Brutes (Defensive / Tank Threat)
-		{ Pos = Vector3.new(20, 3, -20), Archetype = "Brute" :: EnemyArchetype, Name = "Armored Enforcer" },
-		{ Pos = Vector3.new(-25, 3, 25), Archetype = "Brute" :: EnemyArchetype, Name = "Heavy Titan" },
-
-		-- 🦹 Street Brawler Mobs (Swarm Threat)
-		{ Pos = Vector3.new(45, 3, -45), Archetype = "Brawler" :: EnemyArchetype, Name = "Street Thug" },
-		{ Pos = Vector3.new(50, 3, 30),  Archetype = "Brawler" :: EnemyArchetype, Name = "Alley Brawler" },
-		{ Pos = Vector3.new(-30, 3, 40),  Archetype = "Brawler" :: EnemyArchetype, Name = "Mob Ruffian" },
-	}
-
-	for _, pt in spawnPoints do
-		spawnCriminal(pt.Pos, pt.Archetype, pt.Name)
-	end
+	-- Automatic fallback spawns disabled: Enemies spawn procedurally via CrimeService or explicit custom map parts.
 end
 
 initEnemyWaves()
-print("🥋 Training Dummies & Tactical Enemy Archetypes active! (Custom Part Spawners Supported)")
+print("🥋 EnemySpawner ready (Auto ambient mobs disabled; CrimeService manages active crimes).")

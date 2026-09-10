@@ -50,9 +50,9 @@ local CrimeConfig = {
 		ExtraBrawlersPerPlayer = 1,     -- Extra reinforcement mobs per additional hero
 	},
 
-	-- 🌟 Progression & Economy Defaults
+	-- 🌟 Progression & Economy Defaults (Hourglass Pacing: Fast early hook, rewarding endgame mountain)
 	Economy = {
-		BaseXPForLevel = 500,
+		BaseXPForLevel = 500,        -- Level 1 -> 2 requires 500 XP (earn your First Ultimate!)
 		LevelScaleFactor = 1.25,
 		DefaultCash = 100,
 		DefaultLevel = 1,
@@ -65,7 +65,7 @@ local CrimeConfig = {
 			Id = "BankHeist",
 			Title = "Bank Heist in Progress",
 			PoliceCode = "10-31 IN PROGRESS",
-			DispatchMessage = "Attention all units, 10-31 in progress: Armed robbery at First National Bank. All units respond...",
+			DispatchMessage = "Spider-Man, 10-31 in progress downtown! Armed syndicate thugs breached the First National vault. They're heavily armored—intercept before they breach the perimeter!",
 			Icon = "🚨",
 			ThemeColor = Color3.fromRGB(255, 60, 60),
 			Enemies = {
@@ -82,7 +82,7 @@ local CrimeConfig = {
 			Id = "RooftopDeal",
 			Title = "Rooftop Arms Deal",
 			PoliceCode = "10-70 IN PROGRESS",
-			DispatchMessage = "10-70 in progress: Illegal military weapons exchange on high-rise rooftop. Proceed with caution...",
+			DispatchMessage = "Spider-Man! 10-70 in progress on the high-rise rooftop—heavy weapon arms deal! They have snipers on water towers. Can you intercept before SWAT gets pinned down?",
 			Icon = "📦",
 			ThemeColor = Color3.fromRGB(255, 170, 45),
 			Enemies = {
@@ -99,7 +99,7 @@ local CrimeConfig = {
 			Id = "AlleywayMugging",
 			Title = "Alleyway Mugging",
 			PoliceCode = "10-10 IN PROGRESS",
-			DispatchMessage = "10-10 in progress: Violent assault and mugging reported in alleyway. Suspects are aggressive...",
+			DispatchMessage = "Spider-Man, 10-10 in progress in the alleyway! Innocent civilian cornered by aggressive street thugs. We need you on scene before anyone gets hurt!",
 			Icon = "🆘",
 			ThemeColor = Color3.fromRGB(255, 90, 160),
 			Enemies = {
@@ -115,13 +115,12 @@ local CrimeConfig = {
 			Id = "GetawayChase",
 			Title = "High-Speed Getaway Van",
 			PoliceCode = "10-04 ALL UNITS",
-			DispatchMessage = "10-04 all units: High-speed armored getaway vehicle fleeing crime scene. Intercept immediately!",
+			DispatchMessage = "Spider-Man, 10-04 all units! Armed syndicate thugs loading stolen military tech into an armored getaway van! Web up the engine and neutralize all hostiles!",
 			Icon = "🚐",
 			ThemeColor = Color3.fromRGB(75, 215, 255),
 			IsVehicleChase = true,
-			VanSpeed = 46,
-			Enemies = {}, -- Enemies emerge once vehicle engine is disabled
-			EnemiesOnDisable = {
+			VanSpeed = 0,
+			Enemies = {
 				{ Archetype = "Gunner", Count = 1 },
 				{ Archetype = "Brawler", Count = 2 },
 			},
@@ -132,10 +131,10 @@ local CrimeConfig = {
 
 	-- 🎵 Audio Asset IDs (with fallback support)
 	Audio = {
-		RadioSquelchId = "",     -- Paste custom Police Radio Squelch sound ID here
-		DispatchSirenId = "",    -- Paste custom Siren / Chime sound ID here
-		VictoryFanfareId = "",   -- Paste custom Victory Sound ID here
-		EngineSabotageId = "",   -- Paste custom Spark/Explosion sound ID here
+		RadioSquelchId = "rbxassetid://9114223177",     -- Police Radio Squelch & comms chirp
+		DispatchSirenId = "rbxassetid://6026987989",    -- High-tech alert chime
+		VictoryFanfareId = "rbxassetid://9069609200",   -- Sector secured victory chime
+		EngineSabotageId = "rbxassetid://3802269741",   -- Spark & pop sound
 	},
 }
 

@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
+local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
@@ -44,6 +45,7 @@ local DodgeRemote = getOrCreateRemote("SpiderSenseDodge")
 local WebStrikeRemote = getOrCreateRemote("WebStrike")
 local WebCycloneRemote = getOrCreateRemote("WebCycloneRemote")
 local QuickHealRemote = getOrCreateRemote("QuickHealRemote")
+local PropThrowRemote = getOrCreateRemote("PropThrowRemote")
 local CombatVFXRemote = getOrCreateRemote("CombatVFX")
 
 -- 💀 Convert an NPC Model into a full Ragdoll on Defeat
@@ -277,6 +279,11 @@ KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: a
 		damage = CombatConfig.Moves.KineticCombo.Hit1Damage or 7
 	end
 
+	-- ⚡ Symbiote Black Suit Perk: +20% Punch & Cleave Damage
+	if player:GetAttribute("SuitPerkType") == "Damage" then
+		damage = damage * 1.20
+	end
+
 	local forward = playerRoot.CFrame.LookVector
 	local flatForward = Vector3.new(forward.X, 0, forward.Z).Unit
 
@@ -408,7 +415,9 @@ UppercutRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 							end
 						end)
 
-						damageEnemy(enemy, CombatConfig.Moves.Uppercut.Damage or 16, Vector3.zero)
+						local upperDmg = CombatConfig.Moves.Uppercut.Damage or 16
+						if player:GetAttribute("SuitPerkType") == "Damage" then upperDmg = upperDmg * 1.20 end
+						damageEnemy(enemy, upperDmg, Vector3.zero)
 						CombatVFXRemote:FireAllClients("Uppercut", player, enemy)
 					end
 				end
@@ -433,6 +442,7 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 
 	-- 1. If target enemy model is provided and in whip range, smash them down with heavy impact!
 	local primaryHit = false
+	local hitCount = 0
 	if typeof(targetModel) == "Instance" and targetModel:IsA("Model") and targetModel.Parent then
 		local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
 		local enemyHum = targetModel:FindFirstChildOfClass("Humanoid")
@@ -444,9 +454,12 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 
 				local slamSpeed = CombatConfig.Moves.AirGroundSlam.SlamSpeed or 95
 				enemyRoot.AssemblyLinearVelocity = Vector3.new(0, -slamSpeed, 0)
-				damageEnemy(targetModel, CombatConfig.Moves.AirGroundSlam.Damage or 24, Vector3.zero)
+				local slamDmg = CombatConfig.Moves.AirGroundSlam.Damage or 24
+				if player:GetAttribute("SuitPerkType") == "Damage" then slamDmg = slamDmg * 1.20 end
+				damageEnemy(targetModel, slamDmg, Vector3.zero)
 				impactPos = enemyRoot.Position
 				primaryHit = true
+				hitCount += 1
 				CombatVFXRemote:FireAllClients("GroundSlamWebs", player, targetModel)
 			end
 		end
@@ -479,13 +492,17 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 				local vertDiff = math.abs(otherRoot.Position.Y - impactPos.Y)
 				if horizDist <= radius and vertDiff <= 16 then
 					local pushDir = Vector3.new(otherRoot.Position.X - impactPos.X, 0.4, otherRoot.Position.Z - impactPos.Z).Unit
-					damageEnemy(otherEnemy, CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15, pushDir * 18)
+					local shockDmg = CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15
+					if player:GetAttribute("SuitPerkType") == "Damage" then shockDmg = shockDmg * 1.20 end
+					damageEnemy(otherEnemy, shockDmg, pushDir * 18)
+					hitCount += 1
 				end
 			end
 		end
 	end
 
-	CombatVFXRemote:FireAllClients("ShockwaveVFX", impactPos, radius)
+	-- Replicate Shockwave VFX to all clients with total hit count for combo tracking
+	CombatVFXRemote:FireAllClients("GroundSlamShockwave", player, impactPos, radius, hitCount)
 end)
 
 local playerWebPelletCooldowns: { [Player]: number } = {}
@@ -601,10 +618,12 @@ WebPelletRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 end)
 
 local playerDisarmCooldowns: { [Player]: number } = {}
+local playerPropThrowCooldowns: { [Player]: number } = {}
 
 Players.PlayerRemoving:Connect(function(player)
 	playerWebPelletCooldowns[player] = nil
 	playerDisarmCooldowns[player] = nil
+	playerPropThrowCooldowns[player] = nil
 end)
 
 --------------------------------------------------------------------------------
@@ -713,6 +732,140 @@ DisarmThrowRemote.OnServerEvent:Connect(function(player: Player, targetModel: an
 			end)
 		end)
 	end
+end)
+
+--------------------------------------------------------------------------------
+-- 5b. 📦 CONTEXTUAL WEB-YANK & PROP THROW (Q Key)
+--------------------------------------------------------------------------------
+PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any, targetModel: any)
+	local char = player.Character
+	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local playerHum = char and char:FindFirstChildOfClass("Humanoid")
+	if not char or not playerRoot or not playerHum or playerHum.Health <= 0 then return end
+
+	-- Anti-Spam Rate Limit Validation
+	local now = os.clock()
+	local lastThrow = playerPropThrowCooldowns[player] or 0
+	local cooldown = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.Cooldown) or 2.0
+	if (now - lastThrow) < (cooldown - 0.25) then return end
+	playerPropThrowCooldowns[player] = now
+
+	-- Validate Prop
+	if typeof(propInstance) ~= "Instance" or not propInstance.Parent then return end
+	local propPart: BasePart? = nil
+	if propInstance:IsA("BasePart") then
+		propPart = propInstance
+	elseif propInstance:IsA("Model") then
+		propPart = propInstance.PrimaryPart or propInstance:FindFirstChildWhichIsA("BasePart")
+	end
+	if not propPart or not propPart.Parent then return end
+
+	-- Distance Check (Max 55 studs with latency buffer)
+	local distToProp = (propPart.Position - playerRoot.Position).Magnitude
+	if distToProp > 55 then return end
+
+	-- Anti-dupe: Check if already thrown
+	if propInstance:GetAttribute("IsThrown") == true or propPart:GetAttribute("IsThrown") == true then
+		return
+	end
+	propInstance:SetAttribute("IsThrown", true)
+	propPart:SetAttribute("IsThrown", true)
+
+	-- Replicate PropThrowVFX to all clients for multiplayer synchronization
+	CombatVFXRemote:FireAllClients("PropThrowVFX", player, propInstance, targetModel)
+
+	-- Target Enemy Validation
+	local targetRoot: BasePart? = nil
+	local targetHum: Humanoid? = nil
+	local hasValidTarget = false
+
+	if typeof(targetModel) == "Instance" and targetModel:IsA("Model") and targetModel.Parent then
+		targetRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
+		targetHum = targetModel:FindFirstChildOfClass("Humanoid")
+		if targetRoot and targetHum and targetHum.Health > 0 then
+			local distToEnemy = (targetRoot.Position - playerRoot.Position).Magnitude
+			if distToEnemy <= 75 then
+				hasValidTarget = true
+			end
+		end
+	end
+
+	-- Kinetic Timing: 0.16s lift + 0.26s overhead arc = 0.42s until slingshot release
+	local arcTotalTime = 0.42
+	local throwSpeed = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.ThrowSpeed) or 125
+	local throwDamage = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.Damage) or 35
+	local knockbackForce = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.KnockbackForce) or 24
+	local splashRadius = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.SplashRadius) or 10.0
+	local splashDamage = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.SplashDamage) or 16
+	local guardBreakDuration = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.GuardBreakDuration) or 4.0
+
+	task.delay(arcTotalTime, function()
+		if not playerRoot.Parent then return end
+
+		local destPos: Vector3
+		local impactDir: Vector3
+		if hasValidTarget and targetRoot and targetModel.Parent then
+			destPos = targetRoot.Position + Vector3.new(0, 1.0, 0)
+			impactDir = (destPos - playerRoot.Position).Unit
+		else
+			impactDir = playerRoot.CFrame.LookVector
+			destPos = playerRoot.Position + impactDir * 40
+		end
+
+		local flightDist = (destPos - playerRoot.Position).Magnitude
+		local flightTime = math.clamp(flightDist / throwSpeed, 0.12, 0.32)
+
+		task.delay(flightTime, function()
+			-- 💥 Impact point execution
+			if hasValidTarget and targetModel.Parent and targetHum and targetHum.Health > 0 and targetRoot then
+				-- 🛡️ SHATTER GUARD ON BRUTE: Direct prop impact instantly shatters defensive guard!
+				if targetModel:GetAttribute("Archetype") == "Brute" then
+					targetModel:SetAttribute("GuardBroken", true)
+					CombatVFXRemote:FireAllClients("GuardBreakVFX", targetModel)
+					task.delay(guardBreakDuration, function()
+						if targetModel.Parent and targetHum.Health > 0 then
+							targetModel:SetAttribute("GuardBroken", false)
+						end
+					end)
+				end
+
+				-- Apply heavy damage & physical knockback
+				local flingVec = impactDir * knockbackForce + Vector3.new(0, 5, 0)
+				damageEnemy(targetModel, throwDamage, flingVec)
+				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
+			else
+				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
+			end
+
+			-- AoE splash around impact point for clumped thugs (Checks all tagged enemies)
+			for _, otherEnemy in CollectionService:GetTagged("Enemy") do
+				if otherEnemy:IsA("Model") and otherEnemy ~= targetModel and otherEnemy.Parent then
+					local oRoot = (otherEnemy:FindFirstChild("HumanoidRootPart") or otherEnemy:FindFirstChild("Torso")) :: BasePart?
+					local oHum = otherEnemy:FindFirstChildOfClass("Humanoid")
+					if oRoot and oHum and oHum.Health > 0 then
+						local dist = (oRoot.Position - destPos).Magnitude
+						if dist <= splashRadius then
+							local splashDir = dist > 0.1 and (oRoot.Position - destPos).Unit or impactDir
+							if otherEnemy:GetAttribute("Archetype") == "Brute" then
+								otherEnemy:SetAttribute("GuardBroken", true)
+								CombatVFXRemote:FireAllClients("GuardBreakVFX", otherEnemy)
+							end
+							damageEnemy(otherEnemy, splashDamage, splashDir * 16 + Vector3.new(0, 4, 0))
+						end
+					end
+				end
+			end
+
+			-- Clean up prop with realistic physical tumble into Debris
+			if propPart and propPart.Parent then
+				propPart.Anchored = false
+				propPart.CanCollide = true
+				propPart.AssemblyLinearVelocity = impactDir * 18 + Vector3.new(0, 8, 0)
+				propPart.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+				Debris:AddItem(propInstance, 3.5)
+			end
+		end)
+	end)
 end)
 
 --------------------------------------------------------------------------------
@@ -838,9 +991,34 @@ WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any,
 	local playerRoot = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not playerRoot then return end
 
+	-- 🛡️ Zero-Trust Server Authority: Web Cyclone requires Level >= 2
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local playerLevel = leaderstats and leaderstats:FindFirstChild("Level") and (leaderstats.Level :: IntValue).Value or 1
+	if playerLevel < 2 then return end
+
 	if (actionType == "CycloneTick" or actionType == "StartCyclone") and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
-		local cycloneRadius = 14.5
+		local isAcrobatic = (player:GetAttribute("SuitPerkType") == "Acrobatic")
+		local cycloneRadius = if isAcrobatic then 18.85 else 14.5
 		local tickDamage = 6 -- Ticking damage per 0.20s revolution (60 total DPS across 10 ticks)
+
+		-- 🌪️ Acrobatic 2099 Suit Perk: Authoritative Gravitational Vortex pulling tagged enemies within 25 studs
+		if isAcrobatic then
+			for _, enemy in CollectionService:GetTagged("Enemy") do
+				if enemy ~= targetModel and enemy:IsA("Model") and enemy.Parent then
+					local eHum = enemy:FindFirstChildOfClass("Humanoid")
+					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					if eHum and eHum.Health > 0 and eRoot then
+						local toPlayer = playerRoot.Position - eRoot.Position
+						local dist = toPlayer.Magnitude
+						if dist > 3 and dist <= 25 then
+							local pullDir = toPlayer.Unit
+							eRoot.AssemblyLinearVelocity = Vector3.new(pullDir.X * 32, eRoot.AssemblyLinearVelocity.Y, pullDir.Z * 32)
+						end
+					end
+				end
+			end
+		end
+
 		local enemiesFolder = Workspace:FindFirstChild("Enemies")
 
 		if enemiesFolder then
@@ -868,6 +1046,9 @@ WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any,
 		local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
 		local enemyHum = targetModel:FindFirstChildOfClass("Humanoid")
 		if not enemyRoot then return end
+
+		-- 🛡️ Zero-Trust Security: Ensure player is within reasonable throw proximity (<= 35 studs)
+		if (enemyRoot.Position - playerRoot.Position).Magnitude > 35 then return end
 
 		local throwDir = typeof(extraData) == "Vector3" and extraData or playerRoot.CFrame.LookVector
 		local throwSpeed = 135
@@ -909,9 +1090,11 @@ DodgeRemote.OnServerEvent:Connect(function(player: Player, targetEnemy: any, isC
 	local rootPart = (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")) :: BasePart?
 	if not rootPart then return end
 
-	-- 1. 🛡️ Grant Player True Invulnerability Frames (0.45s i-Frames)
+	-- 1. 🛡️ Grant Player True Invulnerability Frames (0.45s or 0.70s with Stealth Big Time)
+	local isDodgeSuit = (player:GetAttribute("SuitPerkType") == "Dodge")
+	local iframeDuration = if isDodgeSuit then 0.70 else 0.45
 	character:SetAttribute("IsInvulnerable", true)
-	task.delay(0.45, function()
+	task.delay(iframeDuration, function()
 		if character and character.Parent then
 			character:SetAttribute("IsInvulnerable", false)
 		end
@@ -962,4 +1145,22 @@ QuickHealRemote.OnServerEvent:Connect(function(player: Player, healAmount: any)
 	end
 end)
 
-print("⚔️ Spider-Man Combat Service (with 360° Web Cyclone, Spider-Sense Dodge & Quick-Heal) online!")
+-- 📦 Auto-tag creator-placed throwable props (military crates, manhole covers, etc.)
+local function registerThrowableCandidate(instance: Instance)
+	if instance:IsA("BasePart") or instance:IsA("Model") then
+		local nameLower = string.lower(instance.Name)
+		if string.find(nameLower, "throwable") or string.find(nameLower, "militarytechcrate") or string.find(nameLower, "manhole") then
+			if not CollectionService:HasTag(instance, "ThrowableObject") then
+				CollectionService:AddTag(instance, "ThrowableObject")
+			end
+		end
+	end
+end
+
+for _, descendant in Workspace:GetDescendants() do
+	registerThrowableCandidate(descendant)
+end
+
+Workspace.DescendantAdded:Connect(registerThrowableCandidate)
+
+print("⚔️ Spider-Man Combat Service (with Prop Throwing, Soft Melee Snapping, 360° Cyclone, Dodge & Quick-Heal) online!")

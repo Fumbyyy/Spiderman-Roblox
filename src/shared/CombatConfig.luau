@@ -11,6 +11,7 @@ local CombatConfig = {
 	Keybinds = {
 		Attack = Enum.UserInputType.MouseButton1, -- L-Click: 1-2-3 Punch Combo (Ground) / Ground Slam (Air)
 		WebGadget = Enum.KeyCode.E,               -- E Key: Contextual Web Shooters (Rapid Web Pellets / Disarm Snipers)
+		PropThrow = Enum.KeyCode.Q,               -- Q Key: Web-Yank & Hurl Environmental Props (or Disarm Armed Mobs)
 		WebStrike = Enum.KeyCode.R,               -- R Key: 65-Stud Web-Strike Zip Dropkick!
 		Dodge = Enum.KeyCode.F,                   -- F Key: Spider-Sense Perfect Dodge & Face-Web Counter
 		Ultimate = Enum.KeyCode.T,                -- T Key: 360° Web Cyclone Continuous DPS Blender
@@ -38,10 +39,12 @@ local CombatConfig = {
 			CleaveRadius = 7.0,                   -- Forward AoE punch cleave reach for hitting clumped enemies
 			FinisherCleaveRadius = 8.2,           -- 3rd hit wide roundhouse cleave reach (studs)
 			CleaveConeAngle = 70,                 -- Forward cleave arc (degrees)
-			LungeForce = 14,                      -- Forward step lunge to close small gaps
 			HitCooldown = 0.26,                   -- Snappy, rhythmic punch pacing
 			FinisherCooldown = 0.50,              -- Cooldown after 3rd hit
 			ComboResetTime = 1.10,                -- Time before combo resets to hit 1
+			-- 🥋 Natural Grounded Step & Auto-Facing
+			StepScanRange = 8.5,                  -- Max reach to auto-face and step toward enemy (studs)
+			LungeForce = 12,                      -- Natural forward velocity impulse (studs/s)
 		},
 
 		-- 2. 🚀 Uppercut Launcher (Hold L-Click)
@@ -102,6 +105,19 @@ local CombatConfig = {
 			MaxDistance = 65,                     -- 65 studs crosshair lock-on zip range
 			ZipSpeed = 125,                       -- High-velocity zip pull (studs/s)
 			KnockbackForce = 26,                  -- Launches thug backwards across street
+		},
+
+		-- 8. 📦 Contextual Web-Yank & Prop Throw (Q Key)
+		PropThrow = {
+			Cooldown = 2.0,                       -- 2.0s Cooldown
+			Damage = 35,                          -- Heavy environmental prop impact damage
+			MaxDistance = 45,                     -- Max detection distance to throwable props (studs)
+			ThrowSpeed = 125,                     -- High-velocity kinetic hurl speed (studs/s)
+			KnockbackForce = 24,                  -- Heavy physical stagger & fling impulse
+			ArcDuration = 0.44,                   -- 360° overhead kinetic arc swing duration (seconds)
+			GuardBreakDuration = 4.0,             -- Guard break duration on Heavy Brutes (seconds)
+			SplashRadius = 10.0,                  -- AoE shockwave radius on prop impact (studs)
+			SplashDamage = 16,                    -- AoE splash damage to surrounding thugs
 		},
 	},
 

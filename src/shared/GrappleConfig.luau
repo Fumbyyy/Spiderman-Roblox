@@ -10,6 +10,8 @@ local GrappleConfig = {
 	Keybinds = {
 		Swing = Enum.UserInputType.MouseButton2,     -- Right Click: Dedicated Web-Swinging & Slingshot
 		JumpKey = Enum.KeyCode.Space,                -- Spacebar: Web Jump & Wall Jump launch
+		GamepadSwing = Enum.KeyCode.ButtonR2,        -- R2 / RT: Dedicated Web-Swinging & Slingshot
+		GamepadJump = Enum.KeyCode.ButtonA,          -- Cross / A: Web Jump & Wall Jump launch
 	},
 
 	-- 🔍 Smart Building Anchor Detection (Forward-facing street building ledges)

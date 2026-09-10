@@ -44,8 +44,20 @@ local function getOrCreateRemote(name: string): RemoteEvent
 	return remote
 end
 
+local function getOrCreateRemoteFunction(name: string): RemoteFunction
+	local rf = CrimeRemotesFolder:FindFirstChild(name)
+	if not rf or not rf:IsA("RemoteFunction") then
+		local newRf = Instance.new("RemoteFunction")
+		newRf.Name = name
+		newRf.Parent = CrimeRemotesFolder
+		return newRf
+	end
+	return rf
+end
+
 local CrimeNotificationRemote = getOrCreateRemote("CrimeNotification")
 local CrimeInteractRemote = getOrCreateRemote("CrimeInteract")
+local GetActiveCrimesRF = getOrCreateRemoteFunction("GetActiveCrimes")
 
 -- Combat Remotes for VFX
 local CombatRemotesFolder = ReplicatedStorage:FindFirstChild("CombatRemotes")
@@ -98,12 +110,122 @@ local function setupPlayerLeaderstats(player: Player)
 	crimesVal.Parent = leaderstats
 end
 
+-- 🩸 Dynamic Health Scaling (+10 HP per Level + Suit Defense Perks)
+local function updatePlayerHealth(player: Player)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local levelVal = leaderstats and leaderstats:FindFirstChild("Level") :: IntValue?
+	if hum and levelVal then
+		local suitBonus = 0
+		local suitPerkType = player:GetAttribute("SuitPerkType")
+		local suitPerkValue = player:GetAttribute("SuitPerkValue")
+		if suitPerkType == "Defense" and typeof(suitPerkValue) == "number" then
+			suitBonus = suitPerkValue
+		end
+		local targetMax = 100 + (levelVal.Value - 1) * 10 + suitBonus
+		local diff = targetMax - hum.MaxHealth
+		hum.MaxHealth = targetMax
+		if diff > 0 then
+			hum.Health = math.clamp(hum.Health + diff, 0, targetMax)
+		end
+	end
+end
+
+-- ⚡ Instant Debug Chat Command (/levelup)
+local function setupPlayerChatCommands(player: Player)
+	player.Chatted:Connect(function(message: string)
+		local cleaned = string.lower(string.match(message, "^%s*(.-)%s*$") or "")
+		if cleaned == "/levelup" then
+			local leaderstats = player:FindFirstChild("leaderstats")
+			if not leaderstats then return end
+
+			local levelVal = leaderstats:FindFirstChild("Level") :: IntValue?
+			local xpVal = leaderstats:FindFirstChild("XP") :: IntValue?
+			if not levelVal or not xpVal then return end
+
+			local currentLvl = levelVal.Value
+			if currentLvl < 6 then
+				local baseXP = math.max(1, CrimeConfig.Economy.BaseXPForLevel or 150)
+				local scale = math.max(1.0, CrimeConfig.Economy.LevelScaleFactor or 1.20)
+				local requiredXP = math.max(1, math.floor(baseXP * (currentLvl ^ scale)))
+				local addXP = math.max(150, requiredXP - xpVal.Value)
+				xpVal.Value += addXP
+
+				while xpVal.Value >= requiredXP and levelVal.Value < 6 do
+					xpVal.Value -= requiredXP
+					levelVal.Value += 1
+					CrimeNotificationRemote:FireClient(player, "LevelUp", levelVal.Value)
+
+					updatePlayerHealth(player)
+
+					currentLvl = levelVal.Value
+					if currentLvl >= 6 then
+						xpVal.Value = 0
+						break
+					end
+					requiredXP = math.max(1, math.floor(baseXP * (currentLvl ^ scale)))
+				end
+			end
+		elseif cleaned == "/cash" or cleaned == "/addcash" then
+			local leaderstats = player:FindFirstChild("leaderstats")
+			if not leaderstats then return end
+			local cashVal = leaderstats:FindFirstChild("Hero Cash") :: IntValue?
+			if cashVal then
+				cashVal.Value += 5000
+			end
+		end
+	end)
+end
+
 for _, player in Players:GetPlayers() do
 	setupPlayerLeaderstats(player)
+	setupPlayerChatCommands(player)
+	player.CharacterAdded:Connect(function()
+		task.defer(function()
+			updatePlayerHealth(player)
+		end)
+	end)
+	if player.Character then
+		task.defer(function()
+			updatePlayerHealth(player)
+		end)
+	end
 end
-Players.PlayerAdded:Connect(setupPlayerLeaderstats)
 
--- 💰 Award XP & Hero Cash with Level-Up Calculations
+Players.PlayerAdded:Connect(function(player)
+	setupPlayerLeaderstats(player)
+	setupPlayerChatCommands(player)
+	player.CharacterAdded:Connect(function()
+		task.defer(function()
+			updatePlayerHealth(player)
+		end)
+	end)
+	if player.Character then
+		task.defer(function()
+			updatePlayerHealth(player)
+		end)
+	end
+
+	if currentActiveCrime ~= nil then
+		task.delay(1.5, function()
+			if currentActiveCrime ~= nil and player:IsDescendantOf(Players) then
+				CrimeNotificationRemote:FireClient(player, "CrimeSpawned", {
+					Id = currentActiveCrime.Id,
+					Title = currentActiveCrime.Archetype.Title,
+					PoliceCode = currentActiveCrime.Archetype.PoliceCode,
+					DispatchMessage = currentActiveCrime.Archetype.DispatchMessage,
+					Icon = currentActiveCrime.Archetype.Icon,
+					Epicenter = currentActiveCrime.Epicenter,
+					ThemeColor = currentActiveCrime.Archetype.ThemeColor,
+					Timeout = CrimeConfig.Scheduler.CrimeTimeout,
+				})
+			end
+		end)
+	end
+end)
+
+-- 💰 Award XP & Hero Cash with Level 6 Hard Cap & Scaled Progression
 local function awardPlayerRewards(player: Player, xpAmount: number, cashAmount: number)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
@@ -114,17 +236,34 @@ local function awardPlayerRewards(player: Player, xpAmount: number, cashAmount: 
 	local crimesVal = leaderstats:FindFirstChild("Crimes Stopped") :: IntValue?
 
 	if xpVal and cashVal and levelVal then
-		xpVal.Value += xpAmount
+		local currentLvl = levelVal.Value
+		if currentLvl < 6 then
+			xpVal.Value += xpAmount
+		else
+			xpVal.Value = 0
+		end
 		cashVal.Value += cashAmount
 		if crimesVal then crimesVal.Value += 1 end
 
-		local currentLvl = levelVal.Value
-		local requiredXP = math.floor((CrimeConfig.Economy.BaseXPForLevel or 500) * (currentLvl ^ (CrimeConfig.Economy.LevelScaleFactor or 1.25)))
+		if currentLvl < 6 then
+			local baseXP = math.max(1, CrimeConfig.Economy.BaseXPForLevel or 150)
+			local scale = math.max(1.0, CrimeConfig.Economy.LevelScaleFactor or 1.20)
+			local requiredXP = math.max(1, math.floor(baseXP * (currentLvl ^ scale)))
 
-		if xpVal.Value >= requiredXP then
-			xpVal.Value -= requiredXP
-			levelVal.Value += 1
-			CrimeNotificationRemote:FireClient(player, "LevelUp", levelVal.Value)
+			while xpVal.Value >= requiredXP and levelVal.Value < 6 do
+				xpVal.Value -= requiredXP
+				levelVal.Value += 1
+				CrimeNotificationRemote:FireClient(player, "LevelUp", levelVal.Value)
+
+				updatePlayerHealth(player)
+
+				currentLvl = levelVal.Value
+				if currentLvl >= 6 then
+					xpVal.Value = 0
+					break
+				end
+				requiredXP = math.max(1, math.floor(baseXP * (currentLvl ^ scale)))
+			end
 		end
 	end
 end
@@ -139,12 +278,13 @@ local function attachCrimeHealthBar(enemyModel: Model, enemyName: string, archet
 	local humanoid = enemyModel:FindFirstChildOfClass("Humanoid")
 	if not head or not humanoid then return end
 
+	-- 🎯 Sleek, low-profile tactical billboard (Zero phone emojis)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "HealthGui"
-	billboard.Size = UDim2.new(3.4, 0, 0.9, 0)
-	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 3.2 or 2.5, 0)
+	billboard.Size = UDim2.new(2.8, 0, 0.42, 0)
+	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 2.8 or 2.2, 0)
 	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 45
+	billboard.MaxDistance = 55
 	billboard.Parent = head
 
 	local frame = Instance.new("Frame")
@@ -153,44 +293,48 @@ local function attachCrimeHealthBar(enemyModel: Model, enemyName: string, archet
 	frame.Parent = billboard
 
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	nameLabel.Size = UDim2.new(1, 0, 0.52, 0)
+	nameLabel.Position = UDim2.new(0, 0, 0, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 13
-	nameLabel.TextStrokeTransparency = 0.15
+	nameLabel.TextSize = 10
+	nameLabel.TextStrokeTransparency = 0.4
 
-	if archetype == "Gunner" then
-		nameLabel.TextColor3 = Color3.fromRGB(255, 85, 85)
-		nameLabel.Text = string.format("🔫 %s [%d HP]", enemyName, maxHp)
-	elseif archetype == "Brute" then
-		nameLabel.TextColor3 = Color3.fromRGB(115, 210, 255)
-		nameLabel.Text = string.format("🛡️ %s [%d HP]", enemyName, maxHp)
-	else
-		nameLabel.TextColor3 = Color3.fromRGB(255, 190, 70)
-		nameLabel.Text = string.format("🥊 %s [%d HP]", enemyName, maxHp)
-	end
+	local archetypeTag = if archetype == "Gunner" then "MARKSMAN" elseif archetype == "Brute" then "ENFORCER" else "BRAWLER"
+	local defaultTextColor = if archetype == "Gunner" then Color3.fromRGB(255, 95, 95) elseif archetype == "Brute" then Color3.fromRGB(120, 215, 255) else Color3.fromRGB(240, 245, 255)
+
+	nameLabel.TextColor3 = defaultTextColor
+	nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
 	nameLabel.Parent = frame
 
+	-- Sleek, dark glassmorphic health bar frame
 	local barBackground = Instance.new("Frame")
-	barBackground.Size = UDim2.new(1, 0, 0.35, 0)
-	barBackground.Position = UDim2.new(0, 0, 0.55, 0)
-	barBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	barBackground.Size = UDim2.new(1, 0, 0.28, 0)
+	barBackground.Position = UDim2.new(0, 0, 0.65, 0)
+	barBackground.BackgroundColor3 = Color3.fromRGB(14, 18, 26)
+	barBackground.BackgroundTransparency = 0.25
 	barBackground.BorderSizePixel = 0
 	barBackground.Parent = frame
 
+	local barStroke = Instance.new("UIStroke")
+	barStroke.Thickness = 1.0
+	barStroke.Color = Color3.fromRGB(35, 50, 75)
+	barStroke.Transparency = 0.5
+	barStroke.Parent = barBackground
+
 	local corner1 = Instance.new("UICorner")
-	corner1.CornerRadius = UDim.new(0, 4)
+	corner1.CornerRadius = UDim.new(0, 2)
 	corner1.Parent = barBackground
 
 	local healthFill = Instance.new("Frame")
 	healthFill.Name = "HealthFill"
 	healthFill.Size = UDim2.new(1, 0, 1, 0)
-	healthFill.BackgroundColor3 = archetype == "Brute" and Color3.fromRGB(65, 175, 245) or Color3.fromRGB(235, 55, 55)
+	healthFill.BackgroundColor3 = if archetype == "Brute" then Color3.fromRGB(60, 180, 255) elseif archetype == "Gunner" then Color3.fromRGB(240, 65, 65) else Color3.fromRGB(225, 75, 75)
 	healthFill.BorderSizePixel = 0
 	healthFill.Parent = barBackground
 
 	local corner2 = Instance.new("UICorner")
-	corner2.CornerRadius = UDim.new(0, 4)
+	corner2.CornerRadius = UDim.new(0, 2)
 	corner2.Parent = healthFill
 
 	humanoid.HealthChanged:Connect(function(newHealth)
@@ -205,13 +349,13 @@ local function attachCrimeHealthBar(enemyModel: Model, enemyName: string, archet
 		local isBroken = enemyModel:GetAttribute("GuardBroken") == true
 		if archetype == "Brute" and humanoid.Health > 0 then
 			if isBroken then
-				nameLabel.Text = string.format("⚡ %s [GUARD BROKEN!]", enemyName)
-				nameLabel.TextColor3 = Color3.fromRGB(255, 140, 40)
-				healthFill.BackgroundColor3 = Color3.fromRGB(255, 160, 40)
+				nameLabel.Text = string.format("%s // [GUARD BROKEN]", string.upper(enemyName))
+				nameLabel.TextColor3 = Color3.fromRGB(255, 175, 50)
+				healthFill.BackgroundColor3 = Color3.fromRGB(255, 175, 50)
 			else
-				nameLabel.Text = string.format("🛡️ %s [%d HP]", enemyName, maxHp)
-				nameLabel.TextColor3 = Color3.fromRGB(115, 210, 255)
-				healthFill.BackgroundColor3 = Color3.fromRGB(65, 175, 245)
+				nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
+				nameLabel.TextColor3 = defaultTextColor
+				healthFill.BackgroundColor3 = Color3.fromRGB(60, 180, 255)
 			end
 		end
 	end)
@@ -256,6 +400,7 @@ local function spawnCrimeEnemy(spawnCFrame: CFrame, archetype: "Gunner" | "Brute
 	rootPart.Transparency = 1
 	rootPart.CanCollide = false
 	rootPart.Parent = character
+	character.PrimaryPart = rootPart
 
 	local rootJoint = Instance.new("Motor6D")
 	rootJoint.Name = "RootJoint"
@@ -369,6 +514,12 @@ local function spawnCrimeEnemy(spawnCFrame: CFrame, archetype: "Gunner" | "Brute
 
 		while character.Parent and humanoid.Health > 0 do
 			task.wait(0.30)
+
+			-- 🛡️ Void Fall & Geometry Clip Guard
+			if rootPart.Position.Y < (Workspace.FallenPartsDestroyHeight + 35) then
+				rootPart.AssemblyLinearVelocity = Vector3.zero
+				rootPart.CFrame = spawnCFrame * CFrame.new(0, isBrute and 3.8 or 3.0, 0)
+			end
 
 			if character:GetAttribute("IsWebbed") == true or character:GetAttribute("IsPinned") == true then
 				humanoid:MoveTo(rootPart.Position)
@@ -609,88 +760,9 @@ local function createMilitaryTechCrate(position: Vector3, parentFolder: Folder):
 	crateModel:SetAttribute("IsInteractiveCrate", true)
 	crateModel:SetAttribute("IsThrown", false)
 
-	-- Proximity Prompt for Client Interaction
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Yank & Hurl Tech Crate"
-	prompt.ObjectText = "Military Weapon Crate"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 24
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = cratePart
-
-	prompt.Triggered:Connect(function(player)
-		if crateModel:GetAttribute("IsThrown") == true then return end
-		crateModel:SetAttribute("IsThrown", true)
-		prompt.Enabled = false
-
-		local char = player.Character
-		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not root then return end
-
-		-- Find nearest enemy to hurl into
-		local nearestEnemy: Model? = nil
-		local bestDist = 65
-		for _, enemy in EnemiesFolder:GetChildren() do
-			if enemy:IsA("Model") then
-				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-				local eHum = enemy:FindFirstChildOfClass("Humanoid")
-				if eRoot and eHum and eHum.Health > 0 then
-					local d = (eRoot.Position - root.Position).Magnitude
-					if d < bestDist then
-						bestDist = d
-						nearestEnemy = enemy
-					end
-				end
-			end
-		end
-
-		local targetPos = (nearestEnemy and (nearestEnemy:FindFirstChild("HumanoidRootPart") :: BasePart?).Position) or (root.Position + (root.CFrame.LookVector * 45))
-
-		-- Animate Web-Yank into Hurl
-		if CombatVFXRemote then
-			CombatVFXRemote:FireAllClients("DisarmYankVFX", player, cratePart)
-		end
-
-		task.delay(0.20, function()
-			if not cratePart or not cratePart.Parent then return end
-			local throwDir = (targetPos - cratePart.Position).Unit
-			local bv = Instance.new("BodyVelocity")
-			bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-			bv.Velocity = (throwDir * 110) + Vector3.new(0, 15, 0)
-			bv.Parent = cratePart
-			Debris:AddItem(bv, 0.45)
-
-			-- Collision Explosion
-			cratePart.Touched:Connect(function(hit)
-				if hit:IsDescendantOf(char) then return end
-				if crateModel:GetAttribute("Exploded") == true then return end
-				crateModel:SetAttribute("Exploded", true)
-
-				local explodePos = cratePart.Position
-				if CombatVFXRemote then
-					CombatVFXRemote:FireAllClients("ShockwaveVFX", explodePos, 14)
-				end
-
-				-- Damage nearby enemies
-				for _, enemy in EnemiesFolder:GetChildren() do
-					if enemy:IsA("Model") then
-						local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-						local eHum = enemy:FindFirstChildOfClass("Humanoid")
-						if eRoot and eHum and eHum.Health > 0 and (eRoot.Position - explodePos).Magnitude <= 18 then
-							eHum:TakeDamage(35)
-							enemy:SetAttribute("GuardBroken", true)
-							task.delay(3.5, function()
-								if enemy.Parent then enemy:SetAttribute("GuardBroken", false) end
-							end)
-						end
-					end
-				end
-
-				crateModel:Destroy()
-			end)
-		end)
-	end)
+	-- Tag as Throwable Object
+	CollectionService:AddTag(cratePart, "ThrowableObject")
+	CollectionService:AddTag(crateModel, "ThrowableObject")
 
 	crateModel.Parent = parentFolder
 	return crateModel
@@ -775,40 +847,32 @@ local function createGetawayVan(startPos: Vector3, moveDir: Vector3, parentFolde
 	local chassis = Instance.new("Part")
 	chassis.Name = "Chassis"
 	chassis.Size = Vector3.new(8, 4.5, 16)
-	chassis.Position = startPos + Vector3.new(0, 2.5, 0)
-	chassis.Color = Color3.fromRGB(35, 42, 50)
+	chassis.CFrame = CFrame.lookAt(startPos + Vector3.new(0, 2.5, 0), startPos + Vector3.new(0, 2.5, 0) + moveDir)
+	chassis.Color = Color3.fromRGB(35, 42, 52)
 	chassis.Material = Enum.Material.Metal
 	chassis.CanCollide = true
-	chassis.Anchored = false
+	chassis.Anchored = true
 	chassis.Parent = van
 
 	local hrp = Instance.new("Part")
 	hrp.Name = "HumanoidRootPart"
 	hrp.Size = chassis.Size
-	hrp.Position = chassis.Position
+	hrp.CFrame = chassis.CFrame
 	hrp.Transparency = 1
 	hrp.CanCollide = false
+	hrp.Anchored = true
 	hrp.Parent = van
-
-	local rootWeld = Instance.new("WeldConstraint")
-	rootWeld.Part0 = hrp
-	rootWeld.Part1 = chassis
-	rootWeld.Parent = hrp
 
 	-- Roof Web-Zip Target Platform
 	local roofZipTarget = Instance.new("Part")
 	roofZipTarget.Name = "RoofTarget"
-	roofZipTarget.Size = Vector3.new(6, 0.5, 10)
-	roofZipTarget.Position = chassis.Position + Vector3.new(0, 2.4, 0)
-	roofZipTarget.Color = Color3.fromRGB(50, 58, 68)
+	roofZipTarget.Size = Vector3.new(6, 0.6, 10)
+	roofZipTarget.CFrame = chassis.CFrame * CFrame.new(0, 2.4, 0)
+	roofZipTarget.Color = Color3.fromRGB(50, 60, 72)
 	roofZipTarget.Material = Enum.Material.DiamondPlate
 	roofZipTarget.CanCollide = true
+	roofZipTarget.Anchored = true
 	roofZipTarget.Parent = van
-
-	local roofWeld = Instance.new("WeldConstraint")
-	roofWeld.Part0 = chassis
-	roofWeld.Part1 = roofZipTarget
-	roofWeld.Parent = roofZipTarget
 
 	-- Tag as Enemy so Web-Strike (R) can target and zip straight to the roof!
 	CollectionService:AddTag(roofZipTarget, "Enemy")
@@ -818,38 +882,74 @@ local function createGetawayVan(startPos: Vector3, moveDir: Vector3, parentFolde
 	local engineHood = Instance.new("Part")
 	engineHood.Name = "EngineHood"
 	engineHood.Size = Vector3.new(5.5, 2.0, 3.5)
-	engineHood.Position = chassis.Position + (moveDir * 7) + Vector3.new(0, -0.4, 0)
-	engineHood.Color = Color3.fromRGB(210, 45, 45)
+	engineHood.CFrame = chassis.CFrame * CFrame.new(0, -0.4, -7.5)
+	engineHood.Color = Color3.fromRGB(215, 48, 48)
 	engineHood.Material = Enum.Material.SmoothPlastic
 	engineHood.CanCollide = true
+	engineHood.Anchored = true
 	engineHood.Parent = van
 
-	local engineWeld = Instance.new("WeldConstraint")
-	engineWeld.Part0 = chassis
-	engineWeld.Part1 = engineHood
-	engineWeld.Parent = engineHood
+	-- Front Headlights (Neon + Lights)
+	for _, side in { -2.4, 2.4 } do
+		local lightPart = Instance.new("Part")
+		lightPart.Name = "Headlight"
+		lightPart.Size = Vector3.new(1.0, 0.8, 0.4)
+		lightPart.CFrame = chassis.CFrame * CFrame.new(side, -0.2, -9.3)
+		lightPart.Color = Color3.fromRGB(255, 255, 220)
+		lightPart.Material = Enum.Material.Neon
+		lightPart.CanCollide = false
+		lightPart.Anchored = true
+		lightPart.Parent = van
+
+		local sLight = Instance.new("SpotLight")
+		sLight.Range = 30
+		sLight.Angle = 70
+		sLight.Brightness = 2.5
+		sLight.Color = Color3.fromRGB(255, 255, 230)
+		sLight.Face = Enum.NormalId.Front
+		sLight.Parent = lightPart
+	end
+
+	-- Hazard Beacon on Roof
+	local hazardBeacon = Instance.new("Part")
+	hazardBeacon.Name = "HazardBeacon"
+	hazardBeacon.Size = Vector3.new(1.2, 0.6, 1.2)
+	hazardBeacon.CFrame = chassis.CFrame * CFrame.new(0, 2.8, -4.5)
+	hazardBeacon.Color = Color3.fromRGB(255, 170, 30)
+	hazardBeacon.Material = Enum.Material.Neon
+	hazardBeacon.CanCollide = false
+	hazardBeacon.Anchored = true
+	hazardBeacon.Parent = van
 
 	-- Wheels
 	local wheelOffsets = {
-		Vector3.new(4.2, -1.2, 5), Vector3.new(-4.2, -1.2, 5),
-		Vector3.new(4.2, -1.2, -5), Vector3.new(-4.2, -1.2, -5)
+		Vector3.new(4.2, -1.2, 4.5), Vector3.new(-4.2, -1.2, 4.5),
+		Vector3.new(4.2, -1.2, -4.5), Vector3.new(-4.2, -1.2, -4.5)
 	}
 	for _, offset in wheelOffsets do
 		local wheel = Instance.new("Part")
 		wheel.Name = "Wheel"
 		wheel.Size = Vector3.new(1.2, 2.4, 2.4)
 		wheel.Shape = Enum.PartType.Cylinder
-		wheel.Position = chassis.Position + offset
-		wheel.Orientation = Vector3.new(0, 0, 90)
+		wheel.CFrame = (chassis.CFrame * CFrame.new(offset)) * CFrame.Angles(0, 0, math.rad(90))
 		wheel.Color = Color3.fromRGB(20, 20, 20)
 		wheel.Material = Enum.Material.Rubber
 		wheel.CanCollide = false
+		wheel.Anchored = true
 		wheel.Parent = van
+	end
 
-		local wWeld = Instance.new("WeldConstraint")
-		wWeld.Part0 = chassis
-		wWeld.Part1 = wheel
-		wWeld.Parent = wheel
+	-- Stolen Tech Cargo in back
+	for i = 1, 2 do
+		local techCrate = Instance.new("Part")
+		techCrate.Name = "CargoCrate"
+		techCrate.Size = Vector3.new(2.4, 2.2, 2.4)
+		techCrate.CFrame = chassis.CFrame * CFrame.new(i == 1 and 1.4 or -1.4, 0.4, 4.0)
+		techCrate.Color = Color3.fromRGB(45, 95, 140)
+		techCrate.Material = Enum.Material.CorrodedMetal
+		techCrate.CanCollide = true
+		techCrate.Anchored = true
+		techCrate.Parent = van
 	end
 
 	-- Engine Sabotage Proximity Prompt
@@ -858,24 +958,12 @@ local function createGetawayVan(startPos: Vector3, moveDir: Vector3, parentFolde
 	prompt.ObjectText = "Getaway Van Engine"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0.35
-	prompt.MaxActivationDistance = 14
+	prompt.MaxActivationDistance = 15
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = engineHood
 
 	van.PrimaryPart = hrp
 	van:SetAttribute("IsDisabled", false)
-
-	-- Constant Driving Physics
-	local bodyVel = Instance.new("BodyVelocity")
-	bodyVel.Name = "VanSpeed"
-	bodyVel.MaxForce = Vector3.new(1e7, 1e6, 1e7)
-	bodyVel.Velocity = moveDir * (CrimeConfig.Archetypes.GetawayChase.VanSpeed or 46)
-	bodyVel.Parent = hrp
-
-	local bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-	bodyGyro.CFrame = CFrame.lookAt(startPos, startPos + moveDir)
-	bodyGyro.Parent = hrp
 
 	-- Engine Sabotage Trigger
 	prompt.Triggered:Connect(function(player)
@@ -883,36 +971,29 @@ local function createGetawayVan(startPos: Vector3, moveDir: Vector3, parentFolde
 		van:SetAttribute("IsDisabled", true)
 		prompt.Enabled = false
 
-		-- Disable vehicle velocity
-		if bodyVel then bodyVel.Velocity = Vector3.zero end
+		-- Turn off headlights, turn on damaged smoke
+		hazardBeacon.Color = Color3.fromRGB(255, 50, 50)
 
 		-- Engine Sparks & Smoke VFX
 		local sparkEmitter = Instance.new("ParticleEmitter")
 		sparkEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 50))
-		sparkEmitter.Size = NumberSequence.new(0.4, 0.1)
-		sparkEmitter.Speed = NumberRange.new(8, 20)
+		sparkEmitter.Size = NumberSequence.new(0.5, 0.1)
+		sparkEmitter.Speed = NumberRange.new(8, 22)
 		sparkEmitter.SpreadAngle = Vector2.new(180, 180)
-		sparkEmitter.Rate = 50
-		sparkEmitter.Lifetime = NumberRange.new(0.4, 0.8)
+		sparkEmitter.Rate = 60
+		sparkEmitter.Lifetime = NumberRange.new(0.4, 0.9)
 		sparkEmitter.Parent = engineHood
 
+		local smokeEmitter = Instance.new("ParticleEmitter")
+		smokeEmitter.Color = ColorSequence.new(Color3.fromRGB(40, 40, 45))
+		smokeEmitter.Size = NumberSequence.new(1.0, 3.5)
+		smokeEmitter.Speed = NumberRange.new(3, 8)
+		smokeEmitter.Rate = 25
+		smokeEmitter.Lifetime = NumberRange.new(1.0, 2.0)
+		smokeEmitter.Parent = engineHood
+
 		if CombatVFXRemote then
-			CombatVFXRemote:FireAllClients("ShockwaveVFX", engineHood.Position, 10)
-		end
-
-		-- Spawn Thugs Bailing Out of Van!
-		local disableEnemies = CrimeConfig.Archetypes.GetawayChase.EnemiesOnDisable or {
-			{ Archetype = "Gunner", Count = 1 },
-			{ Archetype = "Brawler", Count = 2 },
-		}
-
-		for _, entry in disableEnemies do
-			for i = 1, entry.Count do
-				local exitOffset = Vector3.new(i == 1 and 6 or -6, 1, (i * 3) - 3)
-				local spawnCF = chassis.CFrame * CFrame.new(exitOffset)
-				local thugName = entry.Archetype == "Gunner" and "Getaway Driver [Gunner]" or string.format("Heist Escort #%d", i)
-				spawnCrimeEnemy(spawnCF, entry.Archetype, thugName)
-			end
+			CombatVFXRemote:FireAllClients("ShockwaveVFX", engineHood.Position, 12)
 		end
 
 		CrimeNotificationRemote:FireAllClients("VanDisabled", van)
@@ -942,23 +1023,55 @@ local currentActiveCrime: ActiveCrimeInstance? = nil
 local lastCrimeEndTime = 0
 
 -- 🔍 Locate Optimal Spawn Points (Supports custom creator parts or dynamic city scans)
-local function findCrimeSpawnLocation(archetypeId: string): (Vector3, Vector3)
-	local targetPartName = (archetypeId == "BankHeist" and "crime_bank")
-		or (archetypeId == "RooftopDeal" and "crime_rooftop")
-		or (archetypeId == "AlleywayMugging" and "crime_alley")
-		or "crime_getaway"
+local function findCrimeSpawnLocation(archetypeId: string): (Vector3, Vector3, BasePart?)
+	local specificParts: { BasePart } = {}
+	local generalParts: { BasePart } = {}
 
-	-- 1. Check if Creator placed custom map markers
+	local targetPrefix = (archetypeId == "BankHeist" and "bank")
+		or (archetypeId == "RooftopDeal" and "rooftop")
+		or (archetypeId == "AlleywayMugging" and "alley")
+		or "getaway"
+
+	-- 1. Check if Creator placed custom map markers or spawn folders in Workspace
 	for _, descendant in Workspace:GetDescendants() do
-		if descendant:IsA("BasePart") and string.lower(descendant.Name) == targetPartName then
-			descendant.Transparency = 1
-			descendant.CanCollide = false
-			local lookDir = descendant.CFrame.LookVector
-			return descendant.Position, lookDir
+		if descendant:IsA("BasePart") then
+			local lowerName = string.lower(descendant.Name)
+			local parentName = descendant.Parent and string.lower(descendant.Parent.Name) or ""
+
+			local isSpawnFolder = parentName == "enemyspawns" or parentName == "crimespawns" or parentName == "questspawns" or parentName == "spawnpoints" or parentName == "enemy_spawns" or parentName == "crime_spawns"
+			local isSpawnNamed = string.find(lowerName, "enemyspawn") ~= nil
+				or string.find(lowerName, "crimespawn") ~= nil
+				or string.find(lowerName, "questspawn") ~= nil
+				or string.find(lowerName, "enemy_spawn") ~= nil
+				or string.find(lowerName, "crime_spawn") ~= nil
+				or string.find(lowerName, "enemy spawn") ~= nil
+				or string.find(lowerName, "crime spawn") ~= nil
+				or string.find(lowerName, "quest spawn") ~= nil
+				or lowerName == "crime_bank" or lowerName == "crime_rooftop" or lowerName == "crime_alley" or lowerName == "crime_getaway"
+
+			if isSpawnNamed or isSpawnFolder then
+				descendant.Transparency = 1
+				descendant.CanCollide = false
+
+				if string.find(lowerName, targetPrefix) ~= nil then
+					table.insert(specificParts, descendant)
+				else
+					table.insert(generalParts, descendant)
+				end
+			end
 		end
 	end
 
-	-- 2. Procedural Fallback based on Players & Map Geometry
+	-- Prioritize specific archetype markers if present, otherwise general spawns
+	local pool = #specificParts > 0 and specificParts or generalParts
+	if #pool > 0 then
+		local chosenPart = pool[math.random(1, #pool)]
+		local lookDir = chosenPart.CFrame.LookVector
+		local spawnPos = chosenPart.Position + Vector3.new(0, (chosenPart.Size.Y * 0.5) + 0.5, 0)
+		return spawnPos, lookDir, chosenPart
+	end
+
+	-- 2. Procedural Fallback based on Players & High-Altitude Raycasting
 	local fallbackPositions = {
 		BankHeist = Vector3.new(0, 3, -60),
 		RooftopDeal = Vector3.new(45, 65, 40),
@@ -980,21 +1093,21 @@ local function findCrimeSpawnLocation(archetypeId: string): (Vector3, Vector3)
 			local candidateX = pRoot.Position.X + (math.cos(angle) * dist)
 			local candidateZ = pRoot.Position.Z + (math.sin(angle) * dist)
 
-			-- Raycast down to find ground / rooftop surface
-			local rayOrigin = Vector3.new(candidateX, (archetypeId == "RooftopDeal" and 150 or 60), candidateZ)
-			local rayDir = Vector3.new(0, -200, 0)
+			-- Raycast down from high altitude (350 studs) to hit true roof/ground, NOT interior rooms!
+			local rayOrigin = Vector3.new(candidateX, 350, candidateZ)
+			local rayDir = Vector3.new(0, -500, 0)
 			local rayParams = RaycastParams.new()
 			rayParams.FilterType = Enum.RaycastFilterType.Exclude
 			rayParams.FilterDescendantsInstances = { EnemiesFolder, ActiveCrimesFolder }
 
 			local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
-			if result then
+			if result and result.Normal.Y > 0.5 and result.Position.Y > (Workspace.FallenPartsDestroyHeight + 40) then
 				basePos = result.Position + Vector3.new(0, 1.5, 0)
 			end
 		end
 	end
 
-	return basePos, moveDir
+	return basePos, moveDir, nil
 end
 
 -- 🚨 Procedurally Trigger a Dynamic City Crime
@@ -1007,7 +1120,7 @@ local function spawnProceduralCrime(specificArchetypeId: string?): ActiveCrimeIn
 	local archConfig = CrimeConfig.Archetypes[chosenId]
 	if not archConfig then return nil end
 
-	local epicenter, moveDir = findCrimeSpawnLocation(chosenId)
+	local epicenter, moveDir, chosenSpawnPart = findCrimeSpawnLocation(chosenId)
 
 	local crimeFolder = Instance.new("Folder")
 	crimeFolder.Name = "ActiveCrime_" .. chosenId
@@ -1030,13 +1143,13 @@ local function spawnProceduralCrime(specificArchetypeId: string?): ActiveCrimeIn
 	-- 1. Generate Props
 	if archConfig.InteractiveCrates and archConfig.InteractiveCrates > 0 then
 		for i = 1, archConfig.InteractiveCrates do
-			local offset = Vector3.new(math.cos(i * 2.1) * 8, 0, math.sin(i * 2.1) * 8)
+			local offset = Vector3.new(math.cos(i * 2.1) * 6, 0, math.sin(i * 2.1) * 6)
 			createMilitaryTechCrate(epicenter + offset, crimeFolder)
 		end
 	end
 
 	if archConfig.HasCivilian then
-		createCivilianNPC(epicenter, crimeFolder)
+		createCivilianNPC(epicenter + Vector3.new(2, 0, 2), crimeFolder)
 	end
 
 	if archConfig.IsVehicleChase then
@@ -1046,8 +1159,25 @@ local function spawnProceduralCrime(specificArchetypeId: string?): ActiveCrimeIn
 	-- 2. Spawn Enemies
 	for _, entry in archConfig.Enemies do
 		for i = 1, entry.Count do
-			local offset = Vector3.new(math.cos(i * 1.5) * 12, 0, math.sin(i * 1.5) * 12)
-			local spawnCF = CFrame.new(epicenter + offset)
+			local spawnPos: Vector3
+			if chosenSpawnPart then
+				local partSize = chosenSpawnPart.Size
+				local radiusX = math.clamp(partSize.X * 0.35, 1.5, 10)
+				local radiusZ = math.clamp(partSize.Z * 0.35, 1.5, 10)
+				local angle = (i - 1) * (math.pi * 2 / math.max(1, entry.Count))
+				local localOffset = Vector3.new(math.cos(angle) * radiusX, 0.5, math.sin(angle) * radiusZ)
+				spawnPos = chosenSpawnPart.Position + localOffset
+			else
+				local offset = Vector3.new(math.cos(i * 1.5) * 8, 0, math.sin(i * 1.5) * 8)
+				local candidatePos = epicenter + offset
+				local rayParams = RaycastParams.new()
+				rayParams.FilterType = Enum.RaycastFilterType.Exclude
+				rayParams.FilterDescendantsInstances = { crimeFolder, EnemiesFolder }
+				local hit = Workspace:Raycast(candidatePos + Vector3.new(0, 30, 0), Vector3.new(0, -60, 0), rayParams)
+				spawnPos = hit and (hit.Position + Vector3.new(0, 0.5, 0)) or (candidatePos + Vector3.new(0, 1.0, 0))
+			end
+
+			local spawnCF = CFrame.new(spawnPos)
 			local enemyName = entry.Archetype == "Gunner" and string.format("%s [Gunner #%d]", archConfig.Title, i)
 				or entry.Archetype == "Brute" and string.format("%s [Heavy Enforcer]", archConfig.Title)
 				or string.format("%s [Mob #%d]", archConfig.Title, i)
@@ -1120,8 +1250,13 @@ local function clearActiveCrime(crimeInstance: ActiveCrimeInstance)
 
 	print(string.format("🎉 Crime Cleared: %s (+%d XP, +$%d Hero Cash)", crimeInstance.Archetype.Title, finalXP, finalCash))
 
-	-- Cleanup after delay
+	-- Cleanup after delay (Destroys folder and any remaining enemy instances)
 	task.delay(CrimeConfig.Scheduler.DespawnCleanupDelay or 5.0, function()
+		for _, enemy in crimeInstance.Enemies do
+			if enemy and enemy.Parent then
+				enemy:Destroy()
+			end
+		end
 		if crimeInstance.Folder then
 			crimeInstance.Folder:Destroy()
 		end
@@ -1146,6 +1281,11 @@ local function failActiveCrime(crimeInstance: ActiveCrimeInstance, reason: strin
 	print(string.format("⚠️ Crime Expired/Failed: %s (%s)", crimeInstance.Archetype.Title, reason))
 
 	task.delay(CrimeConfig.Scheduler.DespawnCleanupDelay or 5.0, function()
+		for _, enemy in crimeInstance.Enemies do
+			if enemy and enemy.Parent then
+				enemy:Destroy()
+			end
+		end
 		if crimeInstance.Folder then
 			crimeInstance.Folder:Destroy()
 		end
@@ -1245,11 +1385,31 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- 🎮 Admin / Debug Remote Interaction (Allows on-demand spawning)
-CrimeInteractRemote.OnServerEvent:Connect(function(player: Player, action: string, param: any)
-	if action == "RequestCrime" and typeof(param) == "string" then
+-- 📱 FNSM Scanner & Datapad Remote Invocations
+GetActiveCrimesRF.OnServerInvoke = function(_player: Player): any
+	if currentActiveCrime ~= nil then
+		return {
+			Id = currentActiveCrime.Id,
+			Title = currentActiveCrime.Archetype.Title,
+			PoliceCode = currentActiveCrime.Archetype.PoliceCode,
+			Icon = currentActiveCrime.Archetype.Icon,
+			Epicenter = currentActiveCrime.Epicenter,
+			ThemeColor = currentActiveCrime.Archetype.ThemeColor,
+			RewardXP = currentActiveCrime.Archetype.RewardXP,
+			RewardCash = currentActiveCrime.Archetype.RewardCash,
+			State = currentActiveCrime.State,
+			District = "Midtown Manhattan",
+		}
+	end
+	return nil
+end
+
+-- 🎮 On-Demand Police Dispatch & Crime Interaction
+CrimeInteractRemote.OnServerEvent:Connect(function(_player: Player, action: string, param: any)
+	if action == "RequestDispatch" or action == "RequestCrime" then
 		if currentActiveCrime == nil then
-			spawnProceduralCrime(param)
+			local specificArchetype = typeof(param) == "string" and param or nil
+			spawnProceduralCrime(specificArchetype)
 		end
 	end
 end)

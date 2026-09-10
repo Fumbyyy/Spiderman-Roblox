@@ -42,17 +42,22 @@ function WebVisuals.getHandAttachment(character: Model, isRight: boolean): Attac
 end
 
 -- ✨ Create a glowing white Spider-Man web silk beam between two attachments
-function WebVisuals.createWebBeam(att0: Attachment, att1: Attachment, parent: Instance): Beam
+function WebVisuals.createWebBeam(att0: Attachment, att1: Attachment, parent: Instance, casterChar: Model?): Beam
 	local beam = Instance.new("Beam")
 	beam.Name = "SpiderWebBeam"
 	beam.Attachment0 = att0
 	beam.Attachment1 = att1
 	beam.Width0 = 0.16
 	beam.Width1 = 0.16
-	beam.Color = ColorSequence.new(GrappleConfig.Visuals.RopeColor)
+	local casterPlayer = if casterChar then Players:GetPlayerFromCharacter(casterChar) else nil
+	local isSymbiote = (casterChar and casterChar:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (casterPlayer and casterPlayer:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "SymbioteBlack")
+	local webColor = if isSymbiote then Color3.fromRGB(20, 20, 25) else GrappleConfig.Visuals.RopeColor
+	beam.Color = ColorSequence.new(webColor)
 	beam.Transparency = NumberSequence.new(0.04)
 	beam.FaceCamera = true
-	beam.LightEmission = 0.35
+	beam.LightEmission = if isSymbiote then 0.05 else 0.35
 	beam.Parent = parent
 	return beam
 end
@@ -126,7 +131,8 @@ function WebVisuals.launchWebPelletProjectile(startAtt: Attachment, targetWorldP
 	pellet.Shape = Enum.PartType.Ball
 	pellet.Size = Vector3.new(0.45, 0.45, 0.45)
 	pellet.Material = Enum.Material.Neon
-	pellet.Color = Color3.fromRGB(255, 255, 255)
+	local isSymbiotePellet = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "SymbioteBlack")
+	pellet.Color = if isSymbiotePellet then Color3.fromRGB(20, 20, 25) else Color3.fromRGB(255, 255, 255)
 	pellet.CanCollide = false
 	pellet.Anchored = true
 	pellet.CFrame = CFrame.new(startPos)
@@ -212,8 +218,8 @@ function WebVisuals.createDisarmWebTether(playerChar: Model, weaponPart: BasePar
 	weaponAtt.Name = "DisarmWeaponAtt"
 	weaponAtt.Parent = weaponPart
 
-	local beamL = WebVisuals.createWebBeam(leftAtt, weaponAtt, weaponPart)
-	local beamR = WebVisuals.createWebBeam(rightAtt, weaponAtt, weaponPart)
+	local beamL = WebVisuals.createWebBeam(leftAtt, weaponAtt, weaponPart, playerChar)
+	local beamR = WebVisuals.createWebBeam(rightAtt, weaponAtt, weaponPart, playerChar)
 
 	task.delay(duration, function()
 		if beamL then beamL:Destroy() end
@@ -604,7 +610,7 @@ function WebVisuals.initMultiplayerReplication(remotesFolder: Folder)
 		worldAtt.Parent = Workspace.Terrain
 
 		local playerAtt = WebVisuals.getHandAttachment(otherChar, isRight)
-		local beam = WebVisuals.createWebBeam(playerAtt, worldAtt, otherRoot)
+		local beam = WebVisuals.createWebBeam(playerAtt, worldAtt, otherRoot, otherChar)
 
 		WebVisuals.playWebSound(otherRoot)
 

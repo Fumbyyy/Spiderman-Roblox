@@ -41,7 +41,7 @@ local function triggerHitStop(duration: number, camera: Camera, isHeavy: boolean
 end
 
 function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, getCharacterParts: () -> (Model?, BasePart?, Humanoid?))
-	CombatVFXRemote.OnClientEvent:Connect(function(actionName: string, instigator: any, targetModel: any, extra: any)
+	CombatVFXRemote.OnClientEvent:Connect(function(actionName: string, instigator: any, targetModel: any, extra: any, hitCountArg: any)
 		-- 🕸️ 1. Web Pellet Hit & Progressive Web VFX
 		if actionName == "WebPelletHit" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
 			local currentStacks = typeof(extra) == "number" and extra or (targetModel:GetAttribute("WebStacks") or 1)
@@ -70,6 +70,37 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			if sourceChar and weaponPart then
 				WebVisuals.createDisarmWebTether(sourceChar, weaponPart, 0.45)
 				WebVisuals.playWebSound(sourceChar:FindFirstChild("HumanoidRootPart"))
+			end
+		end
+
+		-- 📦 2b. Prop Throw VFX (Multiplayer sync for other players)
+		if actionName == "PropThrowVFX" and typeof(instigator) == "Instance" and typeof(targetModel) == "Instance" then
+			local sourceChar = instigator:IsA("Player") and instigator.Character or instigator
+			if sourceChar and sourceChar ~= LocalPlayer.Character then
+				local propPart: BasePart? = nil
+				if targetModel:IsA("BasePart") then
+					propPart = targetModel
+				elseif targetModel:IsA("Model") then
+					propPart = targetModel.PrimaryPart or targetModel:FindFirstChildWhichIsA("BasePart")
+				end
+				if propPart then
+					local leftAtt = WebVisuals.getHandAttachment(sourceChar, false)
+					local rightAtt = WebVisuals.getHandAttachment(sourceChar, true)
+					local propAtt = propPart:FindFirstChild("WebPropAttachment") :: Attachment?
+					if not propAtt then
+						propAtt = Instance.new("Attachment")
+						propAtt.Name = "WebPropAttachment"
+						propAtt.Position = Vector3.zero
+						propAtt.Parent = propPart
+					end
+					local b1 = WebVisuals.createWebBeam(leftAtt, propAtt, sourceChar:FindFirstChild("HumanoidRootPart") or propPart)
+					local b2 = WebVisuals.createWebBeam(rightAtt, propAtt, sourceChar:FindFirstChild("HumanoidRootPart") or propPart)
+					WebVisuals.playWebSound(sourceChar:FindFirstChild("HumanoidRootPart"))
+					task.delay(0.44, function()
+						if b1 then b1:Destroy() end
+						if b2 then b2:Destroy() end
+					end)
+				end
 			end
 		end
 
@@ -185,10 +216,22 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			end
 		end
 
-		-- 💥 6. Ground Slam Radial Shockwave VFX
-		if actionName == "GroundSlamShockwave" and typeof(instigator) == "Vector3" then
-			local pos: Vector3 = instigator
+		-- 🕸️ 5b. Ground Slam Multiplayer Web Lines Replication
+		if actionName == "GroundSlamWebs" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
+			local sourceChar = instigator:IsA("Player") and instigator.Character or instigator
+			if sourceChar and sourceChar ~= LocalPlayer.Character then
+				WebVisuals.createCombatWebLines(sourceChar, targetModel, true, 0.45)
+			end
+		end
+
+		-- 💥 6. Ground Slam Radial Shockwave VFX & Combo Hit Registration
+		if actionName == "GroundSlamShockwave" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			local shockRadius: number = typeof(extra) == "number" and extra or 24
+			local totalHits: number = typeof(hitCountArg) == "number" and hitCountArg or 0
+
 			WebVisuals.createImpactSplatVFX(pos, Vector3.new(0, 1, 0))
+			WebVisuals.createWeaponImpactSparks(pos, Vector3.new(0, 1, 0))
 
 			local shockRing = Instance.new("Part")
 			shockRing.Shape = Enum.PartType.Cylinder
@@ -202,11 +245,21 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			shockRing.Parent = Workspace
 
 			local tween = TweenService:Create(shockRing, TweenInfo.new(0.40, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = Vector3.new(0.2, 30, 30),
+				Size = Vector3.new(0.2, shockRadius * 1.5, shockRadius * 1.5),
 				Transparency = 1,
 			})
 			tween:Play()
 			Debris:AddItem(shockRing, 0.45)
+
+			-- 🥊 Combo Registration for Local Player:
+			-- Each enemy struck by the primary slam or the radial shockwave increments the combo!
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if isLocal and totalHits > 0 then
+				for _ = 1, totalHits do
+					CombatStyleHUD.registerHit(15)
+				end
+				triggerHitStop(0.045, camera, true)
+			end
 		end
 
 		-- 💥 7. ZZZ Counter Strike Shockwave VFX

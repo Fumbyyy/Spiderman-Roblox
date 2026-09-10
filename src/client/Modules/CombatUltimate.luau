@@ -40,6 +40,12 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	local cooldown = 15.0
 	if CombatUltimate.isExecutingUltimate or (now - CombatUltimate.lastCycloneTime) < cooldown then return end
 
+	-- 🛡️ Level Gate Check: Web Cyclone requires Level 2+
+	local LocalPlayer = Players.LocalPlayer
+	local leaderstats = LocalPlayer and LocalPlayer:FindFirstChild("leaderstats")
+	local playerLevel = leaderstats and leaderstats:FindFirstChild("Level") and (leaderstats.Level :: IntValue).Value or 1
+	if playerLevel < 2 then return end
+
 	-- Find primary target to spin: Active Reticle Target OR Fallback Camera Cone Sweep
 	local target = CombatReticle.getCurrentTarget()
 	if not target then
@@ -76,9 +82,10 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	CombatUltimate.isExecutingUltimate = true
 	CombatStyleHUD.setCooldown("WebCyclone", cooldown)
 
+	local isAcrobatic = (LocalPlayer and LocalPlayer:GetAttribute("SuitPerkType") == "Acrobatic")
 	local centerPos = rootPart.Position
 	local spinDuration = 2.4
-	local spinRadius = 9.5
+	local spinRadius = if isAcrobatic then 12.35 else 9.5
 	local startTime = os.clock()
 	local lastTickTime = 0
 

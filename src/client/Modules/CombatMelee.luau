@@ -8,9 +8,13 @@
 ]]
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
@@ -35,6 +39,12 @@ CombatMelee.lastMeleeActionTime = 0
 CombatMelee.isHoldingAttack = false
 CombatMelee.attackPressStartTime = 0
 
+-- 🛡️ Super-Armor Protection: Spider-Armor MK IV grants immunity to flinching & interruptions
+function CombatMelee.checkSuperArmor(): boolean
+	return LocalPlayer and LocalPlayer:GetAttribute("SuitPerkType") == "Defense"
+end
+
+
 -- 1. 🥊 KINETIC STRIKE COMBO (L-Click Tap on Ground)
 function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera)
 	local now = os.clock()
@@ -48,34 +58,76 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 	CombatMelee.lastHitTime = now
 	CombatMelee.lastMeleeActionTime = now
 
-	-- 1. Melee Target & Step-In Scan
-	local maxMeleeRange = CombatConfig.Moves.KineticCombo.MaxMeleeRange or 5.8
-	local stepInScanRange = 10.0
+	-- 1. Melee Target & Step-In Scan (Reticle target or nearest forward enemy within 8.5 studs)
+	local stepInScanRange = (CombatConfig.Moves.KineticCombo.MagneticSnapMaxDist or 8.5)
 	local target = CombatReticle.getCurrentTarget()
 	if target then
 		local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
-		if not targetRoot or (targetRoot.Position - rootPart.Position).Magnitude > stepInScanRange then
+		local targetHum = target:FindFirstChildOfClass("Humanoid")
+		if not targetRoot or not targetHum or targetHum.Health <= 0 or (targetRoot.Position - rootPart.Position).Magnitude > stepInScanRange then
 			target = nil
 		end
 	end
 
-	-- 2. Forward combat step / lunge
-	local camLook = camera.CFrame.LookVector
-	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
-
-	if target then
-		local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
-		if targetRoot then
-			local toEnemy = (targetRoot.Position - rootPart.Position)
-			if toEnemy.Magnitude > 0.5 then
-				forwardFlat = Vector3.new(toEnemy.X, 0, toEnemy.Z).Unit
-				rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + forwardFlat)
+	-- Fallback cone search if no reticle target is locked
+	if not target then
+		local enemies = CollectionService:GetTagged("Enemy")
+		local camLook = camera.CFrame.LookVector
+		local bestDist = stepInScanRange
+		for _, enemy in enemies do
+			if enemy:IsA("Model") then
+				local eHum = enemy:FindFirstChildOfClass("Humanoid")
+				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+				if eHum and eHum.Health > 0 and eRoot then
+					local toEnemy = eRoot.Position - rootPart.Position
+					local dist = toEnemy.Magnitude
+					if dist <= stepInScanRange and dist < bestDist then
+						local flatToEnemy = Vector3.new(toEnemy.X, 0, toEnemy.Z).Unit
+						local dot = camLook:Dot(flatToEnemy)
+						if dot >= 0.25 or dist <= 4.5 then
+							target = enemy
+							bestDist = dist
+						end
+					end
+				end
 			end
 		end
 	end
 
-	local lungeForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 12)
-	rootPart.AssemblyLinearVelocity = (forwardFlat * lungeForce) + Vector3.new(0, 1.5, 0)
+	-- 2. 🥋 Natural Grounded Step & Auto-Facing (Option 1: Zero Ice-Skating)
+	local camLook = camera.CFrame.LookVector
+	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
+	local targetRoot = target and ((target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?)
+
+	if target and targetRoot then
+		local enemyPos = targetRoot.Position
+		local offset = enemyPos - rootPart.Position
+		local horizDist = Vector3.new(offset.X, 0, offset.Z).Magnitude
+
+		if horizDist > 0.1 then
+			forwardFlat = Vector3.new(offset.X, 0, offset.Z).Unit
+		end
+
+		-- Clean auto-facing: Spider-Man turns to face his target without moving his position artificially
+		rootPart.CFrame = CFrame.lookAt(rootPart.Position, Vector3.new(enemyPos.X, rootPart.Position.Y, enemyPos.Z))
+
+		-- Natural grounded step: Uses normal velocity impulse so feet stay on the pavement
+		local stepForce: number
+		if horizDist > 4.2 then
+			stepForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 11)
+		else
+			-- Close contact punch: subtle contact nudge so player doesn't clip into enemy
+			stepForce = 4.0
+		end
+
+		rootPart.AssemblyLinearVelocity = (forwardFlat * stepForce) + Vector3.new(0, 0.4, 0)
+	else
+		-- Free punch without target: forward momentum step aligned with camera
+		local lungeForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 12)
+		rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + forwardFlat)
+		rootPart.AssemblyLinearVelocity = (forwardFlat * lungeForce) + Vector3.new(0, 1.2, 0)
+	end
+
 	WebVisuals.playWebSound(rootPart)
 
 	-- 3. Melee AoE Cleave Hitbox: Fires to server with target (if any); server validates forward cone cleave for all clumped mobs!

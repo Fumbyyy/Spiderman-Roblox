@@ -3,13 +3,20 @@
 	CombatDodge.luau
 	Handles Spider-Sense Acrobatic Dodge & Web-Counter:
 	- Straight, flat athletic retreat slide (zero vertical lift)
+	- Snappy burst deceleration curve (72 -> 22 studs/s over 0.24s)
+	- Temporary limb collision slip-through (prevent snagging on enemy hitboxes)
+	- Stripped holographic neon decoy (zero humanoid/animator physics interference)
+	- Dynamic camera evasion FOV kick (+4° with 0.22s quad ease-out)
 	- Locks character orientation straight forward throughout the entire dodge (NO sideways twisting)
 	- Point-blank face-web counter on attacking thugs
 ]]
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
@@ -32,6 +39,88 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 
 	CombatDodge.isDodging = true
 	CombatDodge.lastDodgeTime = now
+
+	-- 🎥 Camera Evasion Kick: Punch FOV outward by +4° with 0.22s quad ease-out back to base FOV
+	local baseFov = camera.FieldOfView
+	camera.FieldOfView = baseFov + 4
+	local fovTween = TweenService:Create(camera, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		FieldOfView = baseFov,
+	})
+	fovTween:Play()
+
+	-- 🛡️ Stealth Big Time Suit Perk: +0.25s Invulnerability (0.45s -> 0.70s) & Neon Holographic Decoy
+	local isDodgePerk = (LocalPlayer:GetAttribute("SuitPerkType") == "Dodge")
+	local iframeDuration = if isDodgePerk then 0.70 else 0.45
+	character:SetAttribute("IsInvulnerable", true)
+	task.delay(iframeDuration, function()
+		if character and character.Parent then
+			character:SetAttribute("IsInvulnerable", false)
+		end
+	end)
+
+	if isDodgePerk then
+		local wasArchivable = character.Archivable
+		character.Archivable = true
+		local decoy = character:Clone()
+		character.Archivable = wasArchivable
+
+		if decoy then
+			decoy.Name = "StealthNeonDecoy"
+
+			-- Strip Humanoid and Animator to eliminate physics, camera occlusion, and animation processing
+			local dHum = decoy:FindFirstChildOfClass("Humanoid")
+			if dHum then dHum:Destroy() end
+			local dAnim = decoy:FindFirstChildOfClass("Animator")
+			if dAnim then dAnim:Destroy() end
+
+			-- Strip accessories, clothing, joints, decals, and scripts
+			for _, desc in decoy:GetDescendants() do
+				if desc:IsA("Humanoid") or desc:IsA("Animator")
+					or desc:IsA("Accessory") or desc:IsA("Shirt") or desc:IsA("Pants") or desc:IsA("ShirtGraphic")
+					or desc:IsA("Motor6D") or desc:IsA("JointInstance")
+					or desc:IsA("Script") or desc:IsA("LocalScript") or desc:IsA("Sound")
+					or desc:IsA("UIComponent") or desc:IsA("BillboardGui") or desc:IsA("Decal") then
+					desc:Destroy()
+				elseif desc:IsA("BasePart") then
+					desc.Anchored = true
+					desc.CanCollide = false
+					desc.CanTouch = false
+					desc.CanQuery = false
+					desc.Material = Enum.Material.Neon
+					desc.Color = Color3.fromRGB(0, 255, 128)
+					desc.Transparency = 0.45
+				end
+			end
+
+			decoy:PivotTo(rootPart.CFrame)
+			decoy.Parent = Workspace
+
+			task.spawn(function()
+				local elapsed = 0
+				local fadeDuration = 1.0
+				local parts: {BasePart} = {}
+				for _, part in decoy:GetDescendants() do
+					if part:IsA("BasePart") then
+						table.insert(parts, part)
+					end
+				end
+				local conn: RBXScriptConnection? = nil
+				conn = RunService.RenderStepped:Connect(function(dt)
+					elapsed = elapsed + dt
+					local alpha = math.clamp(elapsed / fadeDuration, 0, 1)
+					for _, part in parts do
+						part.Transparency = 0.45 + (0.55 * alpha)
+					end
+					if elapsed >= fadeDuration then
+						if conn then conn:Disconnect() end
+						if decoy and decoy.Parent then
+							decoy:Destroy()
+						end
+					end
+				end)
+			end)
+		end
+	end
 
 	-- 1. Determine straight camera forward vector on flat X/Z plane
 	local camLook = camera.CFrame.LookVector
@@ -59,7 +148,7 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 		end
 	end
 
-	-- 3. 🏃 Snappy Flat Ground Slide
+	-- 3. 🏃 Snappy Flat Ground Slide with Easing Curve
 	local att = rootPart:FindFirstChild("DodgeAttachment") :: Attachment?
 	if not att then
 		att = Instance.new("Attachment")
@@ -67,36 +156,80 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 		att.Parent = rootPart
 	end
 
+	local initialSpeed = 72 -- Initial burst speed (studs/s)
+	local finalSpeed = 22   -- Terminal deceleration floor (studs/s)
+
 	local lv = Instance.new("LinearVelocity")
 	lv.Name = "DodgeLinearVelocity"
 	lv.Attachment0 = att
-	lv.MaxForce = 180000
+	lv.MaxForce = 220000
 	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
-	lv.VectorVelocity = flatDir * 38
+	lv.VectorVelocity = flatDir * initialSpeed
 	lv.Parent = rootPart
 
 	WebVisuals.playWebSound(rootPart)
 
-	local rollDuration = 0.20
+	-- 🛡️ Limb Evasion Slip-Through: Disable collisions on limbs/torsos so Spider-Man doesn't snag on enemy mobs
+	local savedCollisions: { [BasePart]: boolean } = {}
+	for _, part in character:GetChildren() do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			savedCollisions[part] = part.CanCollide
+			part.CanCollide = false
+		end
+	end
+
+	local function restoreCollisions()
+		for part, wasCollidable in savedCollisions do
+			if part and part.Parent then
+				part.CanCollide = wasCollidable
+			end
+		end
+		table.clear(savedCollisions)
+	end
+
+	local rollDuration = 0.24
 	local rollStartTime = os.clock()
 	local originalAutoRotate = humanoid.AutoRotate
 	humanoid.AutoRotate = false
 
-	-- 4. Maintain straight forward orientation every frame during slide
+	-- 4. Maintain straight forward orientation & ease-out deceleration curve every frame
 	local rollConn: RBXScriptConnection? = nil
+	local diedConn: RBXScriptConnection? = nil
+
+	local function cleanupDodge()
+		if rollConn then
+			rollConn:Disconnect()
+			rollConn = nil
+		end
+		if diedConn then
+			diedConn:Disconnect()
+			diedConn = nil
+		end
+		if lv and lv.Parent then lv:Destroy() end
+		if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
+		restoreCollisions()
+		CombatDodge.isDodging = false
+	end
+
+	diedConn = humanoid.Died:Connect(cleanupDodge)
+
 	rollConn = RunService.RenderStepped:Connect(function()
 		local elapsed = os.clock() - rollStartTime
 		local progress = math.clamp(elapsed / rollDuration, 0, 1)
+
+		-- Ease-out deceleration from 72 down to 22 studs/s
+		local easeOut = 1 - (1 - progress) * (1 - progress)
+		local currentSpeed = initialSpeed - ((initialSpeed - finalSpeed) * easeOut)
+		if lv and lv.Parent then
+			lv.VectorVelocity = flatDir * currentSpeed
+		end
 
 		if rootPart and rootPart.Parent then
 			rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + camLookFlat)
 		end
 
 		if progress >= 1 or not character.Parent or humanoid.Health <= 0 then
-			if rollConn then rollConn:Disconnect() end
-			if lv and lv.Parent then lv:Destroy() end
-			if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
-			CombatDodge.isDodging = false
+			cleanupDodge()
 		end
 	end)
 

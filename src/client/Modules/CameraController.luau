@@ -16,10 +16,24 @@ local GrappleConfig = require(Shared:WaitForChild("GrappleConfig"))
 
 local CameraController = {
 	isCombatLocked = false,
+	isUIMode = false,
 }
 
 function CameraController.setCombatLocked(locked: boolean)
 	CameraController.isCombatLocked = locked
+end
+
+function CameraController.setUIMode(enabled: boolean)
+	CameraController.isUIMode = enabled
+	if enabled then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	else
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		if GrappleConfig.Camera.HideCursor then
+			UserInputService.MouseIconEnabled = false
+		end
+	end
 end
 
 -- 🎥 Setup character humanoid camera offset
@@ -31,6 +45,17 @@ end
 -- 🎥 RenderStepped Camera Update (Dynamic FOV & Action Camera)
 function CameraController.update(deltaTime: number, camera: Camera, rootPart: BasePart?, humanoid: Humanoid?, isFreeMoving: boolean)
 	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
+
+	-- 🔓 UI Mode: Release mouse lock so player can freely click menus & phone
+	if CameraController.isUIMode then
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		end
+		if not UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = true
+		end
+		return
+	end
 
 	-- 🔒 Action Camera Shift-Lock: Smoothly keep mouse locked without constant property re-assignment flickering
 	if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then

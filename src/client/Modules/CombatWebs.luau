@@ -20,6 +20,7 @@ local RemotesFolder = ReplicatedStorage:WaitForChild("CombatRemotes")
 local WebPelletRemote = RemotesFolder:WaitForChild("WebPellet") :: RemoteEvent
 local DisarmThrowRemote = RemotesFolder:WaitForChild("DisarmAndThrow") :: RemoteEvent
 local WebStrikeRemote = RemotesFolder:WaitForChild("WebStrike") :: RemoteEvent
+local PropThrowRemote = RemotesFolder:WaitForChild("PropThrowRemote") :: RemoteEvent
 
 local ModulesFolder = script.Parent
 local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
@@ -31,8 +32,10 @@ local CombatWebs = {}
 CombatWebs.lastWebPelletTime = 0
 CombatWebs.lastDisarmTime = 0
 CombatWebs.lastWebStrikeTime = 0
+CombatWebs.lastPropThrowTime = 0
 CombatWebs.isHoldingWebPellet = false
 CombatWebs.isWebStriking = false
+CombatWebs.isYankingProp = false
 CombatWebs.isRightHandWeb = false
 
 --------------------------------------------------------------------------------
@@ -182,6 +185,178 @@ function CombatWebs.performWebDisarm(character: Model, rootPart: BasePart, human
 			FieldOfView = 70,
 		})
 		camTweenOut:Play()
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 2b. 📦 CONTEXTUAL WEB-YANK & PROP THROW (Q Key)
+--------------------------------------------------------------------------------
+
+function CombatWebs.performPropThrow(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera)
+	local now = os.clock()
+	local cooldown = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.Cooldown) or 2.0
+	if (now - CombatWebs.lastPropThrowTime) < cooldown or CombatWebs.isYankingProp then return end
+
+	local propInstance, propPart = CombatReticle.getCurrentThrowable()
+	if not propInstance or not propPart or not propPart.Parent then
+		-- Fallback: If no prop is targeted, check if player is facing an armed enemy to disarm
+		local armedThreat = findEnemyInCone(rootPart, camera, 50, 0.40, true)
+		if armedThreat then
+			CombatWebs.performWebDisarm(character, rootPart, humanoid, camera, false, 0)
+		end
+		return
+	end
+
+	CombatWebs.lastPropThrowTime = now
+	CombatWebs.isYankingProp = true
+	CombatWebs.isHoldingWebPellet = false
+
+	-- Mark as thrown immediately to prevent double-targeting
+	propInstance:SetAttribute("IsThrown", true)
+	propPart:SetAttribute("IsThrown", true)
+
+	-- Find target enemy (primary reticle or nearest cone enemy)
+	local targetEnemy = CombatReticle.getCurrentTarget()
+	if not targetEnemy then
+		targetEnemy = findEnemyInCone(rootPart, camera, 65, 0.25, false)
+	end
+
+	PropThrowRemote:FireServer(propInstance, targetEnemy)
+
+	-- 1. Shoot Dual Web Lines to the Prop
+	local leftAtt = WebVisuals.getHandAttachment(character, false)
+	local rightAtt = WebVisuals.getHandAttachment(character, true)
+
+	local propAtt = propPart:FindFirstChild("WebPropAttachment") :: Attachment?
+	if not propAtt then
+		propAtt = Instance.new("Attachment")
+		propAtt.Name = "WebPropAttachment"
+		propAtt.Position = Vector3.zero
+		propAtt.Parent = propPart
+	end
+
+	local beamL = WebVisuals.createWebBeam(leftAtt, propAtt, rootPart)
+	local beamR = WebVisuals.createWebBeam(rightAtt, propAtt, rootPart)
+	WebVisuals.playWebSound(rootPart)
+
+	-- Athletic pivot and crouch stance
+	local toProp = (propPart.Position - rootPart.Position).Unit
+	local flatToProp = Vector3.new(toProp.X, 0, toProp.Z).Unit
+	rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + flatToProp)
+	rootPart.AssemblyLinearVelocity = Vector3.new(0, 4.0, 0)
+
+	-- Dynamic Camera tension punch
+	local camTweenIn = TweenService:Create(camera, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		FieldOfView = 75,
+	})
+	camTweenIn:Play()
+
+	-- Take physical control of prop
+	propPart.Anchored = true
+	propPart.CanCollide = false
+
+	-- Phase 1: Snatch/Lift off ground to player's right flank apex (0.16s)
+	local sideApex = rootPart.Position + (rootPart.CFrame.RightVector * 3.4) + Vector3.new(0, 3.2, 0) - (rootPart.CFrame.LookVector * 1.0)
+	local yankTween = TweenService:Create(propPart, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		CFrame = CFrame.new(sideApex) * CFrame.Angles(math.rad(25), math.rad(45), math.rad(20)),
+	})
+	yankTween:Play()
+
+	-- Hard safety timeout to release state if character falls or gets interrupted
+	task.delay(0.90, function()
+		if CombatWebs.isYankingProp then
+			if beamL and beamL.Parent then beamL:Destroy() end
+			if beamR and beamR.Parent then beamR:Destroy() end
+			CombatWebs.isYankingProp = false
+		end
+	end)
+
+	yankTween.Completed:Connect(function()
+		if not propPart.Parent or not character.Parent or humanoid.Health <= 0 then
+			if beamL then beamL:Destroy() end
+			if beamR then beamR:Destroy() end
+			CombatWebs.isYankingProp = false
+			return
+		end
+
+		-- Phase 2: 360° Overhead Kinetic Arc (0.26s)
+		local arcDuration = 0.26
+		local arcStart = os.clock()
+		local arcConn: RBXScriptConnection? = nil
+
+		arcConn = RunService.Heartbeat:Connect(function()
+			if not propPart.Parent or not character.Parent or humanoid.Health <= 0 then
+				if arcConn then arcConn:Disconnect() end
+				if beamL and beamL.Parent then beamL:Destroy() end
+				if beamR and beamR.Parent then beamR:Destroy() end
+				CombatWebs.isYankingProp = false
+				return
+			end
+
+			local elapsed = os.clock() - arcStart
+			local progress = math.clamp(elapsed / arcDuration, 0, 1)
+			local phi = progress * math.pi * 2
+
+			local curPlayerPos = rootPart.Position
+			local upVec = rootPart.CFrame.UpVector
+			local rightVec = rootPart.CFrame.RightVector
+			local lookVec = rootPart.CFrame.LookVector
+
+			-- Parametric 360° overhead centrifugal arc
+			local arcPos = curPlayerPos + (upVec * (3.8 + math.sin(phi) * 0.8)) + (rightVec * math.cos(phi) + lookVec * math.sin(phi)) * 3.6
+			propPart.CFrame = CFrame.new(arcPos) * CFrame.Angles(phi * 2.2, phi * 1.6, phi)
+
+			if progress >= 1 then
+				if arcConn then arcConn:Disconnect() end
+				arcConn = nil
+
+				-- Phase 3: Release & Kinetic Slingshot Hurl into Enemy!
+				if beamL then beamL:Destroy() end
+				if beamR then beamR:Destroy() end
+				WebVisuals.playWebSound(rootPart)
+
+				local destPos: Vector3
+				if targetEnemy and targetEnemy.Parent then
+					local eRoot = (targetEnemy:FindFirstChild("HumanoidRootPart") or targetEnemy:FindFirstChild("Torso")) :: BasePart?
+					destPos = eRoot and (eRoot.Position + Vector3.new(0, 0.8, 0)) or (curPlayerPos + lookVec * 45)
+				else
+					destPos = curPlayerPos + lookVec * 45
+				end
+
+				local throwDir = (destPos - propPart.Position).Unit
+				local throwDist = (destPos - propPart.Position).Magnitude
+				local throwSpeed = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.ThrowSpeed) or 125
+				local flightTime = math.clamp(throwDist / throwSpeed, 0.12, 0.32)
+
+				-- Dynamic camera recovery
+				local camTweenOut = TweenService:Create(camera, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					FieldOfView = 70,
+				})
+				camTweenOut:Play()
+
+				-- Spider-Man whip recoil
+				rootPart.AssemblyLinearVelocity = (lookVec * 10) + Vector3.new(0, 1.2, 0)
+
+				-- Kinetic Hurl Tween
+				local hurlTween = TweenService:Create(propPart, TweenInfo.new(flightTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					CFrame = CFrame.new(destPos) * CFrame.Angles(math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360))),
+				})
+				hurlTween:Play()
+
+				hurlTween.Completed:Connect(function()
+					if propPart.Parent then
+						propPart.Anchored = false
+						propPart.CanCollide = true
+						propPart.AssemblyLinearVelocity = throwDir * 22 + Vector3.new(0, 8, 0)
+						propPart.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+
+						WebVisuals.createWeaponImpactSparks(destPos, throwDir)
+						WebVisuals.createImpactSplatVFX(destPos, throwDir)
+					end
+					CombatWebs.isYankingProp = false
+				end)
+			end
+		end)
 	end)
 end
 

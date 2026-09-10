@@ -175,11 +175,64 @@ local function startGroundSlingshot(character: Model, rootPart: BasePart, humano
 	local handLeft = WebVisuals.getHandAttachment(character, false)
 	local handRight = WebVisuals.getHandAttachment(character, true)
 
-	activeWebBeamLeft = WebVisuals.createWebBeam(handLeft, worldLeft, rootPart)
-	activeWebBeamRight = WebVisuals.createWebBeam(handRight, worldRight, rootPart)
+	activeWebBeamLeft = WebVisuals.createWebBeam(handLeft, worldLeft, rootPart, character)
+	activeWebBeamRight = WebVisuals.createWebBeam(handRight, worldRight, rootPart, character)
 
-	local launchVel = (forwardFlat * GrappleConfig.Slingshot.ForwardVelocity) + Vector3.new(0, GrappleConfig.Slingshot.UpwardVelocity, 0)
+	local isVelocitySuit = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
+	local forwardSpeed = GrappleConfig.Slingshot.ForwardVelocity * (if isVelocitySuit then 1.15 else 1.0)
+	local launchVel = (forwardFlat * forwardSpeed) + Vector3.new(0, GrappleConfig.Slingshot.UpwardVelocity, 0)
 	pendulumVelocity = launchVel
+
+	-- 🚀 Velocity Suit Perk: Cyan Rocket Booster Particle Trails on Feet for 1.2s
+	if isVelocitySuit then
+		local function attachBooster(parentPart: BasePart?)
+			if not parentPart then return end
+			local att = Instance.new("Attachment")
+			att.Name = "RocketBoosterAtt"
+			att.Position = Vector3.new(0, -0.6, 0)
+			att.Parent = parentPart
+
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Name = "RocketBoosterTrail"
+			emitter.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 235, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 140, 255)),
+			})
+			emitter.LightEmission = 1.0
+			emitter.LightInfluence = 0
+			emitter.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.7),
+				NumberSequenceKeypoint.new(1, 0.0),
+			})
+			emitter.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.1),
+				NumberSequenceKeypoint.new(1, 1.0),
+			})
+			emitter.Rate = 65
+			emitter.Speed = NumberRange.new(15, 25)
+			emitter.Lifetime = NumberRange.new(0.25, 0.5)
+			emitter.SpreadAngle = Vector2.new(12, 12)
+			emitter.Acceleration = Vector3.new(0, -25, 0)
+			emitter.EmissionDirection = Enum.NormalId.Bottom
+			emitter.Parent = att
+
+			task.delay(1.2, function()
+				if emitter and emitter.Parent then
+					emitter.Enabled = false
+				end
+				task.delay(0.6, function()
+					if att and att.Parent then
+						att:Destroy()
+					end
+				end)
+			end)
+		end
+
+		local leftFoot = (character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg")) :: BasePart?
+		local rightFoot = (character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg")) :: BasePart?
+		attachBooster(leftFoot)
+		attachBooster(rightFoot)
+	end
 
 	if not activeBodyVelocity then
 		activeBodyVelocity = Instance.new("BodyVelocity")
@@ -226,10 +279,12 @@ local function startAirSwing(character: Model, rootPart: BasePart, humanoid: Hum
 
 	local incomingVel = isFreeGliding and glideVelocity or rootPart.AssemblyLinearVelocity
 	local incomingSpeed = incomingVel.Magnitude
+	local isVelocityPerk = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
+	local effectiveMaxSpeed = if isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
 	local startSpeed = math.clamp(
 		math.max(incomingSpeed * 1.05, GrappleConfig.Physics.InitialSwingSpeed),
 		GrappleConfig.Physics.InitialSwingSpeed,
-		GrappleConfig.Physics.MaxSpeed
+		effectiveMaxSpeed
 	)
 
 	local entryY = math.clamp(incomingVel.Y * 0.5, -15, 25)
@@ -260,7 +315,7 @@ local function startAirSwing(character: Model, rootPart: BasePart, humanoid: Hum
 	worldAtt.Parent = Workspace.Terrain
 
 	local playerAtt = WebVisuals.getHandAttachment(character, isRight)
-	local beam = WebVisuals.createWebBeam(playerAtt, worldAtt, rootPart)
+	local beam = WebVisuals.createWebBeam(playerAtt, worldAtt, rootPart, character)
 
 	if isRight then
 		activeWorldAttRight = worldAtt
@@ -397,7 +452,9 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		local theta = math.atan2(forwardRel, verticalDepth)
 
 		local pumpAccel = (isHoldingW and GrappleConfig.Physics.ForwardPumpForce or 25) * deltaTime
-		horizSpeed = math.clamp(horizSpeed + pumpAccel, GrappleConfig.Physics.MinSpeed, GrappleConfig.Physics.MaxSpeed)
+		local isVelocityPerk = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
+		local effectiveMaxSpeed = if isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
+		horizSpeed = math.clamp(horizSpeed + pumpAccel, GrappleConfig.Physics.MinSpeed, effectiveMaxSpeed)
 
 		local targetY = (horizSpeed * math.sin(theta)) + ((isHoldingW and GrappleConfig.Physics.UpwardClimbLift or 35) * 0.4)
 		local currentY = pendulumVelocity.Y
@@ -414,8 +471,8 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		pendulumVelocity = Vector3.new(horizVel.X, newY, horizVel.Z)
 
 		local totalSpeed = pendulumVelocity.Magnitude
-		if totalSpeed > GrappleConfig.Physics.MaxSpeed then
-			pendulumVelocity = pendulumVelocity.Unit * GrappleConfig.Physics.MaxSpeed
+		if totalSpeed > effectiveMaxSpeed then
+			pendulumVelocity = pendulumVelocity.Unit * effectiveMaxSpeed
 		elseif totalSpeed < GrappleConfig.Physics.MinSpeed and totalSpeed > 0.1 then
 			pendulumVelocity = pendulumVelocity.Unit * GrappleConfig.Physics.MinSpeed
 		end
@@ -517,7 +574,7 @@ end)
 --------------------------------------------------------------------------------
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if gameProcessed or CameraController.isUIMode then return end
 
 	if input.UserInputType == (GrappleConfig.Keybinds.Swing or Enum.UserInputType.MouseButton2) then
 		startGrapple()

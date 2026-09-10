@@ -1,14 +1,15 @@
 --!strict
 --[[
 	PoliceRadioHUD.luau
-	Phase 5: Client HUD for Police Radio Scanner & 3D Holographic Waypoints.
+	Spider-Man: Brand New Day — In-Suit Smartphone / Police Radio HUD & Holographic Waypoints.
 	
 	Features:
-	- Atmospheric NYPD Police Scanner Banner with animated audio frequency waves
-	- 3D Holographic Waypoint Beacon with distance calculation (meters & studs)
-	- Off-screen edge clamping & directional pointer arrow
-	- Victory Banner with 0.5s slow-motion freeze and XP/Cash payout display
-	- Co-Op scaling alerts & Van Sabotage cues
+	- 📱 Glassmorphic In-Suit Comm Card (Captain Yuri Dispatch, animated equalizer bars, live call states)
+	- ⌨️ Smooth Typewriter Intel Dialogue (12s presentation of authentic police radio chatter)
+	- 📍 3D Holographic Waypoints with Elevation Tracking (▲ High-Rise / ▼ Street Level / ◆ Level + 360° off-screen edge clamping)
+	- 🎯 Clean Off-Screen Directional Chevron Indicator (Smooth bounds ray-cast, zero text overlap)
+	- 🚨 Angular Marvel Comic Victory Celebration Banner & Dynamic Level-Up Offset
+	- 🛡️ Strictly Typed (--!strict) & Zero Hardcoded Audio Fallbacks
 ]]
 
 local Players = game:GetService("Players")
@@ -25,152 +26,382 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
 local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera") :: Camera
 
-local PoliceRadioHUD = {
-	activeCrimeData = nil,
-	isRadioSpeaking = false,
-	isCrimeActive = false,
+type CrimeData = {
+	Id: string?,
+	Title: string?,
+	PoliceCode: string?,
+	DispatchMessage: string?,
+	Icon: string?,
+	Epicenter: Vector3?,
+	ThemeColor: Color3?,
+	Timeout: number?,
+	RewardXP: number?,
+	RewardCash: number?,
+	ParticipantCount: number?,
+	Reason: string?,
 }
 
--- GUI References
+local PoliceRadioHUD = {
+	activeCrimeData = nil :: CrimeData?,
+	isRadioSpeaking = false,
+	isCrimeActive = false,
+	isRadioMuted = false,
+	isVisorOpen = false,
+}
+
+-- GUI Object References
 local screenGui: ScreenGui? = nil
-local radioBanner: Frame? = nil
-local radioCodeLabel: TextLabel? = nil
-local radioSubtitleLabel: TextLabel? = nil
+
+-- In-Suit Comm Card
+local commCard: Frame? = nil
+local commCardStroke: UIStroke? = nil
+local callerBadge: TextLabel? = nil
+local callerTitleLabel: TextLabel? = nil
+local callStatePill: Frame? = nil
+local callStatePillStroke: UIStroke? = nil
+local callStateDot: Frame? = nil
+local callStateLabel: TextLabel? = nil
+local intelSubheadLabel: TextLabel? = nil
+local intelDialogueLabel: TextLabel? = nil
 local waveContainer: Frame? = nil
 local waveBars: { Frame } = {}
 
+-- 3D Waypoint Marker
 local waypointMarker: Frame? = nil
+local waypointMarkerStroke: UIStroke? = nil
 local waypointIconLabel: TextLabel? = nil
 local waypointTitleLabel: TextLabel? = nil
-local waypointDistanceLabel: TextLabel? = nil
-local waypointArrow: ImageLabel? = nil
+local waypointDistLabel: TextLabel? = nil
+local pointerArrow: ImageLabel? = nil
 
+-- Victory Banner
 local victoryBanner: Frame? = nil
 local victoryTitleLabel: TextLabel? = nil
 local victoryRewardsLabel: TextLabel? = nil
 local victorySubLabel: TextLabel? = nil
+local isVictoryBannerShowing = false
+local lastLevelUpTime = 0
 
--- Holographic Ground Ring
-local activeGroundRing: Part? = nil
+-- 🌌 3D Holographic World Beacon (Insomniac Manhattan Sky Pillar)
+local activeBeaconModel: Model? = nil
+
+local function cleanupWorldBeacon()
+	if activeBeaconModel then
+		activeBeaconModel:Destroy()
+		activeBeaconModel = nil
+	end
+end
+
+local function createWorldBeacon(epicenter: Vector3, themeColor: Color3)
+	cleanupWorldBeacon()
+
+	local model = Instance.new("Model")
+	model.Name = "CrimeHoloBeacon"
+
+	-- 1. Sky Pillar: Glowing neon vertical cylinder rising into the clouds
+	local pillar = Instance.new("Part")
+	pillar.Name = "Pillar"
+	pillar.Shape = Enum.PartType.Cylinder
+	pillar.Size = Vector3.new(300, 2.6, 2.6) -- Cylinder X is height in Roblox!
+	pillar.CFrame = CFrame.new(epicenter + Vector3.new(0, 150, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	pillar.Color = themeColor
+	pillar.Material = Enum.Material.Neon
+	pillar.Transparency = 0.55
+	pillar.Anchored = true
+	pillar.CanCollide = false
+	pillar.CanTouch = false
+	pillar.CanQuery = false
+	pillar.Parent = model
+
+	-- 2. Base Holo Disc / Ground Scanner Ring
+	local ring = Instance.new("Part")
+	ring.Name = "HoloRing"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.3, 26, 26)
+	ring.CFrame = CFrame.new(epicenter + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Color = themeColor
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.60
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanTouch = false
+	ring.CanQuery = false
+	ring.Parent = model
+
+	-- 3. Core Pulse Light
+	local pointLight = Instance.new("PointLight")
+	pointLight.Name = "BeaconLight"
+	pointLight.Color = themeColor
+	pointLight.Brightness = 2.5
+	pointLight.Range = 35
+	pointLight.Parent = ring
+
+	model.Parent = Workspace
+	activeBeaconModel = model
+end
 
 --------------------------------------------------------------------------------
 -- 🎵 AUDIO SYNTHESIS & SFX HELPER
 --------------------------------------------------------------------------------
 
 local function playDispatchSound(soundType: "RadioSquelch" | "Victory" | "Siren")
+	if PoliceRadioHUD.isRadioMuted then return end
+
 	local soundId = ""
 	local volume = 0.8
 	local pitch = 1.0
 
 	if soundType == "RadioSquelch" then
-		soundId = CrimeConfig.Audio and CrimeConfig.Audio.RadioSquelchId or ""
+		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.RadioSquelchId ~= "" and CrimeConfig.Audio.RadioSquelchId) or "rbxassetid://9114223177"
 		pitch = 1.15
 	elseif soundType == "Victory" then
-		soundId = CrimeConfig.Audio and CrimeConfig.Audio.VictoryFanfareId or ""
+		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.VictoryFanfareId ~= "" and CrimeConfig.Audio.VictoryFanfareId) or "rbxassetid://9069609200"
 		volume = 1.0
 	else
-		soundId = CrimeConfig.Audio and CrimeConfig.Audio.DispatchSirenId or ""
+		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.DispatchSirenId ~= "" and CrimeConfig.Audio.DispatchSirenId) or "rbxassetid://6026987989"
 		pitch = 1.0
 	end
 
 	if soundId == "" then return end
 
-	local sound = Instance.new("Sound")
-	sound.Volume = volume
-	sound.PlaybackSpeed = pitch
-	sound.SoundId = soundId
-	sound.Parent = SoundService
-	sound:Play()
+	pcall(function()
+		local sound = Instance.new("Sound")
+		sound.Volume = volume
+		sound.PlaybackSpeed = pitch
+		sound.SoundId = soundId
+		sound.Parent = SoundService
+		sound:Play()
 
-	sound.Ended:Connect(function()
-		sound:Destroy()
+		sound.Ended:Connect(function()
+			sound:Destroy()
+		end)
+		task.delay(4, function()
+			if sound and sound.Parent then sound:Destroy() end
+		end)
 	end)
 end
 
 --------------------------------------------------------------------------------
--- 🎨 PROGRAMMATIC UI GENERATION
+-- 🎨 PROGRAMMATIC GLASSMORPHIC UI GENERATION
 --------------------------------------------------------------------------------
 
 local function createHUD()
 	if PlayerGui:FindFirstChild("PoliceRadioHUD") then
-		PlayerGui:FindFirstChild("PoliceRadioHUD"):Destroy()
+		local existing = PlayerGui:FindFirstChild("PoliceRadioHUD")
+		if existing then existing:Destroy() end
 	end
+
+	waveBars = {}
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "PoliceRadioHUD"
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 15
+	gui.IgnoreGuiInset = true
 
-	-- 📻 1. TOP-CENTER POLICE SCANNER BANNER (Sleek Minimalist HUD)
-	local banner = Instance.new("Frame")
-	banner.Name = "RadioBanner"
-	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, -0.20, 0) -- Hidden above screen
-	banner.Size = UDim2.new(0, 440, 0, 44)
-	banner.BackgroundColor3 = Color3.fromRGB(12, 15, 22)
-	banner.BackgroundTransparency = 0.30
-	banner.BorderSizePixel = 0
-	banner.Parent = gui
+	----------------------------------------------------------------------------
+	-- 📱 1. IN-SUIT GLASSMORPHIC COMM CARD (Dynamic Island Top-Center)
+	----------------------------------------------------------------------------
+	local card = Instance.new("Frame")
+	card.Name = "CommCard"
+	card.AnchorPoint = Vector2.new(0.5, 0)
+	card.Position = UDim2.new(0.5, 0, 0, -120) -- Hidden above top of screen
+	card.Size = UDim2.new(0, 360, 0, 84)
+	card.BackgroundColor3 = Color3.fromRGB(11, 15, 24)
+	card.BackgroundTransparency = 0.15
+	card.BorderSizePixel = 0
+	card.Parent = gui
 
-	local bannerCorner = Instance.new("UICorner")
-	bannerCorner.CornerRadius = UDim.new(0, 10)
-	bannerCorner.Parent = banner
+	local cardCorner = Instance.new("UICorner")
+	cardCorner.CornerRadius = UDim.new(0, 14)
+	cardCorner.Parent = card
 
-	local bannerStroke = Instance.new("UIStroke")
-	bannerStroke.Thickness = 1.2
-	bannerStroke.Color = Color3.fromRGB(255, 65, 65)
-	bannerStroke.Transparency = 0.3
-	bannerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	bannerStroke.Parent = banner
+	local cardStroke = Instance.new("UIStroke")
+	cardStroke.Name = "CardStroke"
+	cardStroke.Thickness = 1.4
+	cardStroke.Color = Color3.fromRGB(65, 195, 255)
+	cardStroke.Transparency = 0.25
+	cardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cardStroke.Parent = card
 
-	-- Dispatch Header Code
-	local codeLabel = Instance.new("TextLabel")
-	codeLabel.Name = "CodeLabel"
-	codeLabel.Position = UDim2.new(0, 16, 0, 4)
-	codeLabel.Size = UDim2.new(1, -32, 0, 16)
-	codeLabel.BackgroundTransparency = 1
-	codeLabel.Font = Enum.Font.GothamBold
-	codeLabel.Text = "📻 NYPD DISPATCH • 10-31 IN PROGRESS"
-	codeLabel.TextColor3 = Color3.fromRGB(255, 85, 85)
-	codeLabel.TextSize = 11
-	codeLabel.TextXAlignment = Enum.TextXAlignment.Left
-	codeLabel.Parent = banner
+	-- Subtle Top Gloss Accent
+	local topGlow = Instance.new("Frame")
+	topGlow.Name = "TopGlow"
+	topGlow.Position = UDim2.new(0, 12, 0, 2)
+	topGlow.Size = UDim2.new(1, -24, 0, 1)
+	topGlow.BackgroundColor3 = Color3.fromRGB(200, 235, 255)
+	topGlow.BackgroundTransparency = 0.55
+	topGlow.BorderSizePixel = 0
+	topGlow.Parent = card
 
-	-- Dispatch Message Subtitle
-	local subtitleLabel = Instance.new("TextLabel")
-	subtitleLabel.Name = "SubtitleLabel"
-	subtitleLabel.Position = UDim2.new(0, 16, 0, 20)
-	subtitleLabel.Size = UDim2.new(1, -32, 0, 18)
-	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Font = Enum.Font.GothamMedium
-	subtitleLabel.Text = "Armed robbery at First National Bank. All units respond."
-	subtitleLabel.TextColor3 = Color3.fromRGB(210, 225, 245)
-	subtitleLabel.TextSize = 11
-	subtitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	subtitleLabel.Parent = banner
+	-- Header Frame
+	local header = Instance.new("Frame")
+	header.Name = "Header"
+	header.Position = UDim2.new(0, 12, 0, 6)
+	header.Size = UDim2.new(1, -24, 0, 22)
+	header.BackgroundTransparency = 1
+	header.Parent = card
 
-	-- 📍 2. 3D HOLOGRAPHIC WAYPOINT BEACON (Clean Compact Pill)
+	-- Caller Avatar Badge
+	local badge = Instance.new("TextLabel")
+	badge.Name = "CallerBadge"
+	badge.Position = UDim2.new(0, 0, 0.5, -10)
+	badge.Size = UDim2.new(0, 20, 0, 20)
+	badge.BackgroundColor3 = Color3.fromRGB(22, 32, 50)
+	badge.BackgroundTransparency = 0.3
+	badge.Font = Enum.Font.GothamBlack
+	badge.Text = "📞"
+	badge.TextSize = 11
+	badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+	badge.Parent = header
+
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(1, 0)
+	badgeCorner.Parent = badge
+
+	local badgeStroke = Instance.new("UIStroke")
+	badgeStroke.Thickness = 1
+	badgeStroke.Color = Color3.fromRGB(80, 200, 255)
+	badgeStroke.Transparency = 0.4
+	badgeStroke.Parent = badge
+
+	-- Caller Title Label
+	local callerTitle = Instance.new("TextLabel")
+	callerTitle.Name = "CallerTitle"
+	callerTitle.Position = UDim2.new(0, 26, 0, 0)
+	callerTitle.Size = UDim2.new(0, 160, 1, 0)
+	callerTitle.BackgroundTransparency = 1
+	callerTitle.Font = Enum.Font.GothamBold
+	callerTitle.Text = "NYPD DISPATCH | CAPT. YURI"
+	callerTitle.TextColor3 = Color3.fromRGB(240, 246, 255)
+	callerTitle.TextSize = 9.5
+	callerTitle.TextXAlignment = Enum.TextXAlignment.Left
+	callerTitle.Parent = header
+
+	-- Live Call State Pill
+	local callPill = Instance.new("Frame")
+	callPill.Name = "CallStatePill"
+	callPill.AnchorPoint = Vector2.new(1, 0.5)
+	callPill.Position = UDim2.new(1, 0, 0.5, 0)
+	callPill.Size = UDim2.new(0, 64, 0, 18)
+	callPill.BackgroundColor3 = Color3.fromRGB(16, 42, 30)
+	callPill.BackgroundTransparency = 0.3
+	callPill.Parent = header
+
+	local pillCorner = Instance.new("UICorner")
+	pillCorner.CornerRadius = UDim.new(0, 6)
+	pillCorner.Parent = callPill
+
+	local pillStroke = Instance.new("UIStroke")
+	pillStroke.Thickness = 1
+	pillStroke.Color = Color3.fromRGB(60, 220, 130)
+	pillStroke.Transparency = 0.45
+	pillStroke.Parent = callPill
+
+	local dot = Instance.new("Frame")
+	dot.Name = "PulsingDot"
+	dot.Position = UDim2.new(0, 6, 0.5, -3)
+	dot.Size = UDim2.new(0, 6, 0, 6)
+	dot.BackgroundColor3 = Color3.fromRGB(75, 245, 140)
+	dot.BorderSizePixel = 0
+	dot.Parent = callPill
+
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(1, 0)
+	dotCorner.Parent = dot
+
+	local callLabel = Instance.new("TextLabel")
+	callLabel.Name = "CallLabel"
+	callLabel.Position = UDim2.new(0, 16, 0, 0)
+	callLabel.Size = UDim2.new(1, -18, 1, 0)
+	callLabel.BackgroundTransparency = 1
+	callLabel.Font = Enum.Font.GothamBold
+	callLabel.Text = "LIVE RADIO"
+	callLabel.TextColor3 = Color3.fromRGB(90, 245, 150)
+	callLabel.TextSize = 8
+	callLabel.Parent = callPill
+
+	-- Audio Waveform Equalizer Container
+	local waves = Instance.new("Frame")
+	waves.Name = "EqualizerContainer"
+	waves.AnchorPoint = Vector2.new(1, 0.5)
+	waves.Position = UDim2.new(1, -70, 0.5, 0)
+	waves.Size = UDim2.new(0, 26, 0, 14)
+	waves.BackgroundTransparency = 1
+	waves.Parent = header
+	waveContainer = waves
+
+	local waveLayout = Instance.new("UIListLayout")
+	waveLayout.FillDirection = Enum.FillDirection.Horizontal
+	waveLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	waveLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	waveLayout.Padding = UDim.new(0, 2)
+	waveLayout.Parent = waves
+
+	for _ = 1, 5 do
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.new(0, 3, 0, 3)
+		bar.BackgroundColor3 = Color3.fromRGB(80, 215, 255)
+		bar.BorderSizePixel = 0
+		bar.Parent = waves
+		local bc = Instance.new("UICorner")
+		bc.CornerRadius = UDim.new(1, 0)
+		bc.Parent = bar
+		table.insert(waveBars, bar)
+	end
+
+	-- Subheader (10-Code & Location Tag)
+	local subhead = Instance.new("TextLabel")
+	subhead.Name = "IntelSubhead"
+	subhead.Position = UDim2.new(0, 12, 0, 28)
+	subhead.Size = UDim2.new(1, -24, 0, 14)
+	subhead.BackgroundTransparency = 1
+	subhead.Font = Enum.Font.GothamBlack
+	subhead.Text = "🚨 10-70 IN PROGRESS • ROOFTOP ARMS DEAL"
+	subhead.TextColor3 = Color3.fromRGB(255, 195, 60)
+	subhead.TextSize = 9.5
+	subhead.TextXAlignment = Enum.TextXAlignment.Left
+	subhead.Parent = card
+
+	-- Body Dialogue (Typewriter Animated Intel)
+	local dialogue = Instance.new("TextLabel")
+	dialogue.Name = "IntelDialogue"
+	dialogue.Position = UDim2.new(0, 12, 0, 44)
+	dialogue.Size = UDim2.new(1, -24, 0, 34)
+	dialogue.BackgroundTransparency = 1
+	dialogue.Font = Enum.Font.GothamMedium
+	dialogue.Text = ""
+	dialogue.TextColor3 = Color3.fromRGB(220, 235, 250)
+	dialogue.TextSize = 10
+	dialogue.TextWrapped = true
+	dialogue.TextXAlignment = Enum.TextXAlignment.Left
+	dialogue.TextYAlignment = Enum.TextYAlignment.Top
+	dialogue.Visible = true
+	dialogue.Parent = card
+
+	----------------------------------------------------------------------------
+	-- 📍 2. 3D HOLOGRAPHIC WAYPOINT BEACON & DISTANCE BADGE
+	----------------------------------------------------------------------------
 	local marker = Instance.new("Frame")
 	marker.Name = "WaypointMarker"
 	marker.AnchorPoint = Vector2.new(0.5, 0.5)
+	marker.Size = UDim2.new(0, 150, 0, 34)
 	marker.Position = UDim2.new(0.5, 0, 0.5, 0)
-	marker.Size = UDim2.new(0, 136, 0, 32)
-	marker.BackgroundColor3 = Color3.fromRGB(12, 16, 24)
-	marker.BackgroundTransparency = 0.35
+	marker.BackgroundColor3 = Color3.fromRGB(12, 16, 26)
+	marker.BackgroundTransparency = 0.18
 	marker.BorderSizePixel = 0
 	marker.Visible = false
 	marker.Parent = gui
 
 	local markerCorner = Instance.new("UICorner")
-	markerCorner.CornerRadius = UDim.new(0, 8)
+	markerCorner.CornerRadius = UDim.new(0, 10)
 	markerCorner.Parent = marker
 
 	local markerStroke = Instance.new("UIStroke")
 	markerStroke.Thickness = 1.2
 	markerStroke.Color = Color3.fromRGB(255, 75, 75)
-	markerStroke.Transparency = 0.3
+	markerStroke.Transparency = 0.20
 	markerStroke.Parent = marker
 
 	local iconLabel = Instance.new("TextLabel")
@@ -186,10 +417,10 @@ local function createHUD()
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
 	titleLabel.Position = UDim2.new(0, 28, 0, 3)
-	titleLabel.Size = UDim2.new(1, -34, 0, 14)
+	titleLabel.Size = UDim2.new(1, -32, 0, 15)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.Text = "BANK HEIST"
+	titleLabel.Text = "ROOFTOP ARMS DEAL"
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.TextSize = 10
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -197,35 +428,37 @@ local function createHUD()
 
 	local distLabel = Instance.new("TextLabel")
 	distLabel.Name = "DistanceLabel"
-	distLabel.Position = UDim2.new(0, 28, 0, 15)
-	distLabel.Size = UDim2.new(1, -34, 0, 13)
+	distLabel.Position = UDim2.new(0, 28, 0, 17)
+	distLabel.Size = UDim2.new(1, -32, 0, 14)
 	distLabel.BackgroundTransparency = 1
-	distLabel.Font = Enum.Font.GothamMedium
-	distLabel.Text = "140m"
+	distLabel.Font = Enum.Font.GothamBlack
+	distLabel.Text = "▲ 53m (High-Rise)"
 	distLabel.TextColor3 = Color3.fromRGB(85, 215, 255)
-	distLabel.TextSize = 10
+	distLabel.TextSize = 9.5
 	distLabel.TextXAlignment = Enum.TextXAlignment.Left
 	distLabel.Parent = marker
 
-	-- Direction Pointer Arrow (For off-screen indicator)
+	-- Directional Pointer Chevron (Outside the pill)
 	local arrow = Instance.new("ImageLabel")
-	arrow.Name = "DirectionArrow"
+	arrow.Name = "PointerArrow"
 	arrow.AnchorPoint = Vector2.new(0.5, 0.5)
-	arrow.Size = UDim2.new(0, 16, 0, 16)
+	arrow.Size = UDim2.new(0, 18, 0, 18)
 	arrow.BackgroundTransparency = 1
-	arrow.Image = "rbxassetid://6031094678" -- Standard Roblox UI Arrow
+	arrow.Image = "rbxassetid://6031094678"
 	arrow.ImageColor3 = Color3.fromRGB(255, 75, 75)
 	arrow.Visible = false
-	arrow.Parent = marker
+	arrow.Parent = gui
 
-	-- 🎉 3. VICTORY CELEBRATION BANNER
+	----------------------------------------------------------------------------
+	-- 🚨 3. VICTORY CELEBRATION BANNER (Stark OS / Marvel Angular Comic Readout)
+	----------------------------------------------------------------------------
 	local vBanner = Instance.new("Frame")
 	vBanner.Name = "VictoryBanner"
-	vBanner.AnchorPoint = Vector2.new(0.5, 0.5)
-	vBanner.Position = UDim2.new(0.5, 0, -0.3, 0)
-	vBanner.Size = UDim2.new(0, 420, 0, 76)
-	vBanner.BackgroundColor3 = Color3.fromRGB(12, 20, 16)
-	vBanner.BackgroundTransparency = 0.25
+	vBanner.AnchorPoint = Vector2.new(0.5, 0)
+	vBanner.Position = UDim2.new(0.5, 0, 0, -100)
+	vBanner.Size = UDim2.new(0, 420, 0, 78)
+	vBanner.BackgroundColor3 = Color3.fromRGB(10, 16, 26)
+	vBanner.BackgroundTransparency = 0.12
 	vBanner.BorderSizePixel = 0
 	vBanner.Parent = gui
 
@@ -235,53 +468,62 @@ local function createHUD()
 
 	local vStroke = Instance.new("UIStroke")
 	vStroke.Thickness = 1.5
-	vStroke.Color = Color3.fromRGB(65, 235, 130)
+	vStroke.Color = Color3.fromRGB(80, 240, 255)
+	vStroke.Transparency = 0.3
 	vStroke.Parent = vBanner
 
 	local vTitle = Instance.new("TextLabel")
 	vTitle.Name = "VictoryTitle"
-	vTitle.Position = UDim2.new(0, 0, 0, 10)
-	vTitle.Size = UDim2.new(1, 0, 0, 26)
+	vTitle.Position = UDim2.new(0, 0, 0, 8)
+	vTitle.Size = UDim2.new(1, 0, 0, 24)
 	vTitle.BackgroundTransparency = 1
 	vTitle.Font = Enum.Font.GothamBlack
-	vTitle.Text = "🎉 CRIME STOPPED!"
-	vTitle.TextColor3 = Color3.fromRGB(75, 245, 140)
-	vTitle.TextSize = 20
+	vTitle.Text = "🚨 SECTOR SECURED"
+	vTitle.TextColor3 = Color3.fromRGB(80, 240, 255)
+	vTitle.TextSize = 19
 	vTitle.Parent = vBanner
 
 	local vRewards = Instance.new("TextLabel")
 	vRewards.Name = "VictoryRewards"
-	vRewards.Position = UDim2.new(0, 0, 0, 46)
-	vRewards.Size = UDim2.new(1, 0, 0, 24)
+	vRewards.Position = UDim2.new(0, 0, 0, 32)
+	vRewards.Size = UDim2.new(1, 0, 0, 22)
 	vRewards.BackgroundTransparency = 1
 	vRewards.Font = Enum.Font.GothamBlack
-	vRewards.Text = "+150 XP   |   +$250 HERO CASH"
+	vRewards.Text = "+$250 HERO CASH   //   +150 XP"
 	vRewards.TextColor3 = Color3.fromRGB(255, 215, 65)
-	vRewards.TextSize = 16
+	vRewards.TextSize = 15
 	vRewards.Parent = vBanner
 
 	local vSub = Instance.new("TextLabel")
 	vSub.Name = "VictorySub"
-	vSub.Position = UDim2.new(0, 0, 0, 70)
-	vSub.Size = UDim2.new(1, 0, 0, 18)
+	vSub.Position = UDim2.new(0, 0, 0, 54)
+	vSub.Size = UDim2.new(1, 0, 0, 16)
 	vSub.BackgroundTransparency = 1
-	vSub.Font = Enum.Font.GothamMedium
-	vSub.Text = "Neighborhood is safe once again."
-	vSub.TextColor3 = Color3.fromRGB(180, 215, 200)
-	vSub.TextSize = 12
+	vSub.Font = Enum.Font.GothamBold
+	vSub.Text = "STREET PATROL ACTIVE • MANHATTAN SAFE"
+	vSub.TextColor3 = Color3.fromRGB(175, 210, 235)
+	vSub.TextSize = 10.5
 	vSub.Parent = vBanner
 
 	gui.Parent = PlayerGui
 
+	-- Store refs
 	screenGui = gui
-	radioBanner = banner
-	radioCodeLabel = codeLabel
-	radioSubtitleLabel = subtitleLabel
+	commCard = card
+	commCardStroke = cardStroke
+	callerBadge = badge
+	callerTitleLabel = callerTitle
+	callStatePill = callPill
+	callStateDot = dot
+	callStateLabel = callLabel
+	intelSubheadLabel = subhead
+	intelDialogueLabel = dialogue
 	waypointMarker = marker
+	waypointMarkerStroke = markerStroke
 	waypointIconLabel = iconLabel
 	waypointTitleLabel = titleLabel
-	waypointDistanceLabel = distLabel
-	waypointArrow = arrow
+	waypointDistLabel = distLabel
+	pointerArrow = arrow
 	victoryBanner = vBanner
 	victoryTitleLabel = vTitle
 	victoryRewardsLabel = vRewards
@@ -289,122 +531,138 @@ local function createHUD()
 end
 
 --------------------------------------------------------------------------------
--- 🌐 HOLOGRAPHIC GROUND RING EFFECT
+-- ⌨️ TYPEWRITER INTEL DIALOGUE (Smooth 12s Speech Sync)
 --------------------------------------------------------------------------------
 
-local function createGroundHologramRing(epicenter: Vector3, themeColor: Color3)
-	if activeGroundRing then
-		activeGroundRing:Destroy()
-		activeGroundRing = nil
+local activeTypewriterToken = 0
+
+local function runTypewriterDialogue(fullText: string, durationSeconds: number)
+	activeTypewriterToken += 1
+	local currentToken = activeTypewriterToken
+	PoliceRadioHUD.isRadioSpeaking = true
+
+	if intelDialogueLabel then
+		intelDialogueLabel.Text = ""
 	end
 
-	local ring = Instance.new("Part")
-	ring.Name = "HoloGroundRing"
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.4, 45, 45)
-	ring.CFrame = CFrame.new(epicenter + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	ring.Color = themeColor
-	ring.Material = Enum.Material.Neon
-	ring.Transparency = 0.65
-	ring.CanCollide = false
-	ring.Anchored = true
-	ring.Parent = Workspace
+	local textLen = string.len(fullText)
+	if textLen == 0 then
+		PoliceRadioHUD.isRadioSpeaking = false
+		return
+	end
 
-	activeGroundRing = ring
+	local stepDelay = math.clamp(durationSeconds / textLen, 0.015, 0.065)
 
-	-- Pulsing effect
 	task.spawn(function()
-		while ring.Parent do
-			local t1 = TweenService:Create(ring, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-				Transparency = 0.85,
-				Size = Vector3.new(0.4, 52, 52),
-			})
-			t1:Play()
-			t1.Completed:Wait()
-			if not ring.Parent then break end
-			local t2 = TweenService:Create(ring, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-				Transparency = 0.55,
-				Size = Vector3.new(0.4, 42, 42),
-			})
-			t2:Play()
-			t2.Completed:Wait()
+		for i = 1, textLen do
+			if currentToken ~= activeTypewriterToken then break end
+			if intelDialogueLabel then
+				intelDialogueLabel.Text = string.sub(fullText, 1, i)
+			end
+			task.wait(stepDelay)
+		end
+
+		if currentToken == activeTypewriterToken then
+			task.wait(1.5)
+			if currentToken == activeTypewriterToken then
+				PoliceRadioHUD.isRadioSpeaking = false
+			end
 		end
 	end)
 end
 
 --------------------------------------------------------------------------------
--- 📢 EVENT HANDLERS & DISPATCH SEQUENCES
+-- 🚨 CRIME SPAWNED & RADAR BEACON ACTIVATION
 --------------------------------------------------------------------------------
 
--- 🚨 Display Police Dispatch Broadcast
-function PoliceRadioHUD.onCrimeSpawned(data: any)
+function PoliceRadioHUD.onCrimeSpawned(data: CrimeData)
 	PoliceRadioHUD.activeCrimeData = data
 	PoliceRadioHUD.isCrimeActive = true
-	PoliceRadioHUD.isRadioSpeaking = true
 
-	if not screenGui or not radioBanner then
+	if not screenGui or not commCard then
 		createHUD()
 	end
 
-	if radioBanner and radioCodeLabel and radioSubtitleLabel and waypointIconLabel and waypointTitleLabel then
-		radioCodeLabel.Text = string.format("📻 NYPD DISPATCH [%s]", string.upper(data.PoliceCode or "10-31 IN PROGRESS"))
-		radioSubtitleLabel.Text = data.DispatchMessage or "Units respond immediately to active incident..."
+	local themeColor = data.ThemeColor or Color3.fromRGB(255, 75, 75)
+
+	if commCard and intelSubheadLabel and commCardStroke and waypointIconLabel and waypointTitleLabel then
+		local pCode = string.upper(data.PoliceCode or "10-31 IN PROGRESS")
+		local cTitle = string.upper(data.Title or "ACTIVE CRIME")
+		intelSubheadLabel.Text = string.format("%s %s • %s", data.Icon or "🚨", pCode, cTitle)
+		intelSubheadLabel.TextColor3 = themeColor
+
+		commCardStroke.Color = themeColor
+
 		waypointIconLabel.Text = data.Icon or "🚨"
-		waypointTitleLabel.Text = string.upper(data.Title or "ACTIVE CRIME")
+		waypointTitleLabel.Text = cTitle
 
-		local stroke = radioBanner:FindFirstChildOfClass("UIStroke")
-		if stroke and data.ThemeColor then
-			stroke.Color = data.ThemeColor
+		if waypointMarker and waypointMarkerStroke then
+			waypointMarkerStroke.Color = themeColor
+			waypointMarker.Visible = not PoliceRadioHUD.isVisorOpen
 		end
 
-		if waypointMarker then
-			local wpStroke = waypointMarker:FindFirstChildOfClass("UIStroke")
-			if wpStroke and data.ThemeColor then
-				wpStroke.Color = data.ThemeColor
-			end
-			waypointMarker.Visible = true
+		if pointerArrow then
+			pointerArrow.ImageColor3 = themeColor
+			pointerArrow.Visible = not PoliceRadioHUD.isVisorOpen
 		end
 
-		-- Play sound
-		playDispatchSound("RadioSquelch")
-
-		-- Slide Down Animation
-		radioBanner.Position = UDim2.new(0.5, 0, -0.25, 0)
-		local slideIn = TweenService:Create(radioBanner, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, 0, 0.04, 0),
-		})
-		slideIn:Play()
-
-		-- Spawn ground hologram
+		-- 3D Sky Beacon at Epicenter
 		if data.Epicenter then
-			createGroundHologramRing(data.Epicenter, data.ThemeColor or Color3.fromRGB(255, 60, 60))
+			createWorldBeacon(data.Epicenter, themeColor)
 		end
 
-		-- Keep banner on screen for 6.5s then slide up
-		task.delay(6.5, function()
-			PoliceRadioHUD.isRadioSpeaking = false
-			if radioBanner then
-				local slideOut = TweenService:Create(radioBanner, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Position = UDim2.new(0.5, 0, -0.25, 0),
-				})
-				slideOut:Play()
-			end
-		end)
+		if not PoliceRadioHUD.isRadioMuted and not PoliceRadioHUD.isVisorOpen then
+			-- Play radio squelch
+			playDispatchSound("RadioSquelch")
+
+			-- Slide In Comm Card from Top Center (Dynamic Island style)
+			commCard.Visible = true
+			commCard.Position = UDim2.new(0.5, 0, 0, -120)
+			local slideIn = TweenService:Create(commCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Position = UDim2.new(0.5, 0, 0, 20),
+			})
+			slideIn:Play()
+
+			-- Begin Typewriter Dialogue
+			local intelMsg = data.DispatchMessage or "Spider-Man, active incident in progress! Move to intercept immediately."
+			task.spawn(function()
+				runTypewriterDialogue(intelMsg, 4.5)
+			end)
+
+			-- 🕒 Auto-Dismiss after 7.5 seconds (tucks cleanly back into bezel!)
+			task.delay(7.5, function()
+				if commCard and PoliceRadioHUD.isCrimeActive then
+					local slideOut = TweenService:Create(commCard, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+						Position = UDim2.new(0.5, 0, 0, -120),
+					})
+					slideOut:Play()
+				end
+			end)
+		end
 	end
 end
 
--- 🎉 Display Victory Banner & Rewards Payout
-function PoliceRadioHUD.onCrimeCleared(data: any)
+-- 🚨 Display Victory Banner & Rewards Payout (Task 4)
+function PoliceRadioHUD.onCrimeCleared(data: CrimeData)
 	PoliceRadioHUD.isCrimeActive = false
 	PoliceRadioHUD.activeCrimeData = nil
+	PoliceRadioHUD.isRadioSpeaking = false
+	activeTypewriterToken += 1
 
-	if activeGroundRing then
-		activeGroundRing:Destroy()
-		activeGroundRing = nil
-	end
+	cleanupWorldBeacon()
 
 	if waypointMarker then
 		waypointMarker.Visible = false
+	end
+	if pointerArrow then
+		pointerArrow.Visible = false
+	end
+
+	-- Dismiss comm card immediately if open
+	if commCard then
+		TweenService:Create(commCard, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0, -120),
+		}):Play()
 	end
 
 	if not screenGui or not victoryBanner then
@@ -416,20 +674,19 @@ function PoliceRadioHUD.onCrimeCleared(data: any)
 		local cash = data.RewardCash or 250
 		local pCount = data.ParticipantCount or 1
 
-		victoryTitleLabel.Text = "🎉 CRIME STOPPED!"
-		victoryRewardsLabel.Text = string.format("+%d XP   |   +$%d HERO CASH", xp, cash)
+		victoryTitleLabel.Text = "🚨 SECTOR SECURED"
+		victoryRewardsLabel.Text = string.format("+$%d HERO CASH   //   +%d XP", cash, xp)
 
 		if pCount > 1 then
-			victorySubLabel.Text = string.format("🤝 Co-Op Squad Victory! (%d Spider-Heroes +%d%% Team Bonus)", pCount, (pCount - 1) * 25)
+			victorySubLabel.Text = string.format("CO-OP SQUAD VICTORY • %d HEROES (+%d%% TEAM BONUS)", pCount, (pCount - 1) * 25)
 		else
-			victorySubLabel.Text = "Neighborhood is safe once again."
+			victorySubLabel.Text = "STREET PATROL ACTIVE • MANHATTAN SAFE"
 		end
 
 		playDispatchSound("Victory")
 
 		-- Tactile Slow-Motion Impact
 		task.spawn(function()
-			-- Micro slow-down effect for punchy reward feeling
 			local char = LocalPlayer.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
 			if hum then
@@ -442,19 +699,29 @@ function PoliceRadioHUD.onCrimeCleared(data: any)
 			end
 		end)
 
-		-- Victory Banner Pop-In Animation
-		victoryBanner.Position = UDim2.new(0.5, 0, -0.3, 0)
-		victoryBanner.Size = UDim2.new(0, 420, 0, 76)
+		-- Detect active Level-Up fanfare to stack cleanly without overlap
+		local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+		local isLevelUpActive = (playerGui and playerGui:FindFirstChild("LevelUpFanfareGui") ~= nil) or ((os.clock() - lastLevelUpTime) < 3.5)
+
+		local targetY = if isLevelUpActive then 140 else 38
+		local targetPos = UDim2.new(0.5, 0, 0, targetY)
+
+		isVictoryBannerShowing = true
+		victoryBanner.AnchorPoint = Vector2.new(0.5, 0)
+		victoryBanner.Position = UDim2.new(0.5, 0, 0, -100)
+		victoryBanner.Size = UDim2.new(0, 420, 0, 78)
+
 		local popIn = TweenService:Create(victoryBanner, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, 0, 0.14, 0),
+			Position = targetPos,
 		})
 		popIn:Play()
 
 		-- Dismiss after 4.5s
 		task.delay(4.5, function()
 			if victoryBanner then
+				isVictoryBannerShowing = false
 				local popOut = TweenService:Create(victoryBanner, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Position = UDim2.new(0.5, 0, -0.3, 0),
+					Position = UDim2.new(0.5, 0, 0, -100),
 				})
 				popOut:Play()
 			end
@@ -462,88 +729,253 @@ function PoliceRadioHUD.onCrimeCleared(data: any)
 	end
 end
 
--- ❌ Crime Expired/Failed
-function PoliceRadioHUD.onCrimeFailed(data: any)
+-- ❌ Crime Expired / Failed
+function PoliceRadioHUD.onCrimeFailed(_data: CrimeData)
 	PoliceRadioHUD.isCrimeActive = false
 	PoliceRadioHUD.activeCrimeData = nil
+	PoliceRadioHUD.isRadioSpeaking = false
+	activeTypewriterToken += 1
 
-	if activeGroundRing then
-		activeGroundRing:Destroy()
-		activeGroundRing = nil
-	end
+	cleanupWorldBeacon()
 
 	if waypointMarker then
 		waypointMarker.Visible = false
 	end
+	if pointerArrow then
+		pointerArrow.Visible = false
+	end
+
+	if commCard then
+		TweenService:Create(commCard, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0, -120),
+		}):Play()
+	end
+end
+
+-- 📱 Interface Isolation: Hide dispatch HUD when Spider-Visor OS is open
+function PoliceRadioHUD.setVisorOpen(isOpen: boolean)
+	PoliceRadioHUD.isVisorOpen = isOpen
+	if commCard then
+		commCard.Visible = not isOpen
+	end
+	if waypointMarker then
+		waypointMarker.Visible = not isOpen and PoliceRadioHUD.isCrimeActive
+	end
+	if pointerArrow then
+		pointerArrow.Visible = not isOpen and PoliceRadioHUD.isCrimeActive
+	end
 end
 
 --------------------------------------------------------------------------------
--- 🔄 RENDERSTEPPED LOOP (3D Waypoint Tracking, Distance & Waveform Animation)
+-- 🧭 MATHEMATICAL 3D TO SCREEN CLAMPING WITH SMOOTH BOUNDS INTERSECTION (Task 3)
+--------------------------------------------------------------------------------
+
+local function calculateScreenPoint(targetWorldPos: Vector3, margin: number, topMargin: number?): (Vector2, boolean, number, Vector2)
+	local curCam = Workspace.CurrentCamera or Camera
+	local screenPos, onScreen = curCam:WorldToViewportPoint(targetWorldPos)
+	local viewportSize = curCam.ViewportSize
+	local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+	local actualTopMargin = topMargin or margin
+
+	if onScreen and screenPos.Z > 0 then
+		local clampedY = math.clamp(screenPos.Y, actualTopMargin, math.max(actualTopMargin + 20, viewportSize.Y - margin))
+		return Vector2.new(screenPos.X, clampedY), true, 0, Vector2.zero
+	end
+
+	-- Behind camera or outside viewport bounds
+	local toTarget = targetWorldPos - curCam.CFrame.Position
+	local forward = curCam.CFrame.LookVector
+	local isBehind = forward:Dot(toTarget) < 0 or screenPos.Z < 0
+
+	local rawDir = Vector2.new(screenPos.X - center.X, screenPos.Y - center.Y)
+	if isBehind then
+		rawDir = -rawDir
+	end
+
+	local dir = rawDir.Magnitude > 0.001 and rawDir.Unit or Vector2.new(0, -1)
+
+	local safeHalfW = math.max(20, (viewportSize.X / 2) - margin)
+	local safeHalfH = math.max(20, (viewportSize.Y / 2) - actualTopMargin)
+
+	local scaleX = math.abs(dir.X) > 0.0001 and (safeHalfW / math.abs(dir.X)) or 1e6
+	local scaleY = math.abs(dir.Y) > 0.0001 and (safeHalfH / math.abs(dir.Y)) or 1e6
+	local scale = math.min(scaleX, scaleY)
+
+	local clampedPos = center + (dir * scale)
+	local finalY = math.clamp(clampedPos.Y, actualTopMargin, math.max(actualTopMargin + 20, viewportSize.Y - margin))
+	local angleDeg = math.deg(math.atan2(dir.Y, dir.X)) + 90
+
+	return Vector2.new(clampedPos.X, finalY), false, angleDeg, dir
+end
+
+--------------------------------------------------------------------------------
+-- 🔄 RENDERSTEPPED LOOP (3D Waypoint Tracking, Elevation & Equalizer Waveform)
 --------------------------------------------------------------------------------
 
 RunService.RenderStepped:Connect(function()
 	local now = os.clock()
 
-	-- 1. Animated Radio Waveform Bars
-	if PoliceRadioHUD.isRadioSpeaking and #waveBars > 0 then
-		for idx, bar in waveBars do
-			local height = 4 + (math.abs(math.sin(now * 14 + (idx * 0.8))) * 18)
-			bar.Size = UDim2.new(0, 3, 0, height)
+	-- 1. Animated Radio Waveform Bars (Dynamic Equalizer)
+	if #waveBars > 0 then
+		if PoliceRadioHUD.isRadioSpeaking then
+			for idx, bar in waveBars do
+				local freq = math.abs(math.sin((now * 16) + (idx * 0.9))) * 11 + 3
+				bar.Size = UDim2.new(0, 3, 0, freq)
+			end
+		else
+			for _, bar in waveBars do
+				bar.Size = UDim2.new(0, 3, 0, 3)
+			end
 		end
 	end
 
-	-- 2. 3D Holographic Waypoint Projection & Screen Clamping
+	-- 2. 3D Holographic Waypoint Projection with Elevation Tracking & Smooth Edge Clamping (Task 3)
 	if PoliceRadioHUD.isCrimeActive and PoliceRadioHUD.activeCrimeData and waypointMarker then
-		local epicenter: Vector3 = PoliceRadioHUD.activeCrimeData.Epicenter
+		local epicenter = PoliceRadioHUD.activeCrimeData.Epicenter
 		if not epicenter then return end
 
 		local char = LocalPlayer.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local distStuds = root and (root.Position - epicenter).Magnitude or 100
+		local playerPos = root and root.Position or Vector3.zero
+
+		local distStuds = (playerPos - epicenter).Magnitude
 		local distMeters = math.floor(distStuds / 3)
 
-		if waypointDistanceLabel then
-			waypointDistanceLabel.Text = string.format("%dm (%d studs)", distMeters, math.floor(distStuds))
+		-- Elevation Tracking
+		local deltaY = epicenter.Y - playerPos.Y
+		local elevationSymbol = "◆"
+		local elevationDesc = "Level"
+
+		if deltaY > 18 then
+			elevationSymbol = "▲"
+			elevationDesc = "High-Rise"
+		elseif deltaY < -18 then
+			elevationSymbol = "▼"
+			elevationDesc = "Street"
 		end
 
-		-- Project world point to 2D screen coordinate
-		local targetWorldPos = epicenter + Vector3.new(0, 10, 0)
-		local screenPos, onScreen = Camera:WorldToViewportPoint(targetWorldPos)
+		-- Detect if commCard is displayed (Task 3)
+		local isCommCardVisible = (commCard ~= nil and commCard.Position.Y.Offset > 0)
+		local isDistant = distMeters > 90
 
-		local viewportSize = Camera.ViewportSize
-		local margin = 70
-
-		if onScreen and screenPos.Z > 0 then
-			-- On-screen: Position smoothly above the crime scene
-			waypointMarker.Position = UDim2.new(0, screenPos.X, 0, screenPos.Y)
-			if waypointArrow then waypointArrow.Visible = false end
-		else
-			-- Off-screen: Clamp to edge of screen with pointing arrow
-			local center = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
-			local dir = (Vector2.new(screenPos.X, screenPos.Y) - center)
-			if screenPos.Z < 0 then
-				dir = -dir -- Flip when behind camera
+		if isCommCardVisible then
+			-- Suppress redundant title when Yuri Dispatch card is active on screen! (Task 3)
+			if waypointTitleLabel and waypointTitleLabel.Visible then
+				waypointTitleLabel.Visible = false
 			end
+			waypointMarker.Size = UDim2.new(0, 114, 0, 26)
+			waypointMarker.BackgroundTransparency = 0.22
+			if waypointMarkerStroke then
+				waypointMarkerStroke.Transparency = 0.25
+			end
+			if waypointIconLabel then
+				waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -8)
+				waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
+				waypointIconLabel.TextSize = 12
+			end
+			if waypointDistLabel then
+				waypointDistLabel.Position = UDim2.new(0, 24, 0, 0)
+				waypointDistLabel.Size = UDim2.new(1, -28, 1, 0)
+				waypointDistLabel.TextSize = 10
+				waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
+			end
+		elseif isDistant then
+			if waypointTitleLabel and waypointTitleLabel.Visible then
+				waypointTitleLabel.Visible = false
+			end
+			waypointMarker.Size = UDim2.new(0, 68, 0, 24)
+			waypointMarker.BackgroundTransparency = 0.35
+			if waypointMarkerStroke then
+				waypointMarkerStroke.Transparency = 0.45
+			end
+			if waypointIconLabel then
+				waypointIconLabel.Position = UDim2.new(0, 4, 0.5, -8)
+				waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
+				waypointIconLabel.TextSize = 11
+			end
+			if waypointDistLabel then
+				waypointDistLabel.Position = UDim2.new(0, 22, 0, 0)
+				waypointDistLabel.Size = UDim2.new(1, -24, 1, 0)
+				waypointDistLabel.TextSize = 10
+				waypointDistLabel.Text = string.format("%s %dm", elevationSymbol, distMeters)
+			end
+		else
+			if waypointTitleLabel and not waypointTitleLabel.Visible then
+				waypointTitleLabel.Visible = true
+			end
+			waypointMarker.Size = UDim2.new(0, 150, 0, 34)
+			waypointMarker.BackgroundTransparency = 0.18
+			if waypointMarkerStroke then
+				waypointMarkerStroke.Transparency = 0.20
+			end
+			if waypointIconLabel then
+				waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -9)
+				waypointIconLabel.Size = UDim2.new(0, 18, 0, 18)
+				waypointIconLabel.TextSize = 13
+			end
+			if waypointDistLabel then
+				waypointDistLabel.Position = UDim2.new(0, 28, 0, 17)
+				waypointDistLabel.Size = UDim2.new(1, -32, 0, 14)
+				waypointDistLabel.TextSize = 9.5
+				waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
+			end
+		end
 
-			local marginX = math.min(margin, viewportSize.X * 0.4)
-			local marginY = math.min(margin, viewportSize.Y * 0.4)
-			local minX = marginX
-			local maxX = math.max(viewportSize.X - marginX, minX + 1)
-			local minY = marginY
-			local maxY = math.max(viewportSize.Y - marginY, minY + 1)
+		if waypointDistLabel then
+			if deltaY > 18 then
+				waypointDistLabel.TextColor3 = Color3.fromRGB(255, 195, 60)
+			elseif deltaY < -18 then
+				waypointDistLabel.TextColor3 = Color3.fromRGB(255, 95, 95)
+			else
+				waypointDistLabel.TextColor3 = Color3.fromRGB(85, 220, 255)
+			end
+		end
 
-			local targetX = (viewportSize.X / 2) + (dir.X * math.max(viewportSize.X / 2 - marginX, 1))
-			local targetY = (viewportSize.Y / 2) + (dir.Y * math.max(viewportSize.Y / 2 - marginY, 1))
+		-- Target World Anchor (Head height over crime scene)
+		local targetWorldPos = epicenter + Vector3.new(0, 6.5, 0)
+		-- Top Margin Clamp: 135 when Yuri card is active, 90 otherwise (Task 3)
+		local topMargin = if isCommCardVisible then 135 else 90
+		local screenPos2D, onScreen, angleDeg, dirVector = calculateScreenPoint(targetWorldPos, 90, topMargin)
 
-			local clampedX = math.clamp(targetX, minX, maxX)
-			local clampedY = math.clamp(targetY, minY, maxY)
+		-- Position the main pill
+		waypointMarker.Position = UDim2.new(0, screenPos2D.X, 0, screenPos2D.Y)
+		waypointMarker.Visible = true
 
-			waypointMarker.Position = UDim2.new(0, clampedX, 0, clampedY)
+		if pointerArrow then
+			if onScreen then
+				-- When looking straight at the objective, hide the directional arrow
+				pointerArrow.Visible = false
+			else
+				-- When off-screen, show the arrow floating cleanly outside the pill pointing to the target!
+				pointerArrow.Visible = true
+				pointerArrow.Position = UDim2.new(0, screenPos2D.X + (dirVector.X * 32), 0, screenPos2D.Y + (dirVector.Y * 24))
+				pointerArrow.Rotation = angleDeg
+			end
+		end
+	end
 
-			if waypointArrow then
-				waypointArrow.Visible = true
-				local angleRad = math.atan2(dir.Y, dir.X)
-				waypointArrow.Rotation = math.deg(angleRad) + 90
+	-- 3. World Beacon Distance Proximity Fade (Smoothly dissolves when arriving at crime fight)
+	if activeBeaconModel and PoliceRadioHUD.activeCrimeData and PoliceRadioHUD.activeCrimeData.Epicenter then
+		local char = LocalPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			local dist = (root.Position - PoliceRadioHUD.activeCrimeData.Epicenter).Magnitude
+			local pillar = activeBeaconModel:FindFirstChild("Pillar") :: BasePart?
+			local ring = activeBeaconModel:FindFirstChild("HoloRing") :: BasePart?
+			if dist < 45 then
+				if pillar and pillar.Transparency < 0.98 then
+					pillar.Transparency = math.clamp(pillar.Transparency + 0.08, 0, 1)
+				end
+				if ring and ring.Transparency < 0.98 then
+					ring.Transparency = math.clamp(ring.Transparency + 0.08, 0, 1)
+				end
+			else
+				if pillar and pillar.Transparency > 0.55 then
+					pillar.Transparency = math.clamp(pillar.Transparency - 0.08, 0.55, 1)
+				end
+				if ring and ring.Transparency > 0.60 then
+					ring.Transparency = math.clamp(ring.Transparency - 0.08, 0.60, 1)
+				end
 			end
 		end
 	end
@@ -560,43 +992,54 @@ function PoliceRadioHUD.init()
 	local notificationRemote = remotesFolder:WaitForChild("CrimeNotification") :: RemoteEvent
 
 	notificationRemote.OnClientEvent:Connect(function(eventType: string, data: any)
-		if eventType == "CrimeSpawned" then
-			PoliceRadioHUD.onCrimeSpawned(data)
+		if eventType == "LevelUp" then
+			lastLevelUpTime = os.clock()
+			-- If Victory Banner is already active on screen, slide it down smoothly so it doesn't overlap
+			if victoryBanner and isVictoryBannerShowing then
+				TweenService:Create(victoryBanner, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Position = UDim2.new(0.5, 0, 0, 140),
+				}):Play()
+			end
+		elseif eventType == "CrimeSpawned" then
+			PoliceRadioHUD.onCrimeSpawned(data :: CrimeData)
 		elseif eventType == "CrimeCleared" then
-			PoliceRadioHUD.onCrimeCleared(data)
+			PoliceRadioHUD.onCrimeCleared(data :: CrimeData)
 		elseif eventType == "CrimeFailed" then
-			PoliceRadioHUD.onCrimeFailed(data)
+			PoliceRadioHUD.onCrimeFailed(data :: CrimeData)
 		elseif eventType == "CoOpScaleActive" then
-			if radioBanner and radioCodeLabel and radioSubtitleLabel then
-				radioCodeLabel.Text = "🤝 MULTI-HERO CO-OP ACTIVE!"
-				radioCodeLabel.TextColor3 = Color3.fromRGB(85, 235, 255)
-				radioSubtitleLabel.Text = string.format("%d Spider-Heroes in combat! Enemies reinforced +25%% Team Rewards!", data or 2)
-				radioBanner.Position = UDim2.new(0.5, 0, -0.25, 0)
-				local slide = TweenService:Create(radioBanner, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Position = UDim2.new(0.5, 0, 0.04, 0),
-				})
-				slide:Play()
+			-- Alert toast
+			if commCard and intelSubheadLabel then
+				intelSubheadLabel.Text = "🤝 CO-OP ACTIVE • +25% BONUS"
+				intelSubheadLabel.TextColor3 = Color3.fromRGB(85, 235, 255)
+
+				commCard.Position = UDim2.new(0.5, 0, 0, -80)
+				TweenService:Create(commCard, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					Position = UDim2.new(0.5, 0, 0, 20),
+				}):Play()
+
 				task.delay(4.0, function()
-					if radioBanner then
-						TweenService:Create(radioBanner, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-							Position = UDim2.new(0.5, 0, -0.25, 0),
+					if commCard then
+						TweenService:Create(commCard, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+							Position = UDim2.new(0.5, 0, 0, -80),
 						}):Play()
 					end
 				end)
 			end
 		elseif eventType == "VanDisabled" then
-			if radioBanner and radioCodeLabel and radioSubtitleLabel then
-				radioCodeLabel.Text = "⚡ GETAWAY VAN DISABLED!"
-				radioCodeLabel.TextColor3 = Color3.fromRGB(255, 205, 50)
-				radioSubtitleLabel.Text = "Suspects bailing out to fight! Neutralize all hostiles!"
-				radioBanner.Position = UDim2.new(0.5, 0, -0.25, 0)
-				TweenService:Create(radioBanner, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Position = UDim2.new(0.5, 0, 0.04, 0),
+			if commCard and intelSubheadLabel and intelDialogueLabel then
+				intelSubheadLabel.Text = "⚡ GETAWAY VAN ENGINE DISABLED!"
+				intelSubheadLabel.TextColor3 = Color3.fromRGB(255, 205, 50)
+				intelDialogueLabel.Text = "Great work! Suspects are bailing out of the vehicle. Neutralize all remaining hostiles to secure the stolen tech!"
+
+				commCard.Position = UDim2.new(0.5, 0, 0, -80)
+				TweenService:Create(commCard, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					Position = UDim2.new(0.5, 0, 0, 20),
 				}):Play()
-				task.delay(3.5, function()
-					if radioBanner then
-						TweenService:Create(radioBanner, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-							Position = UDim2.new(0.5, 0, -0.25, 0),
+
+				task.delay(4.0, function()
+					if commCard then
+						TweenService:Create(commCard, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+							Position = UDim2.new(0.5, 0, 0, -80),
 						}):Play()
 					end
 				end)
