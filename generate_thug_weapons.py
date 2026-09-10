@@ -1182,8 +1182,8 @@ def export_asset(obj, filepath):
         use_selection=True,
         object_types={'MESH'},
         global_scale=1.0,
-        apply_unit_scale=True,
-        apply_scale_options='FBX_SCALE_UNITS',
+        apply_unit_scale=False,
+        apply_scale_options='FBX_SCALE_NONE',
         use_space_transform=True,
         bake_space_transform=False,
         axis_forward='-Z',
@@ -1231,17 +1231,17 @@ def main():
 
     scene = bpy.context.scene
     scene.unit_settings.system = 'METRIC'
-    scene.unit_settings.scale_length = STUD_METERS
+    scene.unit_settings.scale_length = 1.0
     scene.unit_settings.length_unit = 'METERS'
 
     create_materials()
 
     roster = [
-        ("baseball_bat", build_bat,    'Z', 3.2),
-        ("crowbar",      build_crowbar, 'Z', 2.8),
-        ("combat_knife", build_knife,   'Z', 1.3),
-        ("handgun",      build_pistol,  'X', 1.0),
-        ("riot_shield",  build_shield,  'Z', 4.0),
+        ("baseball_bat", build_bat,    'Z', 4.2),
+        ("crowbar",      build_crowbar, 'Z', 3.6),
+        ("combat_knife", build_knife,   'Z', 2.0),
+        ("handgun",      build_pistol,  'X', 1.5),
+        ("riot_shield",  build_shield,  'Z', 5.4),
     ]
 
     manifest = {

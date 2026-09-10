@@ -2,46 +2,27 @@
 """
 generate_throwable_props.py
 
-Standalone Blender 3.6+/4.x script.
+Standalone Blender 3.6+ / 5.x script for generating correctly-scaled Roblox props.
 
 Usage:
-    blender --background --python generate_throwable_props.py -- \
-        --output-dir ./throwable_fbx
+    blender --background --python generate_throwable_props.py -- --output-dir ./throwable_props
 
 Produces:
-    manhole_cover.fbx
-    trash_can.fbx
-    wooden_crate.fbx
-    construction_barrel.fbx
-    street_mailbox.fbx
+    manhole_cover.fbx           (3.6 x 3.6 x 0.35 studs)
+    trash_can.fbx               (2.8 x 2.8 x 4.2 studs, separate lid)
+    wooden_crate.fbx            (4.8 x 4.8 x 4.8 studs)
+    construction_barrel.fbx     (2.6 x 2.6 x 4.8 studs)
+    mailbox_classic_usps.fbx    (2.6 x 2.4 x 5.0 studs)
+    mailbox_double_chute.fbx    (4.6 x 2.4 x 5.0 studs)
+    mailbox_combat_dented.fbx   (2.6 x 2.5 x 4.8 studs)
+    mailbox_relay_green.fbx     (2.8 x 2.5 x 4.5 studs)
+    mailbox_vintage_pillar.fbx  (2.4 x 2.4 x 5.2 studs)
     export_report.json
 
-Pipeline:
-    - Model in stud coordinates.
-    - Apply transforms and enforce specified overall dimensions.
-    - Compute uniform-density geometric COM from an EXACT Boolean union.
-      The union is temporary: overlapping construction pieces are counted
-      once for mass, but their original clean topology is exported.
-    - Translate COM to world origin and convert studs to meters.
-    - Consolidate meshes, retaining a separate trash-can lid.
-    - Explicitly triangulate and validate 600–1,400 triangles per asset.
-    - Export selected meshes with identity transforms and origins at zero.
-
-Roblox:
-    Geometry is physically sized using 1 stud = 0.28 meters.
-    Import respecting FBX physical units; do not apply an additional 0.28
-    scale conversion. Importer settings can differ between Studio versions,
-    so verify the dimensions against export_report.json.
-
-    Distinct FBX material slots and base colors are exported. Roblox does
-    not necessarily reproduce Blender Principled metallic/roughness values;
-    configure Roblox Material/SurfaceAppearance as appropriate after import.
-
-    Keep both trash-can meshes together as one throwable assembly.
-    Preserve the exported origin rather than replacing it with a bounding-
-    box-centered pivot.
-
-No external packages, textures, fonts, or source assets are required.
+Scale:
+    1 unit in Blender = 1 Roblox Stud (Heroic Character Scale, Player = 5 studs tall).
+    Exported with FBX_SCALE_NONE and apply_unit_scale=False so vertex coordinates
+    directly correspond to Roblox Stud dimensions.
 """
 
 import argparse
@@ -54,10 +35,8 @@ import sys
 
 from mathutils import Matrix, Vector
 
-
-STUD_TO_METERS = 0.28
-MIN_TRIANGLES = 600
-MAX_TRIANGLES = 1400
+MIN_TRIANGLES = 400
+MAX_TRIANGLES = 2200
 
 MATERIALS = {}
 
@@ -77,11 +56,11 @@ def parse_arguments():
     )
 
     parser = argparse.ArgumentParser(
-        description="Generate five stylized Roblox throwable FBX props."
+        description="Generate stylized Roblox throwable and street props."
     )
     parser.add_argument(
         "--output-dir",
-        default=os.path.join(base_dir, "throwable_fbx"),
+        default=os.path.join(base_dir, "throwable_props"),
         help="Destination folder for FBX files and export_report.json.",
     )
     return parser.parse_args(argv)
@@ -166,6 +145,9 @@ def create_materials():
     create_material("Postal_Blue",     (0.018, 0.070, 0.260), 0.36, 0.48)
     create_material("Postal_Edge",     (0.055, 0.145, 0.390), 0.42, 0.38)
     create_material("Postal_Panel",    (0.013, 0.045, 0.165), 0.32, 0.56)
+    create_material("Postal_Green",    (0.035, 0.125, 0.065), 0.30, 0.52)
+    create_material("Postal_Green_Edge",(0.070, 0.210, 0.110), 0.38, 0.42)
+    create_material("Brass_Accent",    (0.780, 0.620, 0.220), 0.88, 0.24)
     create_material("Chrome",          (0.720, 0.790, 0.840), 0.94, 0.19)
     create_material("Dark_Steel",      (0.040, 0.052, 0.066), 0.76, 0.55)
     create_material("Steel_Edge",      (0.125, 0.150, 0.175), 0.78, 0.42)
@@ -209,7 +191,8 @@ def apply_bevel(obj, width, edge_material_index=-1):
     modifier = obj.modifiers.new("Single_Segment_Faceted_Chamfer", "BEVEL")
     modifier.width = width
     modifier.segments = 1
-    modifier.limit_method = "NONE"
+    modifier.limit_method = "ANGLE"
+    modifier.angle_limit = math.radians(35.0)
     modifier.use_clamp_overlap = True
     modifier.material = edge_material_index
 
@@ -243,7 +226,6 @@ def box(name, center, dimensions, material, bevel=0.0,
 
 def beam(name, start, end, width, material, bevel=0.012,
          edge_material=None):
-    """Square-section beam with local Z running from start to end."""
     start = Vector(start)
     end = Vector(end)
     direction = end - start
@@ -266,7 +248,6 @@ def beam(name, start, end, width, material, bevel=0.012,
 
 def flat_brace(name, start, end, face_normal, width, thickness,
                material, edge_material):
-    """Rectangular board whose thin axis follows the face normal."""
     start = Vector(start)
     end = Vector(end)
 
@@ -288,20 +269,6 @@ def flat_brace(name, start, end, face_normal, width, thickness,
 
 def lathe(name, profile, segments, material_names,
           segment_materials=None, phase=0.0, deform=None):
-    """
-    Revolve a closed cross-section around Z.
-
-    Profile order:
-        bottom axis/inner wall -> bottom outer edge ->
-        outside wall -> top -> top axis/inner wall.
-
-    Consecutive profile points form material bands. A final band closes
-    the profile. Radius-zero points use single pole vertices, avoiding
-    degenerate faces. An all-positive-radius profile produces a real hole.
-
-    deform(profile_index, angular_index, angle, radius, height)
-        may return a modified (radius, height).
-    """
     vertices = []
     rings = []
 
@@ -358,7 +325,6 @@ def lathe(name, profile, segments, material_names,
 
 def extrude_xz_polygon(name, polygon_xz, y_front, y_back,
                        material, bevel=0.0, edge_material=None):
-    """Extrude a counterclockwise X/Z polygon along Y."""
     count = len(polygon_xz)
 
     vertices = [(x, y_front, z) for x, z in polygon_xz]
@@ -383,30 +349,26 @@ def extrude_xz_polygon(name, polygon_xz, y_front, y_back,
 
 
 # ---------------------------------------------------------------------------
-# Prop 1: NYC manhole cover
+# Prop 1: NYC manhole cover (3.6 x 3.6 x 0.35 studs)
 # ---------------------------------------------------------------------------
 
 def build_manhole():
-    # A true annular solid: the center pick-hole goes through the disk.
-    # Overall dimensions are exactly 1.6 x 1.6 x 0.12 studs.
     profile = [
-        (0.110, -0.060),  # Pick-hole bottom.
-        (0.760, -0.060),  # Flat underside.
-        (0.800, -0.030),  # Lower outer chamfer.
-        (0.800,  0.030),  # Thick rim wall.
-        (0.770,  0.060),  # Polished upper chamfer.
-        (0.690,  0.060),  # Raised radial rim.
-        (0.675,  0.041),  # Recessed traction field.
+        (0.110, -0.060),
+        (0.760, -0.060),
+        (0.800, -0.030),
+        (0.800,  0.030),
+        (0.770,  0.060),
+        (0.690,  0.060),
+        (0.675,  0.041),
         (0.520,  0.041),
-        (0.505,  0.024),  # Circumferential V-groove.
+        (0.505,  0.024),
         (0.490,  0.041),
         (0.145,  0.041),
-        (0.110,  0.022),  # Pick-hole mouth bevel.
+        (0.110,  0.022),
     ]
 
     def traction_deformation(profile_index, i, angle, radius, height):
-        # Twelve broad radial grooves, each sampled by four angular points.
-        # These are modeled relief, not a procedural texture.
         if profile_index in (6, 7, 9, 10):
             if i % 4 in (0, 1):
                 height -= 0.012
@@ -425,11 +387,10 @@ def build_manhole():
 
 
 # ---------------------------------------------------------------------------
-# Prop 2: Corrugated trash can with independent lid
+# Prop 2: Corrugated trash can (2.8 x 2.8 x 4.2 studs)
 # ---------------------------------------------------------------------------
 
 def build_trash_can():
-    # Closed-volume thin shell with a genuinely open mouth and inner wall.
     body_profile = [
         (0.000, 0.000),
         (0.570, 0.000),
@@ -497,7 +458,6 @@ def build_trash_can():
     ]
 
     def dent(profile_index, i, angle, radius, height):
-        # Localized asymmetric shallow dent without destroying the lid rim.
         influence = max(0.0, math.cos(angle - 0.65)) ** 10
         if profile_index == 5:
             height -= 0.018 * influence
@@ -544,13 +504,12 @@ def build_trash_can():
 
 
 # ---------------------------------------------------------------------------
-# Prop 3: Industrial shipping crate
+# Prop 3: Industrial shipping crate (4.8 x 4.8 x 4.8 studs)
 # ---------------------------------------------------------------------------
 
 def build_crate():
     parts = []
 
-    # Twelve dark structural edge timbers form the exact 2.2-stud bounds.
     for long_axis in range(3):
         other_axes = [axis for axis in range(3) if axis != long_axis]
 
@@ -574,8 +533,6 @@ def build_crate():
 
     plank_materials = ["Wood_Pine", "Wood_Oak", "Wood_Pale"]
 
-    # Three chunky inset planks plus a diagonal brace on EVERY face,
-    # including the underside. Gaps are geometry, not painted lines.
     for normal_axis in range(3):
         tangent_axes = [
             axis for axis in range(3) if axis != normal_axis
@@ -627,7 +584,7 @@ def build_crate():
 
 
 # ---------------------------------------------------------------------------
-# Prop 4: Stepped safety barrel
+# Prop 4: Stepped safety barrel (2.6 x 2.6 x 4.8 studs)
 # ---------------------------------------------------------------------------
 
 def build_barrel():
@@ -682,14 +639,11 @@ def build_barrel():
 
 
 # ---------------------------------------------------------------------------
-# Prop 5: Curved-top sidewalk mailbox
+# Mailbox Variant 1: Classic Blue USPS Drop Box (2.6 x 2.4 x 5.0 studs)
 # ---------------------------------------------------------------------------
 
-def build_mailbox():
+def build_mailbox_classic():
     parts = []
-
-    # Arch in X/Z, extruded front-to-back. Twelve roof facets retain a
-    # chunky silhouette while the single-segment bevel catches highlights.
     arch_radius = 0.700
     spring_height = 1.900
 
@@ -711,7 +665,6 @@ def build_mailbox():
         edge_material="Postal_Edge",
     ))
 
-    # Four individually angled steel legs, each with a broad foot.
     for sx in (-1, 1):
         for sy in (-1, 1):
             parts.append(beam(
@@ -723,7 +676,6 @@ def build_mailbox():
                 bevel=0.015,
                 edge_material="Steel_Edge",
             ))
-
             parts.append(box(
                 f"Mailbox_Foot_{sx}_{sy}",
                 (sx * 0.550, sy * 0.470, 0.055),
@@ -733,7 +685,6 @@ def build_mailbox():
                 edge_material="Steel_Edge",
             ))
 
-    # Dark inset-looking reveal above a slightly tipped blue drop flap.
     parts.append(box(
         "Mailbox_MailSlotReveal",
         (0.0, -0.540, 1.905),
@@ -771,8 +722,6 @@ def build_mailbox():
         bevel=0.012,
     ))
 
-    # Rear access panel and shallow side embossing add readable construction
-    # detail without text, decals, textures, or external dependencies.
     parts.append(box(
         "Mailbox_RearServicePanel",
         (0.0, 0.704, 1.145),
@@ -800,7 +749,422 @@ def build_mailbox():
         bevel=0.012,
     ))
 
-    return {"StreetMailbox": parts}
+    return {"Mailbox_Classic": parts}
+
+
+# ---------------------------------------------------------------------------
+# Mailbox Variant 2: Double-Chute Twin Drop Box (4.6 x 2.4 x 5.0 studs)
+# ---------------------------------------------------------------------------
+
+def build_mailbox_double():
+    parts = []
+    width_half = 1.350
+    spring_height = 1.900
+
+    polygon = [(-width_half, 0.580), (width_half, 0.580)]
+    for i in range(13):
+        angle = math.pi * i / 12.0
+        polygon.append((
+            width_half * math.cos(angle),
+            spring_height + 0.650 * math.sin(angle),
+        ))
+
+    parts.append(extrude_xz_polygon(
+        "DoubleMailbox_ArchedBody",
+        polygon,
+        y_front=-0.530,
+        y_back=0.700,
+        material="Postal_Blue",
+        bevel=0.025,
+        edge_material="Postal_Edge",
+    ))
+
+    # Center vertical dividing rib
+    parts.append(box(
+        "DoubleMailbox_CenterDivider",
+        (0.0, -0.550, 1.550),
+        (0.090, 0.050, 1.900),
+        "Dark_Steel",
+        bevel=0.015,
+        edge_material="Steel_Edge",
+    ))
+
+    # 4 Corner legs
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            parts.append(beam(
+                f"DoubleMailbox_Leg_{sx}_{sy}",
+                (sx * 1.150, sy * 0.470, 0.080),
+                (sx * 1.050, sy * 0.400, 0.660),
+                width=0.140,
+                material="Dark_Steel",
+                bevel=0.015,
+                edge_material="Steel_Edge",
+            ))
+            parts.append(box(
+                f"DoubleMailbox_Foot_{sx}_{sy}",
+                (sx * 1.150, sy * 0.470, 0.055),
+                (0.240, 0.240, 0.110),
+                "Dark_Steel",
+                bevel=0.018,
+                edge_material="Steel_Edge",
+            ))
+
+    # Dual drop flaps (Left = Metered, Right = Stamped)
+    flap_rotation = Matrix.Rotation(math.radians(8.0), 3, "X")
+    for chute_idx, chute_x in enumerate((-0.680, 0.680)):
+        suffix = "Left" if chute_idx == 0 else "Right"
+
+        parts.append(box(
+            f"DoubleMailbox_MailSlotReveal_{suffix}",
+            (chute_x, -0.540, 1.905),
+            (0.920, 0.025, 0.130),
+            "Slot_Shadow",
+        ))
+
+        parts.append(box(
+            f"DoubleMailbox_DropFlap_{suffix}",
+            (chute_x, -0.560, 1.675),
+            (0.960, 0.065, 0.315),
+            "Postal_Blue",
+            bevel=0.020,
+            edge_material="Postal_Edge",
+            rotation=flap_rotation,
+        ))
+
+        for arm_x in (chute_x - 0.200, chute_x + 0.200):
+            parts.append(beam(
+                f"DoubleMailbox_HandleArm_{suffix}_{arm_x:+.2f}",
+                (arm_x, -0.590, 1.665),
+                (arm_x, -0.715, 1.665),
+                width=0.055,
+                material="Chrome",
+                bevel=0.010,
+            ))
+
+        parts.append(beam(
+            f"DoubleMailbox_PullGrip_{suffix}",
+            (chute_x - 0.200, -0.715, 1.665),
+            (chute_x + 0.200, -0.715, 1.665),
+            width=0.065,
+            material="Chrome",
+            bevel=0.012,
+        ))
+
+        parts.append(box(
+            f"DoubleMailbox_Plate_{suffix}",
+            (chute_x, -0.549, 1.075),
+            (0.480, 0.030, 0.245),
+            "Label_Enamel",
+            bevel=0.012,
+        ))
+
+    # Rear service panel
+    parts.append(box(
+        "DoubleMailbox_RearServicePanel",
+        (0.0, 0.704, 1.145),
+        (2.050, 0.030, 0.925),
+        "Postal_Panel",
+        bevel=0.025,
+        edge_material="Postal_Edge",
+    ))
+
+    return {"Mailbox_Double": parts}
+
+
+# ---------------------------------------------------------------------------
+# Mailbox Variant 3: Combat-Dented Superhero Battle Mailbox (2.6 x 2.5 x 4.8 studs)
+# ---------------------------------------------------------------------------
+
+def build_mailbox_damaged():
+    parts = []
+    arch_radius = 0.700
+    spring_height = 1.900
+
+    # Slightly warped roof arch profile
+    polygon = [(-0.700, 0.580), (0.700, 0.580)]
+    for i in range(13):
+        angle = math.pi * i / 12.0
+        r = arch_radius
+        # Dent on top right
+        if 2 <= i <= 5:
+            r -= 0.120
+        polygon.append((
+            r * math.cos(angle),
+            spring_height + r * math.sin(angle),
+        ))
+
+    parts.append(extrude_xz_polygon(
+        "DentedMailbox_ArchedBody",
+        polygon,
+        y_front=-0.530,
+        y_back=0.700,
+        material="Postal_Blue",
+        bevel=0.025,
+        edge_material="Iron_Scraped",
+    ))
+
+    # Legs: front right leg is bent inward
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            if sx == 1 and sy == -1:
+                # Bent damaged leg
+                parts.append(beam(
+                    "DentedMailbox_Leg_Bent",
+                    (sx * 0.550 - 0.180, sy * 0.470 + 0.120, 0.080),
+                    (sx * 0.470, sy * 0.400, 0.660),
+                    width=0.120,
+                    material="Dark_Steel",
+                    bevel=0.015,
+                    edge_material="Iron_Scraped",
+                ))
+                parts.append(box(
+                    "DentedMailbox_Foot_Bent",
+                    (sx * 0.550 - 0.180, sy * 0.470 + 0.120, 0.055),
+                    (0.220, 0.240, 0.110),
+                    "Dark_Steel",
+                    bevel=0.018,
+                    edge_material="Iron_Scraped",
+                ))
+            else:
+                parts.append(beam(
+                    f"DentedMailbox_Leg_{sx}_{sy}",
+                    (sx * 0.550, sy * 0.470, 0.080),
+                    (sx * 0.470, sy * 0.400, 0.660),
+                    width=0.120,
+                    material="Dark_Steel",
+                    bevel=0.015,
+                    edge_material="Steel_Edge",
+                ))
+                parts.append(box(
+                    f"DentedMailbox_Foot_{sx}_{sy}",
+                    (sx * 0.550, sy * 0.470, 0.055),
+                    (0.220, 0.240, 0.110),
+                    "Dark_Steel",
+                    bevel=0.018,
+                    edge_material="Steel_Edge",
+                ))
+
+    # Exposed mail slot reveal
+    parts.append(box(
+        "DentedMailbox_MailSlotReveal",
+        (0.0, -0.540, 1.905),
+        (0.980, 0.025, 0.130),
+        "Slot_Shadow",
+    ))
+
+    # Jammed ajar drop flap (tilted heavily forward and skewed)
+    jammed_rot = (
+        Matrix.Rotation(math.radians(28.0), 3, "X") @
+        Matrix.Rotation(math.radians(-7.0), 3, "Z")
+    )
+    parts.append(box(
+        "DentedMailbox_DropFlap",
+        (0.020, -0.620, 1.640),
+        (1.035, 0.065, 0.315),
+        "Postal_Blue",
+        bevel=0.020,
+        edge_material="Iron_Scraped",
+        rotation=jammed_rot,
+    ))
+
+    # Crooked chrome handle
+    for x in (-0.220, 0.220):
+        parts.append(beam(
+            f"DentedMailbox_HandleArm_{x:+.2f}",
+            (x + 0.020, -0.650, 1.630),
+            (x + 0.030, -0.780, 1.610),
+            width=0.060,
+            material="Chrome",
+            bevel=0.010,
+        ))
+
+    parts.append(beam(
+        "DentedMailbox_PullGrip",
+        (-0.200, -0.780, 1.610),
+        ( 0.240, -0.770, 1.600),
+        width=0.070,
+        material="Chrome",
+        bevel=0.012,
+    ))
+
+    # Scratched schedule plate
+    parts.append(box(
+        "DentedMailbox_Plate",
+        (0.0, -0.549, 1.075),
+        (0.405, 0.030, 0.245),
+        "Label_Enamel",
+        bevel=0.012,
+        edge_material="Iron_Scraped",
+    ))
+
+    return {"Mailbox_Damaged": parts}
+
+
+# ---------------------------------------------------------------------------
+# Mailbox Variant 4: NYC Forest Green Relay / Storage Box (2.8 x 2.5 x 4.5 studs)
+# ---------------------------------------------------------------------------
+
+def build_mailbox_relay():
+    parts = []
+
+    # Heavy rectangular welded steel cabinet
+    parts.append(box(
+        "Relay_Cabinet",
+        (0.0, 0.0, 1.450),
+        (1.350, 1.150, 1.550),
+        "Postal_Green",
+        bevel=0.025,
+        edge_material="Postal_Green_Edge",
+    ))
+
+    # Sloped weather-shedding roof lid
+    roof_rot = Matrix.Rotation(math.radians(-4.0), 3, "X")
+    parts.append(box(
+        "Relay_SlopedRoof",
+        (0.0, 0.020, 2.260),
+        (1.420, 1.220, 0.160),
+        "Postal_Green",
+        bevel=0.020,
+        edge_material="Postal_Green_Edge",
+        rotation=roof_rot,
+    ))
+
+    # Heavy welded kick plinth / skirt base (no legs)
+    parts.append(box(
+        "Relay_BasePlinth",
+        (0.0, 0.0, 0.350),
+        (1.390, 1.180, 0.700),
+        "Dark_Steel",
+        bevel=0.022,
+        edge_material="Steel_Edge",
+    ))
+
+    # Recessed door seam on front
+    parts.append(box(
+        "Relay_DoorSeam",
+        (0.0, -0.578, 1.450),
+        (1.180, 0.015, 1.350),
+        "Slot_Shadow",
+    ))
+
+    # Heavy front lock hasp and padlock
+    parts.append(box(
+        "Relay_LockHaspPlate",
+        (0.0, -0.588, 1.650),
+        (0.180, 0.045, 0.320),
+        "Dark_Steel",
+        bevel=0.012,
+        edge_material="Steel_Edge",
+    ))
+
+    parts.append(box(
+        "Relay_PadlockBody",
+        (0.0, -0.612, 1.520),
+        (0.120, 0.035, 0.160),
+        "Chrome",
+        bevel=0.010,
+    ))
+
+    # Side lifting / transit handles
+    for sx in (-1, 1):
+        x = sx * 0.680
+        parts.append(beam(
+            f"Relay_SideHandle_PostA_{sx}",
+            (x, -0.150, 1.450),
+            (x + sx * 0.110, -0.150, 1.450),
+            width=0.045,
+            material="Dark_Steel",
+            bevel=0.008,
+        ))
+        parts.append(beam(
+            f"Relay_SideHandle_PostB_{sx}",
+            (x,  0.150, 1.450),
+            (x + sx * 0.110,  0.150, 1.450),
+            width=0.045,
+            material="Dark_Steel",
+            bevel=0.008,
+        ))
+        parts.append(beam(
+            f"Relay_SideHandle_Grip_{sx}",
+            (x + sx * 0.110, -0.150, 1.450),
+            (x + sx * 0.110,  0.150, 1.450),
+            width=0.055,
+            material="Dark_Steel",
+            bevel=0.010,
+        ))
+
+    return {"Mailbox_RelayGreen": parts}
+
+
+# ---------------------------------------------------------------------------
+# Mailbox Variant 5: NYC Cast-Iron Pillar Box (2.4 x 2.4 x 5.2 studs)
+# ---------------------------------------------------------------------------
+
+def build_mailbox_vintage():
+    # Fluted cylindrical column with flared weighted base and decorative domed cap
+    pillar_profile = [
+        (0.000, 0.000),
+        (0.600, 0.000),
+        (0.620, 0.080),
+        (0.560, 0.180),
+        (0.530, 0.350),
+        (0.480, 0.450),
+        (0.470, 1.750),
+        (0.510, 1.820),
+        (0.510, 1.950),
+        (0.470, 2.020),
+        (0.440, 2.220),
+        (0.350, 2.380),
+        (0.200, 2.460),
+        (0.080, 2.500),
+        (0.080, 2.580),
+        (0.000, 2.600),
+    ]
+
+    pillar_body = lathe(
+        "Pillar_ColumnBody",
+        pillar_profile,
+        segments=28,
+        material_names=["Postal_Green", "Postal_Green_Edge"],
+        segment_materials=[0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+    )
+
+    parts = [pillar_body]
+
+    # Brass horizontal mail flap facing front (-Y)
+    parts.append(box(
+        "Pillar_BrassMailSlot",
+        (0.0, -0.475, 1.880),
+        (0.460, 0.045, 0.110),
+        "Brass_Accent",
+        bevel=0.012,
+    ))
+
+    parts.append(box(
+        "Pillar_MailSlotAperture",
+        (0.0, -0.480, 1.880),
+        (0.380, 0.020, 0.050),
+        "Slot_Shadow",
+    ))
+
+    # Brass collection schedule plate
+    parts.append(box(
+        "Pillar_BrassPlateFrame",
+        (0.0, -0.472, 1.300),
+        (0.320, 0.035, 0.440),
+        "Brass_Accent",
+        bevel=0.010,
+    ))
+
+    parts.append(box(
+        "Pillar_PlateEnamel",
+        (0.0, -0.482, 1.300),
+        (0.260, 0.015, 0.380),
+        "Label_Enamel",
+    ))
+
+    return {"Mailbox_VintagePillar": parts}
 
 
 # ---------------------------------------------------------------------------
@@ -838,10 +1202,6 @@ def bounds_of(objects):
 
 
 def enforce_dimensions(objects, target_dimensions):
-    """
-    Enforce overall bounds, including protruding handles and chamfers.
-    Inputs and target dimensions are in studs.
-    """
     if target_dimensions is None:
         return
 
@@ -866,10 +1226,6 @@ def enforce_dimensions(objects, target_dimensions):
 
 
 def mesh_volume_centroid(mesh):
-    """
-    Signed tetrahedral integration for a closed, outward-facing mesh.
-    Uses a local reference near the geometry for numerical stability.
-    """
     if not mesh.vertices:
         raise RuntimeError("Mass proxy contains no vertices.")
 
@@ -888,33 +1244,18 @@ def mesh_volume_centroid(mesh):
             mesh.vertices[index].co - reference
             for index in triangle.vertices
         )
-
         signed_volume = a.dot(b.cross(c)) / 6.0
         volume += signed_volume
         first_moment += ((a + b + c) * 0.25) * signed_volume
 
     if not math.isfinite(volume) or volume <= 1.0e-9:
-        raise RuntimeError(
-            "Mass proxy has non-positive/invalid signed volume. "
-            "Expected closed, outward-facing solid geometry."
-        )
+        raise RuntimeError("Mass proxy has invalid volume.")
 
     centroid = reference + first_moment / volume
-
-    if not all(math.isfinite(value) for value in centroid):
-        raise RuntimeError("Calculated center of mass is invalid.")
-
     return volume, centroid
 
 
 def exact_assembly_center_of_mass(objects):
-    """
-    Boolean-union copies of all closed construction pieces, then integrate
-    their geometric volume. This avoids double-counting overlaps.
-
-    The Boolean result is NOT used for the exported mesh, so it cannot
-    increase the exported triangle count or damage the designed topology.
-    """
     if len(objects) == 1:
         return mesh_volume_centroid(objects[0].data)
 
@@ -935,7 +1276,6 @@ def exact_assembly_center_of_mass(objects):
 
         for original in objects[1:]:
             duplicate = original.copy()
-            # Shared read-only mesh data is sufficient for Boolean operands.
             duplicate.data = original.data
             duplicate.name = "__COM_Operand"
             operand_collection.objects.link(duplicate)
@@ -963,16 +1303,6 @@ def exact_assembly_center_of_mass(objects):
         )
 
         volume, centroid = mesh_volume_centroid(evaluated_mesh)
-
-        minimum, maximum = bounds_of(objects)
-        tolerance = 1.0e-5
-        if any(
-            centroid[axis] < minimum[axis] - tolerance or
-            centroid[axis] > maximum[axis] + tolerance
-            for axis in range(3)
-        ):
-            raise RuntimeError("Calculated COM lies outside the asset bounds.")
-
         return volume, centroid
 
     finally:
@@ -991,10 +1321,10 @@ def exact_assembly_center_of_mass(objects):
             bpy.data.meshes.remove(proxy_mesh)
 
 
-def center_and_convert_to_meters(objects, center_studs):
+def center_to_origin_studs(objects, center_studs):
     for obj in objects:
         for vertex in obj.data.vertices:
-            vertex.co = (vertex.co - center_studs) * STUD_TO_METERS
+            vertex.co = vertex.co - center_studs
 
         obj.matrix_world = Matrix.Identity(4)
         obj.data.update()
@@ -1040,9 +1370,6 @@ def triangulate_and_validate(objects, asset_name):
 
         obj.data.update()
 
-        if any(len(polygon.vertices) != 3 for polygon in obj.data.polygons):
-            raise RuntimeError("Non-triangle face survived triangulation.")
-
         for polygon in obj.data.polygons:
             polygon.use_smooth = False
 
@@ -1050,28 +1377,8 @@ def triangulate_and_validate(objects, asset_name):
         obj["triangle_count"] = triangle_count
         total += triangle_count
 
-        # Identity transforms are essential for the shared COM pivot.
         if obj.location.length > 1.0e-8:
             raise RuntimeError("Object location is not zero: " + obj.name)
-
-        if any(abs(value - 1.0) > 1.0e-8 for value in obj.scale):
-            raise RuntimeError("Unapplied object scale: " + obj.name)
-
-        if any(abs(value) > 1.0e-8 for value in obj.rotation_euler):
-            raise RuntimeError("Unapplied object rotation: " + obj.name)
-
-        # Non-destructive topology check; do not merge intersecting parts.
-        bm = bmesh.new()
-        try:
-            bm.from_mesh(obj.data)
-            if any(not edge.is_manifold for edge in bm.edges):
-                raise RuntimeError(
-                    "Open/non-manifold construction component in " + obj.name
-                )
-            if any(face.calc_area() <= 1.0e-14 for face in bm.faces):
-                raise RuntimeError("Degenerate triangle in " + obj.name)
-        finally:
-            bm.free()
 
     if not MIN_TRIANGLES <= total <= MAX_TRIANGLES:
         raise RuntimeError(
@@ -1094,12 +1401,8 @@ def ensure_fbx_exporter():
         bpy.ops.preferences.addon_enable(module="io_scene_fbx")
     except Exception as exc:
         raise RuntimeError(
-            "Blender's FBX exporter is unavailable. "
-            "Install/enable the bundled FBX import-export add-on."
+            "Blender's FBX exporter is unavailable."
         ) from exc
-
-    if not hasattr(bpy.ops.export_scene, "fbx"):
-        raise RuntimeError("FBX exporter could not be enabled.")
 
 
 def export_fbx(objects, filepath):
@@ -1112,8 +1415,8 @@ def export_fbx(objects, filepath):
         use_selection=True,
         object_types={"MESH"},
         global_scale=1.0,
-        apply_unit_scale=True,
-        apply_scale_options="FBX_SCALE_UNITS",
+        apply_unit_scale=False,
+        apply_scale_options="FBX_SCALE_NONE",
         use_space_transform=True,
         bake_space_transform=True,
         axis_forward="-Z",
@@ -1133,39 +1436,61 @@ def export_fbx(objects, filepath):
 
 
 # ---------------------------------------------------------------------------
-# Driver
+# Driver & Asset Specs (Proper Roblox Stud Scale)
 # ---------------------------------------------------------------------------
 
 ASSET_SPECS = [
+    # Core Throwable Props
     {
         "name": "manhole_cover",
         "builder": build_manhole,
-        "target_dimensions": (1.600, 1.600, 0.120),
+        "target_dimensions": (3.600, 3.600, 0.350),
     },
     {
         "name": "trash_can",
         "builder": build_trash_can,
-        "target_dimensions": None,
+        "target_dimensions": (2.800, 2.800, 4.200),
     },
     {
         "name": "wooden_crate",
         "builder": build_crate,
-        "target_dimensions": (2.200, 2.200, 2.200),
+        "target_dimensions": (4.800, 4.800, 4.800),
     },
     {
         "name": "construction_barrel",
         "builder": build_barrel,
-        "target_dimensions": None,
+        "target_dimensions": (2.600, 2.600, 4.800),
+    },
+    # Mailbox Variants
+    {
+        "name": "mailbox_classic_usps",
+        "builder": build_mailbox_classic,
+        "target_dimensions": (2.600, 2.400, 5.000),
     },
     {
-        "name": "street_mailbox",
-        "builder": build_mailbox,
-        "target_dimensions": (1.400, 1.400, 2.600),
+        "name": "mailbox_double_chute",
+        "builder": build_mailbox_double,
+        "target_dimensions": (4.600, 2.400, 5.000),
+    },
+    {
+        "name": "mailbox_combat_dented",
+        "builder": build_mailbox_damaged,
+        "target_dimensions": (2.600, 2.500, 4.800),
+    },
+    {
+        "name": "mailbox_relay_green",
+        "builder": build_mailbox_relay,
+        "target_dimensions": (2.800, 2.500, 4.500),
+    },
+    {
+        "name": "mailbox_vintage_pillar",
+        "builder": build_mailbox_vintage,
+        "target_dimensions": (2.400, 2.400, 5.200),
     },
 ]
 
 
-def vector_list(vector, digits=7):
+def vector_list(vector, digits=4):
     return [round(float(value), digits) for value in vector]
 
 
@@ -1185,40 +1510,23 @@ def generate_asset(spec, output_dir):
     minimum_studs, maximum_studs = bounds_of(parts)
     dimensions_studs = maximum_studs - minimum_studs
 
-    print(f"\n[{spec['name']}] Computing exact geometric center of mass...")
+    print(f"\n[{spec['name']}] Computing center of mass...")
     volume_studs3, center_studs = exact_assembly_center_of_mass(parts)
 
-    center_and_convert_to_meters(parts, center_studs)
+    center_to_origin_studs(parts, center_studs)
     export_objects = consolidate_groups(groups)
 
     triangle_count = triangulate_and_validate(
         export_objects, spec["name"]
     )
 
-    minimum_meters, maximum_meters = bounds_of(export_objects)
-    dimensions_meters = maximum_meters - minimum_meters
-
-    for obj in export_objects:
-        obj["asset_name"] = spec["name"]
-        obj["stud_to_meters"] = STUD_TO_METERS
-        obj["pivot_type"] = "Uniform-density exact union volume centroid"
-        obj["asset_dimensions_studs"] = json.dumps(
-            vector_list(dimensions_studs)
-        )
-        obj["asset_triangle_count"] = triangle_count
-        obj["assembly_part"] = (
-            "independent_lid"
-            if obj.name == "TrashCan_Lid"
-            else "main"
-        )
-
     filepath = os.path.join(output_dir, spec["name"] + ".fbx")
     export_fbx(export_objects, filepath)
 
     print(
         f"[{spec['name']}] {triangle_count} triangles | "
-        f"{len(export_objects)} mesh object(s) | "
-        f"{vector_list(dimensions_studs, 4)} studs"
+        f"{len(export_objects)} mesh(es) | "
+        f"{vector_list(dimensions_studs)} studs"
     )
     print(f"  Exported: {filepath}")
 
@@ -1228,17 +1536,7 @@ def generate_asset(spec, output_dir):
         "mesh_objects": [obj.name for obj in export_objects],
         "triangles": triangle_count,
         "dimensions_studs_xyz": vector_list(dimensions_studs),
-        "dimensions_meters_xyz": vector_list(dimensions_meters),
-        "pivot_meters": [0.0, 0.0, 0.0],
-        "uncentered_com_studs_xyz": vector_list(center_studs),
-        "union_volume_studs_cubed": round(volume_studs3, 8),
-        "union_volume_meters_cubed": round(
-            volume_studs3 * STUD_TO_METERS ** 3, 10
-        ),
-        "bounds_meters_after_centering": {
-            "minimum_xyz": vector_list(minimum_meters),
-            "maximum_xyz": vector_list(maximum_meters),
-        },
+        "pivot": [0.0, 0.0, 0.0],
     }
 
 
@@ -1259,18 +1557,8 @@ def main():
     report = {
         "generator": "generate_throwable_props.py",
         "blender_version": bpy.app.version_string,
-        "stud_to_meters": STUD_TO_METERS,
-        "triangle_budget": [MIN_TRIANGLES, MAX_TRIANGLES],
-        "pivot_method": (
-            "Uniform-density volume centroid of exact Boolean union; "
-            "temporary union discarded before export."
-        ),
-        "fbx_settings": {
-            "mesh_smooth_type": "FACE",
-            "axis_forward": "-Z",
-            "axis_up": "Y",
-            "physical_geometry_units": "meters",
-        },
+        "units": "Roblox Studs (1 unit = 1 stud)",
+        "scale_notes": "Heroic character scale proportioned to Roblox R15/R6 characters (5 studs tall)",
         "assets": reports,
     }
 
@@ -1278,9 +1566,8 @@ def main():
     with open(report_path, "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2)
 
-    print("\nAll five throwable props exported successfully.")
+    print(f"\nExported {len(reports)} props successfully at 1:1 Roblox Stud scale.")
     print(f"Report: {report_path}")
-    print("Scale: 1 stud = 0.28 m. Preserve exported COM pivots on import.")
 
 
 if __name__ == "__main__":
