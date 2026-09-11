@@ -3,7 +3,7 @@
 **Developer:** Rich (16-year-old solo indie dev, Indonesia)  
 **Mentor Persona:** Ponytail (Senior Roblox Luau Developer & Technical Mentor)  
 **Last Updated:** September 11, 2026 (Pre-Midterms Freeze)  
-**Git Commit:** `119cdba` (Synced with `origin/main`)
+**Git Commit:** `af58ea3` (Synced with `origin/main`)
 
 ---
 
