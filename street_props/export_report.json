@@ -1,0 +1,702 @@
+{
+  "generator": "generate_street_props.py",
+  "blender_version": "5.1.2",
+  "scale_standard": {
+    "blender_units_per_roblox_stud": 1.0,
+    "meter_conversion_applied": false
+  },
+  "coordinate_convention": {
+    "report_axes": "Blender XYZ; Z up; front toward -Y",
+    "fbx_axis_forward": "-Z",
+    "fbx_axis_up": "Y"
+  },
+  "triangle_budget_exclusive": [
+    500,
+    1400
+  ],
+  "export_settings": {
+    "apply_unit_scale": false,
+    "apply_scale_options": "FBX_SCALE_NONE",
+    "global_scale": 1.0,
+    "mesh_smooth_type": "FACE"
+  },
+  "assets": [
+    {
+      "name": "nypd_sawhorse_barricade",
+      "file": "nypd_sawhorse_barricade.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 888,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -2.3,
+          -0.7,
+          0.0
+        ],
+        "maximum_xyz": [
+          2.3,
+          0.7,
+          2.8000002
+        ],
+        "dimensions_xyz": [
+          4.5999999,
+          1.4,
+          2.8000002
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, bottom at Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 888,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0002268421376356855,
+        "minimum_triangle_altitude_studs": 0.01573698630739875,
+        "closed_construction_components": true
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Steel_Dark",
+          "base_color_rgba": [
+            0.14,
+            0.19,
+            0.23,
+            1.0
+          ],
+          "metallic": 0.74,
+          "roughness": 0.55,
+          "emission_strength": 0.0,
+          "triangle_count": 176
+        },
+        {
+          "slot": 1,
+          "name": "Rubber",
+          "base_color_rgba": [
+            0.018,
+            0.023,
+            0.029,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "emission_strength": 0.0,
+          "triangle_count": 48
+        },
+        {
+          "slot": 2,
+          "name": "Steel",
+          "base_color_rgba": [
+            0.43,
+            0.5,
+            0.56,
+            1.0
+          ],
+          "metallic": 0.83,
+          "roughness": 0.38,
+          "emission_strength": 0.0,
+          "triangle_count": 400
+        },
+        {
+          "slot": 3,
+          "name": "Police_Blue",
+          "base_color_rgba": [
+            0.02,
+            0.095,
+            0.36,
+            1.0
+          ],
+          "metallic": 0.25,
+          "roughness": 0.47,
+          "emission_strength": 0.0,
+          "triangle_count": 120
+        },
+        {
+          "slot": 4,
+          "name": "Reflective_White",
+          "base_color_rgba": [
+            0.91,
+            0.94,
+            0.92,
+            1.0
+          ],
+          "metallic": 0.15,
+          "roughness": 0.28,
+          "emission_strength": 0.0,
+          "triangle_count": 144
+        }
+      ]
+    },
+    {
+      "name": "nyc_street_lamp",
+      "file": "nyc_street_lamp.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 956,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -1.4000001,
+          -0.8,
+          0.0
+        ],
+        "maximum_xyz": [
+          1.4,
+          0.8,
+          12.5
+        ],
+        "dimensions_xyz": [
+          2.8000002,
+          1.5999999,
+          12.5
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, bottom base plate at Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 956,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.001319495728239417,
+        "minimum_triangle_altitude_studs": 0.03685843941462235,
+        "closed_construction_components": true
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.035,
+            0.045,
+            0.055,
+            1.0
+          ],
+          "metallic": 0.72,
+          "roughness": 0.66,
+          "emission_strength": 0.0,
+          "triangle_count": 444
+        },
+        {
+          "slot": 1,
+          "name": "Iron_Edge",
+          "base_color_rgba": [
+            0.12,
+            0.15,
+            0.18,
+            1.0
+          ],
+          "metallic": 0.78,
+          "roughness": 0.43,
+          "emission_strength": 0.0,
+          "triangle_count": 232
+        },
+        {
+          "slot": 2,
+          "name": "Brass",
+          "base_color_rgba": [
+            0.66,
+            0.42,
+            0.12,
+            1.0
+          ],
+          "metallic": 0.8,
+          "roughness": 0.36,
+          "emission_strength": 0.0,
+          "triangle_count": 88
+        },
+        {
+          "slot": 3,
+          "name": "Luminary_Glass",
+          "base_color_rgba": [
+            0.5,
+            0.84,
+            1.0,
+            1.0
+          ],
+          "metallic": 0.05,
+          "roughness": 0.22,
+          "emission_strength": 3.0,
+          "triangle_count": 96
+        },
+        {
+          "slot": 4,
+          "name": "Steel",
+          "base_color_rgba": [
+            0.43,
+            0.5,
+            0.56,
+            1.0
+          ],
+          "metallic": 0.83,
+          "roughness": 0.38,
+          "emission_strength": 0.0,
+          "triangle_count": 96
+        }
+      ]
+    },
+    {
+      "name": "vintage_payphone_kiosk",
+      "file": "vintage_payphone_kiosk.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1004,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -1.1,
+          -1.0,
+          0.0
+        ],
+        "maximum_xyz": [
+          1.1,
+          1.0,
+          6.3999996
+        ],
+        "dimensions_xyz": [
+          2.2,
+          2.0,
+          6.3999996
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, pedestal foot at Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1004,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0003861190052703023,
+        "minimum_triangle_altitude_studs": 0.003794562237920454,
+        "closed_construction_components": true
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Steel_Dark",
+          "base_color_rgba": [
+            0.14,
+            0.19,
+            0.23,
+            1.0
+          ],
+          "metallic": 0.74,
+          "roughness": 0.55,
+          "emission_strength": 0.0,
+          "triangle_count": 284
+        },
+        {
+          "slot": 1,
+          "name": "Steel",
+          "base_color_rgba": [
+            0.43,
+            0.5,
+            0.56,
+            1.0
+          ],
+          "metallic": 0.83,
+          "roughness": 0.38,
+          "emission_strength": 0.0,
+          "triangle_count": 188
+        },
+        {
+          "slot": 2,
+          "name": "Brass",
+          "base_color_rgba": [
+            0.66,
+            0.42,
+            0.12,
+            1.0
+          ],
+          "metallic": 0.8,
+          "roughness": 0.36,
+          "emission_strength": 0.0,
+          "triangle_count": 32
+        },
+        {
+          "slot": 3,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.006,
+            0.012,
+            0.018,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.89,
+          "emission_strength": 0.0,
+          "triangle_count": 24
+        },
+        {
+          "slot": 4,
+          "name": "Rubber",
+          "base_color_rgba": [
+            0.018,
+            0.023,
+            0.029,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "emission_strength": 0.0,
+          "triangle_count": 340
+        },
+        {
+          "slot": 5,
+          "name": "Police_Blue",
+          "base_color_rgba": [
+            0.02,
+            0.095,
+            0.36,
+            1.0
+          ],
+          "metallic": 0.25,
+          "roughness": 0.47,
+          "emission_strength": 0.0,
+          "triangle_count": 92
+        },
+        {
+          "slot": 6,
+          "name": "Reflective_White",
+          "base_color_rgba": [
+            0.91,
+            0.94,
+            0.92,
+            1.0
+          ],
+          "metallic": 0.15,
+          "roughness": 0.28,
+          "emission_strength": 0.0,
+          "triangle_count": 44
+        }
+      ]
+    },
+    {
+      "name": "traffic_hazard_cones",
+      "file": "traffic_hazard_cones.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 616,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -1.2,
+          -0.9,
+          0.0
+        ],
+        "maximum_xyz": [
+          1.2,
+          0.9,
+          2.2
+        ],
+        "dimensions_xyz": [
+          2.4000001,
+          1.8,
+          2.2
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Combined assembly ground center, Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 616,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0003207409754395485,
+        "minimum_triangle_altitude_studs": 0.01522573495064224,
+        "closed_construction_components": true
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Rubber",
+          "base_color_rgba": [
+            0.018,
+            0.023,
+            0.029,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "emission_strength": 0.0,
+          "triangle_count": 88
+        },
+        {
+          "slot": 1,
+          "name": "Safety_Orange",
+          "base_color_rgba": [
+            1.0,
+            0.19,
+            0.012,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.48,
+          "emission_strength": 0.0,
+          "triangle_count": 360
+        },
+        {
+          "slot": 2,
+          "name": "Reflective_White",
+          "base_color_rgba": [
+            0.91,
+            0.94,
+            0.92,
+            1.0
+          ],
+          "metallic": 0.15,
+          "roughness": 0.28,
+          "emission_strength": 0.0,
+          "triangle_count": 96
+        },
+        {
+          "slot": 3,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.006,
+            0.012,
+            0.018,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.89,
+          "emission_strength": 0.0,
+          "triangle_count": 72
+        }
+      ]
+    },
+    {
+      "name": "electrical_hazard_box",
+      "file": "electrical_hazard_box.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 948,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -1.1,
+          -1.2,
+          -1.5
+        ],
+        "maximum_xyz": [
+          1.1,
+          0.0,
+          1.5
+        ],
+        "dimensions_xyz": [
+          2.2,
+          1.2,
+          3.0
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Rear mounting plane at Y=0, centered in X/Z; cabinet projects toward negative Y."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 948,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 6.883936293888837e-05,
+        "minimum_triangle_altitude_studs": 0.010578782248417516,
+        "closed_construction_components": true
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Industrial_Olive",
+          "base_color_rgba": [
+            0.28,
+            0.33,
+            0.24,
+            1.0
+          ],
+          "metallic": 0.48,
+          "roughness": 0.65,
+          "emission_strength": 0.0,
+          "triangle_count": 44
+        },
+        {
+          "slot": 1,
+          "name": "Olive_Shadow",
+          "base_color_rgba": [
+            0.13,
+            0.17,
+            0.13,
+            1.0
+          ],
+          "metallic": 0.4,
+          "roughness": 0.74,
+          "emission_strength": 0.0,
+          "triangle_count": 44
+        },
+        {
+          "slot": 2,
+          "name": "Steel_Dark",
+          "base_color_rgba": [
+            0.14,
+            0.19,
+            0.23,
+            1.0
+          ],
+          "metallic": 0.74,
+          "roughness": 0.55,
+          "emission_strength": 0.0,
+          "triangle_count": 252
+        },
+        {
+          "slot": 3,
+          "name": "Steel",
+          "base_color_rgba": [
+            0.43,
+            0.5,
+            0.56,
+            1.0
+          ],
+          "metallic": 0.83,
+          "roughness": 0.38,
+          "emission_strength": 0.0,
+          "triangle_count": 496
+        },
+        {
+          "slot": 4,
+          "name": "Switch_Red",
+          "base_color_rgba": [
+            0.65,
+            0.025,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.12,
+          "roughness": 0.47,
+          "emission_strength": 0.0,
+          "triangle_count": 44
+        },
+        {
+          "slot": 5,
+          "name": "Warning_Yellow",
+          "base_color_rgba": [
+            1.0,
+            0.69,
+            0.025,
+            1.0
+          ],
+          "metallic": 0.1,
+          "roughness": 0.48,
+          "emission_strength": 0.0,
+          "triangle_count": 44
+        },
+        {
+          "slot": 6,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.006,
+            0.012,
+            0.018,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.89,
+          "emission_strength": 0.0,
+          "triangle_count": 24
+        }
+      ]
+    }
+  ]
+}
