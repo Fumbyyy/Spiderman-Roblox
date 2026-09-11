@@ -109,15 +109,19 @@ Authored via headless Blender 5.1 with procedural Python generators (`generate_*
 
 ---
 
-## 4. Professional AI Prompt Engineering Protocol (Astra / Blender)
-When Rich needs new 3D assets generated through external LLMs (e.g. GPT-6 Astra on arena.ai), the Co-Founder drafts the prompt following these **6 Mandatory Rules**:
+## 4. Professional AI Prompt Engineering Protocol: The RTCC Framework
+When Rich needs new 3D assets generated through external LLMs (e.g. GPT-6 Astra on arena.ai), the Co-Founder drafts the prompt following the **RTCC Framework** (Role, Task, Context, Constraints):
 
-1. **Exact 1:1 Stud Scaling:** Mandate `1 Blender unit = 1 Roblox stud` relative to 5-stud avatars. Explicitly mandate `apply_unit_scale=False`, `apply_scale_options='FBX_SCALE_NONE'`, `axis_forward='-Z'`, `axis_up='Y'`. Never apply meter multipliers.
-2. **Object Cleanup Bugfix:** Mandate `mesh_data = obj.data` cached BEFORE `bpy.data.objects.remove(obj)` to eliminate `StructRNA ReferenceError` crashes.
-3. **Topology Cleansing:** Mandate `bmesh.ops.triangulate(bm, quad_method='BEAUTY', ngon_method='EAR_CLIP')` followed by `bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=list(bm.edges))` to eliminate 0-area sliver polygons.
-4. **Strict Budget:** Enforce 500–1,400 triangles per asset (700–1,400 for vehicles).
-5. **Exterior-Only Rule:** All vehicle and prop windows must be solid tinted glass surfaces. Zero polygons wasted on invisible interior dashboards, steering wheels, or seats.
-6. **Explicit Authoring Pivots:** Ground props must place bottom at $Z=0$; wall props must place rear mounting plane at $Y=0$.
+- **R — Role:** Anchor the external AI as a *"Lead 3D Technical Artist & Blender Python Automation Architect specializing in low-poly game asset pipelines for Roblox."*
+- **T — Task:** Explicit standalone headless CLI script (`generate_<category>.py`) outputting 5 named `.fbx` models and a structured `export_report.json`.
+- **C — Context:** Real-world Manhattan scaling calibrated against 5-stud Roblox humanoid avatars, detailing player interaction utility (vaulting, parkour, web-pulling).
+- **C — Constraints (The 6 Non-Negotiables):**
+  1. **Exact 1:1 Stud Scaling:** Mandate `1 Blender unit = 1 Roblox stud` relative to 5-stud avatars. Explicitly mandate `apply_unit_scale=False`, `apply_scale_options='FBX_SCALE_NONE'`, `axis_forward='-Z'`, `axis_up='Y'`. Never apply meter multipliers.
+  2. **Object Cleanup Bugfix:** Mandate `mesh_data = obj.data` cached BEFORE `bpy.data.objects.remove(obj)` to eliminate `StructRNA ReferenceError` crashes.
+  3. **Topology Cleansing:** Mandate `bmesh.ops.triangulate(bm, quad_method='BEAUTY', ngon_method='EAR_CLIP')` followed by `bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=list(bm.edges))` to eliminate 0-area sliver polygons.
+  4. **Strict Budget:** Enforce 500–1,400 triangles per asset (700–1,400 for vehicles).
+  5. **Exterior-Only Rule:** All vehicle and prop windows must be solid tinted glass surfaces. Zero polygons wasted on invisible interior dashboards, steering wheels, or seats.
+  6. **Explicit Authoring Pivots:** Ground props must place bottom at $Z=0$; wall props must place rear mounting plane at $Y=0$. Zero placeholder comments (`-- TODO`) allowed.
 
 ---
 

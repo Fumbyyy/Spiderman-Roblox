@@ -25,18 +25,19 @@
 
 ---
 
-## 3. Professional AI Prompt Engineering Protocol (Blender / Astra / Arena.ai)
-When drafting 3D generation prompts for external LLMs (like GPT-6 Astra Medium on arena.ai), you MUST enforce these strict technical constraints:
+## 3. Professional AI Prompt Engineering Protocol: The RTCC Framework
+When drafting 3D generation prompts for external LLMs (like GPT-6 Astra Medium on arena.ai), you MUST structure every prompt using the **RTCC Framework** (Role, Task, Context, Constraints):
 
-1. **Scale Standard:** $1\text{ Blender Unit} = 1\text{ Roblox Stud}$ relative to 5-stud avatars. Explicitly mandate:
-   `global_scale=1.0`, `apply_unit_scale=False`, `apply_scale_options='FBX_SCALE_NONE'`, `axis_forward='-Z'`, `axis_up='Y'`. Never apply meter conversion multipliers.
-2. **Object Cleanup Bugfix:** Always mandate:
-   `mesh_data = obj.data` cached BEFORE `bpy.data.objects.remove(obj)` to prevent `StructRNA ReferenceError`.
-3. **Topology Check:** Always mandate:
-   `bmesh.ops.triangulate(bm, quad_method='BEAUTY', ngon_method='EAR_CLIP')` followed immediately by `bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=list(bm.edges))` to eliminate 0-area sliver polygons.
-4. **Triangle Budget:** Strictly 500–1,400 triangles per asset (700–1,400 for vehicles).
-5. **Exterior-Only for Vehicles/Props:** All vehicle windows must be solid tinted glass surfaces. Zero triangles wasted on invisible steering wheels, dashboards, or seats.
-6. **Explicit Authoring Pivots:** Ground props must place bottom at $Z=0$; wall props must place rear mounting plane at $Y=0$.
+- **R (Role):** Anchor the AI as a *"Lead 3D Technical Artist & Blender Python Automation Architect specializing in low-poly game asset pipelines."*
+- **T (Task):** Mandate a complete, standalone headless script named `generate_<category>.py` running via `blender --background --python <script>.py -- --output-dir <dir>` producing exactly 5 named `.fbx` assets + `export_report.json`.
+- **C (Context):** Explicitly ground geometry against 5-stud Roblox humanoid avatars, detailing real-world Manhattan proportions and player interaction utility (vaulting, parkour, web-pulling).
+- **C (Constraints — The 6 Non-Negotiables):**
+  1. **Scale Standard:** $1\text{ Blender Unit} = 1\text{ Roblox Stud}$. Mandate `global_scale=1.0`, `apply_unit_scale=False`, `apply_scale_options='FBX_SCALE_NONE'`, `axis_forward='-Z'`, `axis_up='Y'`. Never apply meter conversion multipliers.
+  2. **Object Cleanup Bugfix:** Always mandate: `mesh_data = obj.data` cached BEFORE `bpy.data.objects.remove(obj)` to prevent `StructRNA ReferenceError`.
+  3. **Topology Check:** Always mandate: `bmesh.ops.triangulate(bm, quad_method='BEAUTY', ngon_method='EAR_CLIP')` followed immediately by `bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=list(bm.edges))` to eliminate 0-area sliver polygons.
+  4. **Triangle Budget:** Strictly 500–1,400 triangles per asset (700–1,400 for vehicles).
+  5. **Exterior-Only for Vehicles/Props:** All vehicle windows must be solid tinted glass surfaces. Zero triangles wasted on invisible steering wheels, dashboards, or seats.
+  6. **Explicit Authoring Pivots:** Ground props must place bottom at $Z=0$; wall props must place rear mounting plane at $Y=0$. Zero placeholder comments (`-- TODO`) allowed.
 
 ---
 
