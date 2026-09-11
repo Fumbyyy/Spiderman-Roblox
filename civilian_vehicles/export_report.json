@@ -1,0 +1,838 @@
+{
+  "generator": "generate_civilian_vehicles.py",
+  "blender_version": "5.1.2",
+  "scale_standard": {
+    "blender_units_per_roblox_stud": 1.0,
+    "meter_conversion_applied": false
+  },
+  "coordinate_convention": {
+    "report_axes": "Blender XYZ; Z up; front toward positive Y",
+    "fbx_axis_forward": "-Z",
+    "fbx_axis_up": "Y"
+  },
+  "triangle_budget": [
+    700,
+    1400
+  ],
+  "export_settings": {
+    "apply_unit_scale": false,
+    "apply_scale_options": "FBX_SCALE_NONE",
+    "global_scale": 1.0,
+    "mesh_smooth_type": "FACE"
+  },
+  "assets": [
+    {
+      "name": "nyc_yellow_taxi",
+      "file": "nyc_yellow_taxi.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1200,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -3.3000002,
+          -7.5,
+          0.0
+        ],
+        "maximum_xyz": [
+          3.3000002,
+          7.5,
+          5.0
+        ],
+        "dimensions_xyz": [
+          6.6000004,
+          15.0,
+          5.0
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, wheels resting on floor Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1200,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0008074063225649297,
+        "minimum_triangle_altitude_studs": 0.021125420008059663
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Taxi_Yellow",
+          "base_color_rgba": [
+            0.9,
+            0.62,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.15,
+          "roughness": 0.4,
+          "triangle_count": 348
+        },
+        {
+          "slot": 1,
+          "name": "Tinted_Glass",
+          "base_color_rgba": [
+            0.01,
+            0.02,
+            0.04,
+            1.0
+          ],
+          "metallic": 0.36,
+          "roughness": 0.15,
+          "triangle_count": 72
+        },
+        {
+          "slot": 2,
+          "name": "Cargo_White",
+          "base_color_rgba": [
+            0.88,
+            0.88,
+            0.88,
+            1.0
+          ],
+          "metallic": 0.05,
+          "roughness": 0.48,
+          "triangle_count": 12
+        },
+        {
+          "slot": 3,
+          "name": "Steel_Chrome",
+          "base_color_rgba": [
+            0.78,
+            0.78,
+            0.8,
+            1.0
+          ],
+          "metallic": 0.92,
+          "roughness": 0.18,
+          "triangle_count": 408
+        },
+        {
+          "slot": 4,
+          "name": "Warm_Glow",
+          "base_color_rgba": [
+            0.98,
+            0.88,
+            0.32,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.12,
+          "triangle_count": 88
+        },
+        {
+          "slot": 5,
+          "name": "Red_Taillight",
+          "base_color_rgba": [
+            0.85,
+            0.02,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.22,
+          "triangle_count": 24
+        },
+        {
+          "slot": 6,
+          "name": "Tire_Rubber",
+          "base_color_rgba": [
+            0.02,
+            0.02,
+            0.03,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "triangle_count": 192
+        },
+        {
+          "slot": 7,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.06,
+            0.07,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.42,
+          "roughness": 0.68,
+          "triangle_count": 24
+        },
+        {
+          "slot": 8,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.005,
+            0.008,
+            0.01,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.95,
+          "triangle_count": 32
+        }
+      ]
+    },
+    {
+      "name": "civilian_family_sedan",
+      "file": "civilian_family_sedan.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1124,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -3.2499998,
+          -7.25,
+          0.0
+        ],
+        "maximum_xyz": [
+          3.2499998,
+          7.25,
+          4.8000002
+        ],
+        "dimensions_xyz": [
+          6.4999995,
+          14.5,
+          4.8000002
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, wheels resting on floor Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1124,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0008619477157481015,
+        "minimum_triangle_altitude_studs": 0.02114390977514455
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Slate_Blue",
+          "base_color_rgba": [
+            0.12,
+            0.22,
+            0.38,
+            1.0
+          ],
+          "metallic": 0.72,
+          "roughness": 0.36,
+          "triangle_count": 336
+        },
+        {
+          "slot": 1,
+          "name": "Tinted_Glass",
+          "base_color_rgba": [
+            0.01,
+            0.02,
+            0.04,
+            1.0
+          ],
+          "metallic": 0.36,
+          "roughness": 0.15,
+          "triangle_count": 72
+        },
+        {
+          "slot": 2,
+          "name": "Steel_Chrome",
+          "base_color_rgba": [
+            0.78,
+            0.78,
+            0.8,
+            1.0
+          ],
+          "metallic": 0.92,
+          "roughness": 0.18,
+          "triangle_count": 408
+        },
+        {
+          "slot": 3,
+          "name": "Warm_Glow",
+          "base_color_rgba": [
+            0.98,
+            0.88,
+            0.32,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.12,
+          "triangle_count": 48
+        },
+        {
+          "slot": 4,
+          "name": "Red_Taillight",
+          "base_color_rgba": [
+            0.85,
+            0.02,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.22,
+          "triangle_count": 12
+        },
+        {
+          "slot": 5,
+          "name": "Tire_Rubber",
+          "base_color_rgba": [
+            0.02,
+            0.02,
+            0.03,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "triangle_count": 192
+        },
+        {
+          "slot": 6,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.06,
+            0.07,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.42,
+          "roughness": 0.68,
+          "triangle_count": 24
+        },
+        {
+          "slot": 7,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.005,
+            0.008,
+            0.01,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.95,
+          "triangle_count": 32
+        }
+      ]
+    },
+    {
+      "name": "civilian_pickup_truck",
+      "file": "civilian_pickup_truck.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1284,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -3.5,
+          -8.0,
+          0.0
+        ],
+        "maximum_xyz": [
+          3.5,
+          8.0,
+          5.5999999
+        ],
+        "dimensions_xyz": [
+          7.0,
+          16.0,
+          5.5999999
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, wheels resting on floor Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1284,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0007802126929163933,
+        "minimum_triangle_altitude_studs": 0.020202804416988702
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Forest_Green",
+          "base_color_rgba": [
+            0.08,
+            0.24,
+            0.12,
+            1.0
+          ],
+          "metallic": 0.18,
+          "roughness": 0.45,
+          "triangle_count": 372
+        },
+        {
+          "slot": 1,
+          "name": "Tinted_Glass",
+          "base_color_rgba": [
+            0.01,
+            0.02,
+            0.04,
+            1.0
+          ],
+          "metallic": 0.36,
+          "roughness": 0.15,
+          "triangle_count": 72
+        },
+        {
+          "slot": 2,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.06,
+            0.07,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.42,
+          "roughness": 0.68,
+          "triangle_count": 184
+        },
+        {
+          "slot": 3,
+          "name": "Warm_Glow",
+          "base_color_rgba": [
+            0.98,
+            0.88,
+            0.32,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.12,
+          "triangle_count": 88
+        },
+        {
+          "slot": 4,
+          "name": "Red_Taillight",
+          "base_color_rgba": [
+            0.85,
+            0.02,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.22,
+          "triangle_count": 24
+        },
+        {
+          "slot": 5,
+          "name": "Tire_Rubber",
+          "base_color_rgba": [
+            0.02,
+            0.02,
+            0.03,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "triangle_count": 192
+        },
+        {
+          "slot": 6,
+          "name": "Steel_Chrome",
+          "base_color_rgba": [
+            0.78,
+            0.78,
+            0.8,
+            1.0
+          ],
+          "metallic": 0.92,
+          "roughness": 0.18,
+          "triangle_count": 320
+        },
+        {
+          "slot": 7,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.005,
+            0.008,
+            0.01,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.95,
+          "triangle_count": 32
+        }
+      ]
+    },
+    {
+      "name": "city_box_delivery_truck",
+      "file": "city_box_delivery_truck.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1344,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -3.5999999,
+          -9.25,
+          0.0
+        ],
+        "maximum_xyz": [
+          3.5999999,
+          9.25,
+          7.8000002
+        ],
+        "dimensions_xyz": [
+          7.1999998,
+          18.5,
+          7.8000002
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, wheels resting on floor Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1344,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0007407465600408614,
+        "minimum_triangle_altitude_studs": 0.019923012262103006
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Cargo_White",
+          "base_color_rgba": [
+            0.88,
+            0.88,
+            0.88,
+            1.0
+          ],
+          "metallic": 0.05,
+          "roughness": 0.48,
+          "triangle_count": 336
+        },
+        {
+          "slot": 1,
+          "name": "Tinted_Glass",
+          "base_color_rgba": [
+            0.01,
+            0.02,
+            0.04,
+            1.0
+          ],
+          "metallic": 0.36,
+          "roughness": 0.15,
+          "triangle_count": 60
+        },
+        {
+          "slot": 2,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.06,
+            0.07,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.42,
+          "roughness": 0.68,
+          "triangle_count": 48
+        },
+        {
+          "slot": 3,
+          "name": "Steel_Chrome",
+          "base_color_rgba": [
+            0.78,
+            0.78,
+            0.8,
+            1.0
+          ],
+          "metallic": 0.92,
+          "roughness": 0.18,
+          "triangle_count": 564
+        },
+        {
+          "slot": 4,
+          "name": "Warm_Glow",
+          "base_color_rgba": [
+            0.98,
+            0.88,
+            0.32,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.12,
+          "triangle_count": 88
+        },
+        {
+          "slot": 5,
+          "name": "Red_Taillight",
+          "base_color_rgba": [
+            0.85,
+            0.02,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.22,
+          "triangle_count": 24
+        },
+        {
+          "slot": 6,
+          "name": "Tire_Rubber",
+          "base_color_rgba": [
+            0.02,
+            0.02,
+            0.03,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "triangle_count": 192
+        },
+        {
+          "slot": 7,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.005,
+            0.008,
+            0.01,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.95,
+          "triangle_count": 32
+        }
+      ]
+    },
+    {
+      "name": "urban_compact_hatchback",
+      "file": "urban_compact_hatchback.fbx",
+      "mesh_objects": 1,
+      "triangle_count": 1184,
+      "bounding_box_studs": {
+        "minimum_xyz": [
+          -3.0999999,
+          -6.3999996,
+          0.0
+        ],
+        "maximum_xyz": [
+          3.0999999,
+          6.3999996,
+          4.5999999
+        ],
+        "dimensions_xyz": [
+          6.1999998,
+          12.7999992,
+          4.5999999
+        ]
+      },
+      "pivot": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "description": "Ground center, wheels resting on floor Z=0."
+      },
+      "transform": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "validation": {
+        "triangle_count": 1184,
+        "degenerate_faces": 0,
+        "minimum_triangle_area_studs_squared": 0.0008952859789133072,
+        "minimum_triangle_altitude_studs": 0.021209627184387403
+      },
+      "material_slots": [
+        {
+          "slot": 0,
+          "name": "Crimson_Red",
+          "base_color_rgba": [
+            0.72,
+            0.03,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.22,
+          "roughness": 0.38,
+          "triangle_count": 324
+        },
+        {
+          "slot": 1,
+          "name": "Tinted_Glass",
+          "base_color_rgba": [
+            0.01,
+            0.02,
+            0.04,
+            1.0
+          ],
+          "metallic": 0.36,
+          "roughness": 0.15,
+          "triangle_count": 68
+        },
+        {
+          "slot": 2,
+          "name": "Cast_Iron",
+          "base_color_rgba": [
+            0.06,
+            0.07,
+            0.08,
+            1.0
+          ],
+          "metallic": 0.42,
+          "roughness": 0.68,
+          "triangle_count": 112
+        },
+        {
+          "slot": 3,
+          "name": "Warm_Glow",
+          "base_color_rgba": [
+            0.98,
+            0.88,
+            0.32,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.12,
+          "triangle_count": 112
+        },
+        {
+          "slot": 4,
+          "name": "Red_Taillight",
+          "base_color_rgba": [
+            0.85,
+            0.02,
+            0.02,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.22,
+          "triangle_count": 24
+        },
+        {
+          "slot": 5,
+          "name": "Tire_Rubber",
+          "base_color_rgba": [
+            0.02,
+            0.02,
+            0.03,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.94,
+          "triangle_count": 192
+        },
+        {
+          "slot": 6,
+          "name": "Steel_Chrome",
+          "base_color_rgba": [
+            0.78,
+            0.78,
+            0.8,
+            1.0
+          ],
+          "metallic": 0.92,
+          "roughness": 0.18,
+          "triangle_count": 320
+        },
+        {
+          "slot": 7,
+          "name": "Slot_Shadow",
+          "base_color_rgba": [
+            0.005,
+            0.008,
+            0.01,
+            1.0
+          ],
+          "metallic": 0.0,
+          "roughness": 0.95,
+          "triangle_count": 32
+        }
+      ]
+    }
+  ]
+}
