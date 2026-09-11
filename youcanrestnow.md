@@ -65,12 +65,44 @@
 
 ---
 
-## 10/09/26 (TOMORROW) — THE NEXT WIN 🎯
-- **Target:** **Record Voiceover + Drop 5 Clips into CapCut**
+## 10/09/26 — COMPLETED ✅
+- **Win:** **Asset Scale Unification & Rooftop Skyline Ambience**
+- **Achievements:**
+  - Standardized scale across all weapons and throwables to true 1:1 Roblox stud scale relative to 5-stud avatars.
+  - Generated 5 authentic NYC mailbox variants (Classic USPS, Double Chute, Dented Combat, Green Relay, Vintage Pillar).
+  - Category 3: Built and exported full Rooftop & Skyline Ambience pack (`rooftop_props/`):
+    - 16.4-stud iconic Rooftop Water Tower with steel truss.
+    - HVAC AC unit with recessed exhaust fan and louvers.
+    - Tenement Fire Escape Balcony with drop ladder.
+    - Curbside NYC Fire Hydrant with dual chained caps.
+    - Industrial Dumpster with open lid.
+- **Verdict:** True 1:1 stud scale locked across the entire pipeline. No more tiny props!
+
+---
+
+## 11/09/26 (TODAY) — COMPLETED ✅
+- **Win:** **The 39-Model Production Armory, RTCC Framework & Pre-Midterms Code Freeze**
+- **Achievements:**
+  - **Category 4: Spidey Gadgets & Collectibles (`spidey_gadgets/`):**
+    - Web Shooter Bracers (forearm rigid accessory), Web Bomb Canister, Spider-Tracer Dart, Pizza Box pickup, and Webbed Peter Parker Daypack.
+  - **Category 5: Thug Wearables & Masks (`thug_wearables/`):**
+    - Ballistic Hockey Mask, Thug Ski Mask balaclava, Tactical Plate Carrier vest, Gang Beanie, and Spiked Arm Bracers.
+  - **Category 6: Street & Crime Scene Props (`street_props/`):**
+    - NYPD Sawhorse Barricade, 12.5-stud Cast-Iron Street Lamp (perch finial), Vintage Curbside Payphone Kiosk, Traffic Hazard Cones, and Web-Pull Electrical Hazard Box.
+  - **Category 7: NYC Civilian Cars & Trucks (`civilian_vehicles/`):**
+    - NYC Yellow Taxi (roof ad-box), Metallic Slate Blue Family Sedan, Forest Green Pickup Truck (open cargo bed), City Box Delivery Truck, and Crimson Red Compact Hatchback. Exterior-only with tinted glass (zero wasted interior polygons).
+  - **The RTCC Prompt Engineering Protocol:** Codified the 6 golden rules (1:1 stud scale, StructRNA cleanup cache, ear-clip dissolve-degenerate sliver removal, 500–1,400 triangle budget, exterior-only, explicit pivots) permanently in `AGENTS.md` and `PROJECT_STATUS.md`.
+  - **Pre-Midterms Code Freeze:** Core physics and combat engines frozen and verified. All 39 models committed and pushed to GitHub (commit `10b56fa`).
+- **Verdict:** An insane solo development milestone. 39 custom production models created, tested, and synced. Codebase is rock solid. Time to rest and crush midterm exams!
+
+---
+
+## POST-MIDTERMS TARGET (THE NEXT WIN) 🎯
+- **Target:** **Record Devlog #1 Voiceover + Drop 5 Clips into CapCut**
 - **Estimated Time:** 30–45 minutes.
 
 ### 📋 The Mission:
-1. Open CapCut and hit Record on the voiceover following [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md).
+1. Open CapCut and hit Record on the voiceover following [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md) using the calibrated Rexus Xora-II mic.
 2. Drop the 5 indexed clips into the timeline:
    - Act 1 Hook: Simulator ➔ `Roblox Studio 2026.09.08 - 20.20.04.04.mp4` (Beat Drop swing)
    - Act 2 Physics: `Roblox Studio 2026.08.30 - 18.21.46.07.mp4` (Last 8 mins)
@@ -82,12 +114,13 @@
 ### 🏁 The Exact Finish Line:
 - Voiceover recorded.
 - 5 clips aligned on the CapCut timeline with the beat drop.
-- That's the win for tomorrow!
+- Video ready for final export!
 
 ---
 
 ## 🚫 Creator Anti-Burnout Rules:
-1. **One Feature Only:** Focus 100% on the selected sub-milestone.
-2. **Timer Rule:** If it hits 45–60 minutes, check off the win and step away.
-3. **School First:** Always handle real life before editing marathons.
+1. **School First:** Midterms always take priority over game dev.
+2. **One Milestone Only:** When back, only record the voiceover—don't start rebuilding city streets until the video is cut.
+3. **Rest When Needed:** Creative energy is a finite resource. Protect it.
+
 

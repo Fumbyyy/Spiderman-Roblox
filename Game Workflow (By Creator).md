@@ -1,4 +1,4 @@
-﻿# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
+# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
 
 > **Vision:** An accessible, high-momentum Spider-Man sandbox combining **fluid physics traversal**, **tactile Arkham/Insomniac combat**, and **seamless multiplayer crime-fighting** across an authentic 5,000 × 5,000 stud Manhattan city.
 >
@@ -225,15 +225,16 @@ LEVEL 5-6+ (2 – 4+ hours)    ➔ THE PINNACLE: True dedication. Spider-Armor M
 
 * [x] **Milestone 1: 3-Pillar Combat Progression & Level 2 Ultimate** (Completed ✅).
 * [x] **Milestone 2: The Level-Up Dopamine Engine** (Completed ✅).
-* [ ] **Milestone 3: Suit Gameplay Perks & Visual Feedback Engine (Making Suits Alive):**
-  * Wire `player:GetAttribute("SuitPerkType")` across the 4 gameplay modules:
-    * **Stark Tech:** `GrappleController.client.luau` scales max swing velocity to 224 studs/s + jet thruster trails on catapult.
-    * **Stealth Big Time:** `CombatDodge.luau` extends i-frames to 0.70s + leaves neon-green holographic decoy.
-    * **Symbiote Black:** `CombatMelee.luau` / `CombatService.server.luau` scales punch damage by 1.20x + `WebVisuals.luau` turns webs into viscous black alien silk.
-    * **Spider-Armor MK IV:** `SuitService.server.luau` grants +25 HP shield + stagger immunity against light punch flinch in `CombatMelee.luau`.
-    * **2099 Cyber:** `CombatUltimate.luau` scales cyclone radius by 1.30x (12.35 studs) with 25-stud gravitational suction.
-* [ ] **Milestone 4: Steep Bullet Dive-Bomb (`Left-Shift` in Air):**
+* [x] **Milestone 3: Suit Gameplay Perks & Visual Feedback Engine** (Completed ✅).
+  * Stark Tech velocity thrusters (224 studs/s), Stealth Big Time extended i-frames (0.70s), Symbiote Black 1.20x damage + black webs, Spider-Armor MK IV +25 shield, and 2099 Cyber singularity suction.
+* [x] **Milestone 4: 39-Model Bespoke 3D Production Arsenal** (Completed ✅).
+  * 7 complete asset categories authored via Blender 5.1 at 1:1 Roblox stud scale (Weapons, Throwables, Rooftop Ambience, Spidey Gadgets, Thug Wearables, Street Props, and Civilian Vehicles).
+* [ ] **Milestone 5 (🎯 ACTIVE NEXT): Devlog #1 Voiceover & Video Release:**
+  * Record 3-minute voiceover in CapCut using [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md) with calibrated Rexus Xora-II mic.
+  * Align 5 indexed gameplay clips and publish video to YouTube.
+* [ ] **Milestone 6: Steep Bullet Dive-Bomb (`Left-Shift` in Air):**
   * Tucks limbs into a 165+ studs/s plunge, converting vertical drop into explosive forward swing momentum.
-* [ ] **Milestone 5: Stark Tech Gadgets & Web Silk Chromas:**
-  * Permanent gadget upgrades (Web Ammo 3 ➔ 5, Quick-Heal +50 HP) and cosmetic web color customization in Spider-Phone.
-* [ ] **Creator Milestone:** Lay out the **5,000 × 5,000 stud city grid** with 4 distinct district height zones!
+* [ ] **Milestone 7: 5,000 × 5,000 Stud Manhattan City & Concurrent District Crimes:**
+  * Dress alleyways and avenues using the 39-model asset library.
+  * Wire dynamic concurrent crimes across 4 distinct visual biomes (Financial, Midtown, Queens/Alley, Waterfront).
+
