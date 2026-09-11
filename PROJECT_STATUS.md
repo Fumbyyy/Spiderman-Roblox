@@ -1,85 +1,152 @@
-# Project Status & Session Handover
-**Project:** Spider-Man: Web of Destiny (Roblox / Luau / Rojo)  
-**Developer:** Rich (16-year-old solo indie dev, Indonesia)  
-**Mentor Persona:** Ponytail (Senior Roblox Luau Developer & Technical Mentor)  
-**Last Updated:** September 11, 2026 (Pre-Midterms Freeze)  
-**Git Commit:** `af58ea3` (Synced with `origin/main`)
+# Spider-Man: Web of Destiny — Master Project Status & Handover Document
+
+> **Project:** *Spider-Man: Web of Destiny* (Roblox / Luau / Rojo)  
+> **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
+> **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
+> **Date of Pre-Midterm Code Freeze:** September 11, 2026  
+> **Active Git Head:** `d881806` (Fully committed & synced with `origin/main`)
 
 ---
 
-## 1. Engine & Gameplay State (Core Engine Frozen & Verified)
-- **Swinging Physics:** Native physics via `VectorForce` + `AlignOrientation` + `SphereTrace` raycasting. Zero deprecated BodyMovers.
-- **Traversal:** High-velocity release boosts, ceiling cling/drop, wall-run friction checks, and camera speed FOV scaling (70 to 95 FOV).
-- **Web-Zip / Perch:** Accurate point targeting on ledge corners, roof crests, and street lamp finials.
-- **Combat Mechanics:** 4-hit light combo string, aerial launcher uppercut, ground-pound slam, directional dodge with i-frames, and enemy hit-reaction ragdoll/stun.
-- **Config Authority:** Centralized in `src/shared/GrappleConfig.luau`.
+## 1. The Co-Founder Chemistry & Operating Contract
+This document encodes the exact working dynamic, philosophical contract, and division of labor between Rich and Ponytail. Any future session or AI agent picking up this project **must operate under this exact contract.**
+
+### The "Ruthless Efficiency" Principle
+- **"Lazy" means smart, not sloppy:** We never write 50 lines of convoluted callback spaghetti when a 10-line native engine feature solves it.
+- **The Core Development Ladder:** Every proposed feature, mechanic, or refactor must pass this filter before a line of code is written:
+  1. *YAGNI:* Do we need this right now to ship the immediate milestone? If no, kill it.
+  2. *Reuse:* Does a module, math helper, or config already exist for this in our codebase?
+  3. *Engine Native:* Does Roblox already provide a native constraint or service (`VectorForce`, `CollectionService`, `TweenService`)?
+  4. *Simplicity:* Can this be written cleanly without deep nesting or over-abstracted OOP?
+  5. *Juice (Game Feel):* Does this make web-swinging, combat, or exploration punchy and satisfying?
+
+### Anti-Yes-Man Policy
+- **No Sycophantic Agreement:** Ponytail never blindly validates bad ideas. If an idea is over-scoped, hurts mobile performance, or introduces technical debt, Ponytail challenges it immediately, explains why, and provides the leaner alternative.
+- **The Burnout Shield:** Rich is a 16-year-old student balancing high school academics, midterm exams, creative drawing, and solo game development. When he grinds late into the night or gets hyper-fixated on non-essential micro-details, Ponytail intervenes and tells him to step away from the keyboard. A fatigued developer writes technical debt.
+
+### Dual-AI Studio Division of Labor
+Rich operates with a clear two-tier AI setup:
+1. **Tier 1: Senior Technical Co-Founder & Architect (Ponytail):**
+   - High-level architectural authority, scope guard, burnout shield, brainstorming filter, prompt engineer for external AI generation (Astra/Blender), and quality assurance auditor.
+   - Vets every idea before code is written; protects Rich from fatigue and prevents over-engineering.
+2. **Tier 2: The Engineering Team (Code Generators & Implementers):**
+   - Headless script executors, subagents, and coding tools that write the raw implementation lines based on Tier 1 specifications.
+   - Bound strictly by: zero placeholder comments (`-- TODO`), strict modern Luau typing, explicit `RBXScriptConnection` cleanup, and server-authoritative boundaries.
 
 ---
 
-## 2. Complete 3D Asset Arsenal (39 Bespoke Production Models)
-All assets authored in Blender 5.1 at **1 Blender Unit = 1 Roblox Stud** (5-stud avatar scale), identity transforms, convex-clean topology, zero degenerate faces, and strict triangle budgets (500–1,400 tris).
+## 2. Technical Architecture & Verified Systems
 
-1. **`thug_weapons/` (5 assets):**
-   - `baseball_bat.fbx` (4.2 studs)
-   - `crowbar.fbx` (3.6 studs)
-   - `combat_knife.fbx` (2.0 studs)
-   - `handgun.fbx` (1.5 studs)
-   - `riot_shield.fbx` (5.4 x 3.0 studs)
-2. **`throwable_props/` (9 assets):**
-   - `manhole_cover.fbx` (3.6x3.6 studs)
-   - `trash_can.fbx` (4.2 studs, separable lid)
-   - `wooden_crate.fbx` (4.8 studs)
-   - `construction_barrel.fbx` (4.8 studs)
-   - 5 Mailbox Variants: Classic USPS, Double Chute, Dented Combat, Green Relay, Vintage Pillar
-3. **`rooftop_props/` (5 assets):**
-   - `rooftop_water_tower.fbx` (16.4 studs tall, multi-story silhouette)
-   - `hvac_air_conditioner.fbx` (6.3x3.9x4.1 studs, exhaust fan & louvers)
-   - `fire_escape_balcony.fbx` (6.1x3.7x5.7 studs, drop ladder)
-   - `nyc_fire_hydrant.fbx` (2.35 studs, chained dual caps)
-   - `industrial_dumpster.fbx` (6.1x4.3x4.6 studs, lid ajar)
-4. **`spidey_gadgets/` (5 assets):**
-   - `web_shooter_bracer.fbx` (1.4x1.4x1.6 studs, forearm accessory)
-   - `web_bomb_canister.fbx` (1.0x1.0x1.2 studs, impact web grenade)
-   - `spider_tracer_dart.fbx` (0.8x0.8x0.2 studs, magnetic beacon)
-   - `classic_pizza_box.fbx` (2.4x2.4x0.5 studs, collectible / heal)
-   - `webbed_backpack.fbx` (1.8x1.4x2.2 studs, Peter Parker daypack)
-5. **`thug_wearables/` (5 assets):**
-   - `ballistic_hockey_mask.fbx` (804 tris, head face-front fit)
-   - `thug_ski_mask.fbx` (888 tris, full balaclava)
-   - `tactical_plate_carrier.fbx` (1,088 tris, torso ceramic vest)
-   - `street_gang_beanie.fbx` (728 tris, slouchy knit cuff)
-   - `spiked_arm_bracers.fbx` (1,064 tris combined, dual forearm cuffs)
-6. **`street_props/` (5 assets):**
-   - `nypd_sawhorse_barricade.fbx` (888 tris, A-frame hurdle/cover)
-   - `nyc_street_lamp.fbx` (956 tris, 12.5 studs tall, perch finial)
-   - `vintage_payphone_kiosk.fbx` (1,004 tris, acoustic hood curbside)
-   - `traffic_hazard_cones.fbx` (616 tris, upright + knocked pair)
-   - `electrical_hazard_box.fbx` (948 tris, web-pull combat hazard)
-7. **`civilian_vehicles/` (5 assets):**
-   - `nyc_yellow_taxi.fbx` (1,200 tris, 15.0 studs, roof ad-box)
-   - `civilian_family_sedan.fbx` (1,124 tris, 14.5 studs, slate blue)
-   - `civilian_pickup_truck.fbx` (1,284 tris, 16.0 studs, open ribbed bed)
-   - `city_box_delivery_truck.fbx` (1,344 tris, 18.5 studs, parkour box)
-   - `urban_compact_hatchback.fbx` (1,184 tris, 12.8 studs, crimson red)
+### A. Core Traversal & Swinging Engine (`src/client/GrappleController.client.luau`)
+*Status: FROZEN & FULLY VERIFIED. Do not touch or refactor unless fixing a verified bug.*
+- **Physics Stack:** Powered by Roblox native `VectorForce` + `AlignOrientation` combined with `SphereTrace` raycasting. Zero deprecated `BodyVelocity`/`BodyGyro` instances.
+- **Release Momentum Boost:** Preserves directional kinetic velocity upon web release, allowing high-speed slingshots out of dives.
+- **Camera Dynamics:** Dynamic speed-based FOV scaling smoothly interpolating from 70 (idle) to 95 (terminal swing velocity).
+- **Surface Traversal:** Wall-run friction checks, ledge zip-targeting, ceiling drop-hang, and automatic obstacle clearance.
+- **Configuration Hub:** All physical constants (tensions, damping, max distances, speeds) are centralized in `src/shared/GrappleConfig.luau`.
+
+### B. Combat & Melee Engine
+*Status: IMPLEMENTED & VERIFIED.*
+- **Light Combo String:** 4-hit sequence with input buffering windows and progressive forward momentum impulses.
+- **Verticality:** Aerial launcher uppercut (knocks enemies into air for aerial combat) and ground-pound slam with radial shockwave.
+- **Evasion:** Directional dodge roll featuring invulnerability frames (i-frames) and instant camera tracking.
+- **Hit Registration & Feedback:** Authoritative server validation on hitboxes; client-side immediate sound effects, hit-spark visual triggers, and enemy ragdoll/stun states.
+
+### C. Character Rig & Suit Architecture
+*Status: ARCHITECTURAL STANDARD LOCKED IN.*
+- **No Skinned 3D Suits via AI:** Procedural AI mesh generators cannot weight-paint deforming shoulder and knee joints cleanly without horrific polygon pinching or tearing during animations.
+- **The Hybrid Standard Adopted:**
+  1. *Base:* Standard R15 humanoid rig (guarantees buttery 60 FPS animation blending).
+  2. *Suit Skin:* Classic 2D `Shirt` and `Pants` textures (585×559 layout) for flawless joint bending with zero performance cost.
+  3. *3D Silhouette Accents:* Rigid accessories socketed to avatar attachment points (`web_shooter_bracer.fbx` on forearms, `webbed_backpack.fbx` on torso, 3D masks on head).
 
 ---
 
-## 3. Avatar / Suit Architecture Decision
-- **No Skinned Mesh Suits via AI:** Procedural Python code cannot weight-paint deforming shoulder/elbow joints cleanly.
-- **Hybrid Standard Adopted:**
-  - Base: Standard Roblox R15 rig.
-  - Skin: Classic 2D `Shirt` and `Pants` templates (585x559 texture) for perfect 60 FPS joint bending with zero clipping.
-  - 3D Accents: Rigid accessories (`web_shooter_bracer.fbx` on arms, `webbed_backpack.fbx` on back, 3D masks on head).
+## 3. The 39-Model Bespoke 3D Asset Library
+Authored via headless Blender 5.1 with procedural Python generators (`generate_*.py`). All models enforce **1 Blender Unit = 1 Roblox Stud** relative to 5-stud avatars, zero degenerate faces, manifold geometry, and strict 500–1,400 triangle budgets.
+
+| Category & Folder | Asset Name | FBX File | Triangles | Dimensions (Studs) | Gameplay Role / Attachment |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Thug Weapons**<br>`thug_weapons/` | Baseball Bat | `baseball_bat.fbx` | ~650 | $0.5 \times 0.5 \times 4.2$ | Melee thug weapon (taped handle) |
+| | Crowbar | `crowbar.fbx` | ~720 | $0.4 \times 0.6 \times 3.6$ | Melee thug weapon (angled pry claw) |
+| | Combat Knife | `combat_knife.fbx` | ~580 | $0.3 \times 0.6 \times 2.0$ | Fast melee thug weapon (serrated edge) |
+| | Handgun | `handgun.fbx` | ~810 | $0.4 \times 1.5 \times 1.1$ | Ranged thug firearm (slide, trigger, grip) |
+| | Riot Shield | `riot_shield.fbx` | ~890 | $3.0 \times 1.2 \times 5.4$ | Brute thug shield (ballistic viewport) |
+| **2. Throwable Props**<br>`throwable_props/` | Manhole Cover | `manhole_cover.fbx` | ~740 | $3.6 \times 3.6 \times 0.3$ | Heavy throwable disc (crosshatch grip) |
+| | Trash Can + Lid | `trash_can.fbx` | ~1,260 | $2.1 \times 2.1 \times 4.2$ | Throwable street prop with separate lid |
+| | Wooden Crate | `wooden_crate.fbx` | ~1,008 | $4.8 \times 4.8 \times 4.8$ | Breakable throwable container (cross-braced) |
+| | Construction Barrel | `construction_barrel.fbx` | ~944 | $2.4 \times 2.4 \times 4.8$ | Heavy street obstacle / throwable |
+| | Classic USPS Mailbox | `mailbox_classic_usps.fbx` | ~912 | $1.9 \times 1.6 \times 3.8$ | Curbside drop-chute mailbox |
+| | Double Chute Mailbox | `mailbox_double_chute.fbx` | ~980 | $2.4 \times 1.6 \times 3.8$ | High-volume twin mail drop box |
+| | Dented Combat Mailbox| `mailbox_combat_dented.fbx`| ~940 | $1.9 \times 1.6 \times 3.8$ | Battered street combat cover |
+| | Green Relay Mailbox | `mailbox_relay_green.fbx` | ~860 | $2.0 \times 1.8 \times 3.9$ | Storage relay box (olive/brass) |
+| | Vintage Pillar Mailbox| `mailbox_vintage_pillar.fbx`| ~1,020 | $1.8 \times 1.8 \times 4.2$ | Victorian fluted pillar postbox |
+| **3. Rooftop Props**<br>`rooftop_props/` | Rooftop Water Tower | `rooftop_water_tower.fbx` | 1,086 | $7.7 \times 7.7 \times 16.4$ | Multi-story skyline landmark / perch |
+| | HVAC AC Unit | `hvac_air_conditioner.fbx` | 888 | $6.3 \times 3.9 \times 4.1$ | Industrial rooftop exhaust fan & vents |
+| | Fire Escape Balcony | `fire_escape_balcony.fbx` | 1,308 | $6.1 \times 3.7 \times 5.7$ | Wall-mounted iron balcony with drop ladder |
+| | NYC Fire Hydrant | `nyc_fire_hydrant.fbx` | 808 | $1.4 \times 1.4 \times 2.35$ | Curbside red cast-iron hydrant |
+| | Industrial Dumpster | `industrial_dumpster.fbx` | 760 | $6.1 \times 4.3 \times 4.6$ | Alleyway steel dumpster (lid ajar) |
+| **4. Spidey Gadgets**<br>`spidey_gadgets/` | Web Shooter Bracer | `web_shooter_bracer.fbx` | 888 | $1.4 \times 1.4 \times 1.6$ | Rigid forearm accessory (dual wrists) |
+| | Web Bomb Canister | `web_bomb_canister.fbx` | 896 | $1.0 \times 1.0 \times 1.2$ | Impact web grenade projectile |
+| | Spider-Tracer Dart | `spider_tracer_dart.fbx` | 648 | $0.8 \times 0.8 \times 0.2$ | Arachnid tracking beacon pickup |
+| | Classic Pizza Box | `classic_pizza_box.fbx` | 724 | $2.4 \times 2.4 \times 0.5$ | NYC delivery pizza box (heal / collectible) |
+| | Webbed Backpack | `webbed_backpack.fbx` | 1,048 | $1.8 \times 1.4 \times 2.2$ | Peter Parker collectible daypack |
+| **5. Thug Wearables**<br>`thug_wearables/` | Ballistic Hockey Mask | `ballistic_hockey_mask.fbx` | 804 | $1.3 \times 1.1 \times 1.4$ | Thug face mask (`FaceFrontAttachment`) |
+| | Thug Ski Mask | `thug_ski_mask.fbx` | 888 | $1.3 \times 1.3 \times 1.6$ | Full knit balaclava (`HatAttachment`) |
+| | Tactical Plate Carrier| `tactical_plate_carrier.fbx`| 1,088 | $2.2 \times 1.3 \times 2.2$ | Ceramic torso armor (`BodyFrontAttachment`) |
+| | Street Gang Beanie | `street_gang_beanie.fbx` | 728 | $1.3 \times 1.3 \times 0.9$ | Slouchy folded cuff beanie (`HatAttachment`) |
+| | Spiked Arm Bracers | `spiked_arm_bracers.fbx` | 1,064 | $1.4 \times 1.4 \times 1.6$ | Dual leather/steel studded forearm cuffs |
+| **6. Street Props**<br>`street_props/` | NYPD Sawhorse Barricade| `nypd_sawhorse_barricade.fbx`| 888 | $4.6 \times 1.4 \times 2.8$ | Vaultable cover / crowd control barricade |
+| | NYC Street Lamp | `nyc_street_lamp.fbx` | 956 | $2.8 \times 1.6 \times 12.5$ | 12.5-stud lamppost with top perch finial |
+| | Vintage Payphone Kiosk| `vintage_payphone_kiosk.fbx`| 1,004 | $2.2 \times 2.0 \times 6.4$ | Curbside acoustic hood & coiled handset |
+| | Traffic Hazard Cones | `traffic_hazard_cones.fbx` | 616 | $2.4 \times 1.8 \times 2.2$ | Upright cone + knocked cone pair |
+| | Electrical Hazard Box | `electrical_hazard_box.fbx` | 948 | $2.2 \times 1.2 \times 3.0$ | Web-pull environmental shock hazard |
+| **7. Civilian Vehicles**<br>`civilian_vehicles/` | NYC Yellow Taxi | `nyc_yellow_taxi.fbx` | 1,200 | $6.6 \times 15.0 \times 5.0$ | Crown Vic taxi, roof fare box, tinted glass |
+| | Civilian Family Sedan | `civilian_family_sedan.fbx` | 1,124 | $6.5 \times 14.5 \times 4.8$ | Slate blue commuter sedan, taillight bar |
+| | Civilian Pickup Truck | `civilian_pickup_truck.fbx` | 1,284 | $7.0 \times 16.0 \times 5.6$ | Crew-cab with open ribbed cargo bed |
+| | City Box Delivery Truck| `city_box_delivery_truck.fbx`| 1,344 | $7.2 \times 18.5 \times 7.8$ | Flat-nose truck with large cargo parkour box |
+| | Urban Compact Hatchback| `urban_compact_hatchback.fbx`| 1,184 | $6.2 \times 12.8 \times 4.6$ | Crimson red 2-door city compact |
 
 ---
 
-## 4. Next Priorities (Post-Midterms Roadmap)
-1. **Devlog #1 Voiceover:**
-   - Script ready in `Devlog_1_Script.md` (~3 minutes, punchy indie dev story).
-   - Mic: Rexus Xora-II (dialed in with pop filter, +6dB gain, 30% noise reduction).
-   - Tool: CapCut.
-2. **Roblox Studio Scene Dressing:**
-   - Bulk-import FBX files into Studio.
-   - Set quick material overrides (`Rubber` for tires, `Metal` for chrome, `Neon` for lamp glass).
-3. **Gameplay Polish:**
-   - Wire street props into the combat arena (web-pull electrical box explosion, vaulting over barricades).
+## 4. Professional AI Prompt Engineering Protocol (Astra / Blender)
+When Rich needs new 3D assets generated through external LLMs (e.g. GPT-6 Astra on arena.ai), the Co-Founder drafts the prompt following these **6 Mandatory Rules**:
+
+1. **Exact 1:1 Stud Scaling:** Mandate `1 Blender unit = 1 Roblox stud` relative to 5-stud avatars. Explicitly mandate `apply_unit_scale=False`, `apply_scale_options='FBX_SCALE_NONE'`, `axis_forward='-Z'`, `axis_up='Y'`. Never apply meter multipliers.
+2. **Object Cleanup Bugfix:** Mandate `mesh_data = obj.data` cached BEFORE `bpy.data.objects.remove(obj)` to eliminate `StructRNA ReferenceError` crashes.
+3. **Topology Cleansing:** Mandate `bmesh.ops.triangulate(bm, quad_method='BEAUTY', ngon_method='EAR_CLIP')` followed by `bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=list(bm.edges))` to eliminate 0-area sliver polygons.
+4. **Strict Budget:** Enforce 500–1,400 triangles per asset (700–1,400 for vehicles).
+5. **Exterior-Only Rule:** All vehicle and prop windows must be solid tinted glass surfaces. Zero polygons wasted on invisible interior dashboards, steering wheels, or seats.
+6. **Explicit Authoring Pivots:** Ground props must place bottom at $Z=0$; wall props must place rear mounting plane at $Y=0$.
+
+---
+
+## 5. Post-Midterm Roadmap & Action Items (When Rich Returns)
+
+```
+[Post-Midterm Return]
+         │
+         ├── STEP 1: Devlog #1 Voiceover (Top Priority)
+         │   • Script ready: `Devlog_1_Script.md` (~3 minutes)
+         │   • Tool: CapCut
+         │   • Microphone: Rexus Xora-II (calibrated: pop filter, +6dB gain, 30% noise reduction)
+         │   • Goal: Tell the solo indie founder story and show gameplay footage
+         │
+         ├── STEP 2: Roblox Studio Scene Dressing
+         │   • Bulk-import 39 FBX assets into Studio via Asset Manager
+         │   • Quick material pass: Rubber on tires, Metal on bumpers, Neon on lamps
+         │   • Construct the Manhattan alleyway & street-level combat testing arena
+         │
+         └── STEP 3: Environmental Combat Interactivity
+             • Wire `electrical_hazard_box` as a web-pullable AOE shock hazard
+             • Make `nypd_sawhorse_barricade` vaultable with parkour impulse
+             • Scatter throwable props (crates, manholes) into the combat area
+```
+
+---
+
+## 6. How the Next Session Must Begin
+When opening a new session in this workspace after exams:
+1. Greet Rich as **Ponytail** (senior technical co-founder & mentor).
+2. Confirm he survived midterms and ask how his rest went.
+3. Immediately direct attention to **Step 1 (Devlog #1 Voiceover)** without adding new scope or distractions.
