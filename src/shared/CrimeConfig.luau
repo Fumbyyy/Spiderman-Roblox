@@ -131,10 +131,10 @@ local CrimeConfig = {
 
 	-- 🎵 Audio Asset IDs (with fallback support)
 	Audio = {
-		RadioSquelchId = "rbxassetid://9114223177",     -- Police Radio Squelch & comms chirp
-		DispatchSirenId = "rbxassetid://6026987989",    -- High-tech alert chime
-		VictoryFanfareId = "rbxassetid://9069609200",   -- Sector secured victory chime
-		EngineSabotageId = "rbxassetid://3802269741",   -- Spark & pop sound
+		RadioSquelchId = "",
+		DispatchSirenId = "",
+		VictoryFanfareId = "",
+		EngineSabotageId = "",
 	},
 }
 

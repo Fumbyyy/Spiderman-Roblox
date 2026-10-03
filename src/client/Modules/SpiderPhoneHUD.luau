@@ -83,14 +83,9 @@ local cachedEquippedSuit: string = "ClassicSuit"
 -- 🔊 AUDIO FEEDBACK (Zero Hardcoded IDs)
 --------------------------------------------------------------------------------
 
-local function playPhoneSound(soundName: string)
-	local soundFolder = SoundService:FindFirstChild("PhoneSounds")
-	if soundFolder then
-		local snd = soundFolder:FindFirstChild(soundName) :: Sound?
-		if snd then
-			snd:Play()
-		end
-	end
+local function playPhoneSound(_soundName: string)
+	-- Zero SFX Policy: Silent visual-only UI interaction
+	return
 end
 
 --------------------------------------------------------------------------------
@@ -1360,7 +1355,7 @@ local function renderMovesApp(parent: Frame)
 
 	local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
 	local playerLevel = leaderstats and leaderstats:FindFirstChild("Level") and (leaderstats.Level :: IntValue).Value or 1
-	local isCycloneUnlocked = playerLevel >= 2
+	local isCycloneUnlocked = playerLevel >= 2 or RunService:IsStudio()
 
 	-- 🌪️ TOP SPOTLIGHT CARD: Level 2 Ultimate (360° Web Cyclone Blender)
 	local spotCard = Instance.new("Frame")

@@ -27,6 +27,7 @@ local GroundSlamRemote = RemotesFolder:WaitForChild("AirGroundSlam") :: RemoteEv
 local ModulesFolder = script.Parent
 local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
+local CombatDodge = require(ModulesFolder:WaitForChild("CombatDodge"))
 
 local CombatMelee = {}
 
@@ -108,8 +109,9 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 			forwardFlat = Vector3.new(offset.X, 0, offset.Z).Unit
 		end
 
-		-- Clean auto-facing: Spider-Man turns to face his target without moving his position artificially
-		rootPart.CFrame = CFrame.lookAt(rootPart.Position, Vector3.new(enemyPos.X, rootPart.Position.Y, enemyPos.Z))
+		-- Clean auto-facing: Smooth lerp rotation to eliminate robotic 1-frame snapping
+		local targetRot = CFrame.lookAt(rootPart.Position, Vector3.new(enemyPos.X, rootPart.Position.Y, enemyPos.Z))
+		rootPart.CFrame = rootPart.CFrame:Lerp(targetRot, 0.65)
 
 		-- Natural grounded step: Uses normal velocity impulse so feet stay on the pavement
 		local stepForce: number
@@ -120,19 +122,74 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 			stepForce = 4.0
 		end
 
-		rootPart.AssemblyLinearVelocity = (forwardFlat * stepForce) + Vector3.new(0, 0.4, 0)
+		rootPart.AssemblyLinearVelocity = Vector3.new(forwardFlat.X * stepForce, 0, forwardFlat.Z * stepForce)
 	else
 		-- Free punch without target: forward momentum step aligned with camera
 		local lungeForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 12)
 		rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + forwardFlat)
-		rootPart.AssemblyLinearVelocity = (forwardFlat * lungeForce) + Vector3.new(0, 1.2, 0)
+		rootPart.AssemblyLinearVelocity = Vector3.new(forwardFlat.X * lungeForce, 0, forwardFlat.Z * lungeForce)
 	end
 
 	WebVisuals.playWebSound(rootPart)
 
 	-- 3. Melee AoE Cleave Hitbox: Fires to server with target (if any); server validates forward cone cleave for all clumped mobs!
 	local currentHit = math.clamp(CombatMelee.comboIndex, 1, 3)
-	KineticComboRemote:FireServer(target, currentHit)
+
+	local isMiles = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (character and character:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+
+	local isCloaked = isMiles and (
+		(LocalPlayer and LocalPlayer:GetAttribute("MilesCamouflaged") == true)
+		or (character and character:GetAttribute("MilesCamouflaged") == true)
+		or CombatDodge.camoState == "Active"
+	)
+
+	-- ⚡ The "Hey" Ambush Nova: Guaranteed detonation anywhere (empty air or target) upon attacking while cloaked
+	local isAmbush = false
+	if isCloaked then
+		isAmbush = true
+		WebVisuals.createVenomBlastShockwave(rootPart.Position, 14)
+		CombatDodge.dischargeCamo(character)
+	end
+
+	-- ⚡ Miles Morales: Electric Sparks on Punches
+	if isMiles then
+		local fist = if currentHit % 2 == 1
+			then (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
+			else (character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm"))
+		if fist and fist:IsA("BasePart") then
+			WebVisuals.createVenomFistSparks(fist)
+		end
+	end
+
+
+	-- ⚡ Symbiote Suit: Brutal Tendril Burst on 3rd combo punch
+	local isSymbiote = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (character and character:GetAttribute("EquippedSuit") == "SymbioteBlack")
+	if currentHit == 3 and isSymbiote then
+		local fist = (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm") or rootPart) :: BasePart
+		WebVisuals.createTendrilPunchBurst(fist)
+	end
+
+	-- ⚡ Stark Tech Suit: Waldo Repulsor Shockwave on 3rd combo punch
+	if currentHit == 3 then
+		local isStark = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "StarkTechSuit")
+			or (character and character:GetAttribute("EquippedSuit") == "StarkTechSuit")
+		if isStark then
+			WebVisuals.createWaldoRepulsorShockwave(rootPart.Position, 14)
+		end
+	end
+
+	-- 🤖 2099 Cyber Suit: Talon Slashes along Forearm Blades & Hit 3 Cross-Slash
+	local is2099 = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "Cyber2099")
+		or (character and character:GetAttribute("EquippedSuit") == "Cyber2099")
+	if is2099 then
+		local isRight = (currentHit % 2 == 1)
+		WebVisuals.createCyberTalonSlash(character, isRight, currentHit == 3, camera)
+	end
+
+	-- Fire to server with explicit isAmbush flag for zero-race-condition critical stun
+	KineticComboRemote:FireServer(target, currentHit, isAmbush)
 
 	if target then
 		local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
@@ -245,6 +302,22 @@ function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, 
 		local curGroundRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -8, 0), rayParams)
 		if curGroundRay then
 			finalPos = curGroundRay.Position
+		end
+
+		local isSymbioteSlam = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "SymbioteBlack")
+			or (character and character:GetAttribute("EquippedSuit") == "SymbioteBlack")
+
+		if isSymbioteSlam then
+			WebVisuals.createTendrilGroundSlamVFX(finalPos, 18)
+			-- Camera FOV punch by -6° for heavy impact crunch
+			local camera = Workspace.CurrentCamera
+			if camera then
+				local baseFov = camera.FieldOfView
+				camera.FieldOfView = math.max(45, baseFov - 6)
+				TweenService:Create(camera, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					FieldOfView = baseFov,
+				}):Play()
+			end
 		end
 
 		GroundSlamRemote:FireServer(target, finalPos)

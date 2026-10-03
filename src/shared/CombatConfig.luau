@@ -15,7 +15,6 @@ local CombatConfig = {
 		WebStrike = Enum.KeyCode.R,               -- R Key: 65-Stud Web-Strike Zip Dropkick!
 		Dodge = Enum.KeyCode.F,                   -- F Key: Spider-Sense Perfect Dodge & Face-Web Counter
 		Ultimate = Enum.KeyCode.T,                -- T Key: 360° Web Cyclone Continuous DPS Blender
-		QuickHeal = Enum.KeyCode.H,               -- H Key: Quick-Heal +35 HP
 	},
 
 	-- 🎯 Freeflow Targeting Settings (Smooth camera, comfortable range)
@@ -39,8 +38,8 @@ local CombatConfig = {
 			CleaveRadius = 7.0,                   -- Forward AoE punch cleave reach for hitting clumped enemies
 			FinisherCleaveRadius = 8.2,           -- 3rd hit wide roundhouse cleave reach (studs)
 			CleaveConeAngle = 70,                 -- Forward cleave arc (degrees)
-			HitCooldown = 0.26,                   -- Snappy, rhythmic punch pacing
-			FinisherCooldown = 0.50,              -- Cooldown after 3rd hit
+			HitCooldown = 0.42,                   -- Tuned rhythmic punch pacing
+			FinisherCooldown = 0.65,              -- Heavy finisher cooldown after 3rd hit
 			ComboResetTime = 1.10,                -- Time before combo resets to hit 1
 			-- 🥋 Natural Grounded Step & Auto-Facing
 			StepScanRange = 8.5,                  -- Max reach to auto-face and step toward enemy (studs)
@@ -102,7 +101,7 @@ local CombatConfig = {
 			ImpactDamage = 22,                    -- Heavy flying dropkick impact on primary target
 			SplashDamage = 14,                    -- AoE blast damage on secondary clumped enemies
 			SplashRadius = 8.0,                   -- Stud radius for AoE crowd splash on impact
-			MaxDistance = 65,                     -- 65 studs crosshair lock-on zip range
+			MaxDistance = 95,                     -- 95 studs crosshair lock-on zip range
 			ZipSpeed = 125,                       -- High-velocity zip pull (studs/s)
 			KnockbackForce = 26,                  -- Launches thug backwards across street
 		},

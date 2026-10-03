@@ -178,13 +178,27 @@ local function startGroundSlingshot(character: Model, rootPart: BasePart, humano
 	activeWebBeamLeft = WebVisuals.createWebBeam(handLeft, worldLeft, rootPart, character)
 	activeWebBeamRight = WebVisuals.createWebBeam(handRight, worldRight, rootPart, character)
 
+	local isScarlet = (LocalPlayer:GetAttribute("EquippedSuit") == "ScarletSpider")
+		or (character:GetAttribute("EquippedSuit") == "ScarletSpider")
 	local isVelocitySuit = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
-	local forwardSpeed = GrappleConfig.Slingshot.ForwardVelocity * (if isVelocitySuit then 1.15 else 1.0)
-	local launchVel = (forwardFlat * forwardSpeed) + Vector3.new(0, GrappleConfig.Slingshot.UpwardVelocity, 0)
+
+	local speedMultiplier = 1.0
+	local upwardMultiplier = 1.0
+
+	if isScarlet then
+		speedMultiplier = 1.25
+		upwardMultiplier = 1.25
+	elseif isVelocitySuit then
+		speedMultiplier = 1.15
+	end
+
+	local forwardSpeed = GrappleConfig.Slingshot.ForwardVelocity * speedMultiplier
+	local upwardSpeed = GrappleConfig.Slingshot.UpwardVelocity * upwardMultiplier
+	local launchVel = (forwardFlat * forwardSpeed) + Vector3.new(0, upwardSpeed, 0)
 	pendulumVelocity = launchVel
 
-	-- 🚀 Velocity Suit Perk: Cyan Rocket Booster Particle Trails on Feet for 1.2s
-	if isVelocitySuit then
+	-- 🚀 Velocity Suit Perk: Cyan Rocket Booster Particle Trails on Feet for 1.2s (Stark Tech)
+	if isVelocitySuit and not isScarlet then
 		local function attachBooster(parentPart: BasePart?)
 			if not parentPart then return end
 			local att = Instance.new("Attachment")
@@ -234,6 +248,61 @@ local function startGroundSlingshot(character: Model, rootPart: BasePart, humano
 		attachBooster(rightFoot)
 	end
 
+	-- 🕷️ Scarlet Spider Slingshot Overdrive: Red / Blue Aerodynamic Speed Trails
+	if isScarlet then
+		local function attachAerodynamicTrails(parentPart: BasePart?)
+			if not parentPart then return end
+			local att = Instance.new("Attachment")
+			att.Name = "ScarletAeroAtt"
+			att.Position = Vector3.new(0, -0.3, 0)
+			att.Parent = parentPart
+
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Name = "ScarletAeroTrail"
+			emitter.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 50, 60)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 115, 235)),
+			})
+			emitter.LightEmission = 0.8
+			emitter.LightInfluence = 0
+			emitter.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.5),
+				NumberSequenceKeypoint.new(1, 0.0),
+			})
+			emitter.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.15),
+				NumberSequenceKeypoint.new(1, 1.0),
+			})
+			emitter.Rate = 50
+			emitter.Speed = NumberRange.new(10, 20)
+			emitter.Lifetime = NumberRange.new(0.2, 0.35)
+			emitter.SpreadAngle = Vector2.new(10, 10)
+			emitter.EmissionDirection = Enum.NormalId.Bottom
+			emitter.Parent = att
+
+			task.delay(1.4, function()
+				if emitter and emitter.Parent then
+					emitter.Enabled = false
+				end
+				task.delay(0.5, function()
+					if att and att.Parent then
+						att:Destroy()
+					end
+				end)
+			end)
+		end
+
+		local leftFoot = (character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg")) :: BasePart?
+		local rightFoot = (character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg")) :: BasePart?
+		local leftHand = (character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")) :: BasePart?
+		local rightHand = (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")) :: BasePart?
+		attachAerodynamicTrails(leftFoot)
+		attachAerodynamicTrails(rightFoot)
+		attachAerodynamicTrails(leftHand)
+		attachAerodynamicTrails(rightHand)
+	end
+
 	if not activeBodyVelocity then
 		activeBodyVelocity = Instance.new("BodyVelocity")
 		activeBodyVelocity.Name = "SlingshotVelocity"
@@ -279,8 +348,10 @@ local function startAirSwing(character: Model, rootPart: BasePart, humanoid: Hum
 
 	local incomingVel = isFreeGliding and glideVelocity or rootPart.AssemblyLinearVelocity
 	local incomingSpeed = incomingVel.Magnitude
+	local isScarlet = (LocalPlayer:GetAttribute("EquippedSuit") == "ScarletSpider")
+		or (character:GetAttribute("EquippedSuit") == "ScarletSpider")
 	local isVelocityPerk = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
-	local effectiveMaxSpeed = if isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
+	local effectiveMaxSpeed = if isScarlet then 215 elseif isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
 	local startSpeed = math.clamp(
 		math.max(incomingSpeed * 1.05, GrappleConfig.Physics.InitialSwingSpeed),
 		GrappleConfig.Physics.InitialSwingSpeed,
@@ -452,8 +523,10 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		local theta = math.atan2(forwardRel, verticalDepth)
 
 		local pumpAccel = (isHoldingW and GrappleConfig.Physics.ForwardPumpForce or 25) * deltaTime
+		local isScarlet = (LocalPlayer:GetAttribute("EquippedSuit") == "ScarletSpider")
+			or (character:GetAttribute("EquippedSuit") == "ScarletSpider")
 		local isVelocityPerk = (LocalPlayer:GetAttribute("SuitPerkType") == "Velocity")
-		local effectiveMaxSpeed = if isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
+		local effectiveMaxSpeed = if isScarlet then 215 elseif isVelocityPerk then math.floor(GrappleConfig.Physics.MaxSpeed * 1.15) else GrappleConfig.Physics.MaxSpeed
 		horizSpeed = math.clamp(horizSpeed + pumpAccel, GrappleConfig.Physics.MinSpeed, effectiveMaxSpeed)
 
 		local targetY = (horizSpeed * math.sin(theta)) + ((isHoldingW and GrappleConfig.Physics.UpwardClimbLift or 35) * 0.4)
@@ -601,6 +674,7 @@ end)
 -- Character setup
 local function onCharacterAdded(char: Model)
 	local hum = char:WaitForChild("Humanoid") :: Humanoid
+	hum.WalkSpeed = 28
 	CameraController.setupCharacter(hum)
 	hum.Died:Connect(function()
 		stopGrapple(false)

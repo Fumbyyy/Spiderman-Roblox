@@ -29,6 +29,98 @@ local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local CombatDodge = {}
 
+-- ⚡ Miles Morales Camouflage Energy State Machine (5.0s Stealth Window, 8.0s Recharge)
+CombatDodge.camoEnergy = 1.0 -- 0.0 to 1.0
+CombatDodge.camoState = "Ready" -- "Ready" | "Active" | "Recharging"
+
+local camoConn: RBXScriptConnection? = nil
+
+function CombatDodge.dischargeCamo(character: Model?)
+	CombatDodge.camoEnergy = 0
+	CombatDodge.camoState = "Recharging"
+	LocalPlayer:SetAttribute("MilesCamoEnergy", 0)
+	LocalPlayer:SetAttribute("MilesCamoState", "Recharging")
+	LocalPlayer:SetAttribute("MilesCamouflaged", false)
+
+	if camoConn then camoConn:Disconnect() camoConn = nil end
+
+	local char = character or (LocalPlayer and LocalPlayer.Character)
+	if char then
+		char:SetAttribute("MilesCamouflaged", false)
+		for _, part in char:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.LocalTransparencyModifier = 0
+			end
+		end
+		local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			WebVisuals.createBioSparkBurst(root.Position)
+		end
+	end
+end
+
+-- Backward compatibility alias
+CombatDodge.breakCamouflage = CombatDodge.dischargeCamo
+
+function CombatDodge.activateCamouflage(character: Model)
+	if camoConn then camoConn:Disconnect() camoConn = nil end
+
+	CombatDodge.camoState = "Active"
+	CombatDodge.camoEnergy = 1.0
+	LocalPlayer:SetAttribute("MilesCamoState", "Active")
+	LocalPlayer:SetAttribute("MilesCamoEnergy", 1.0)
+	LocalPlayer:SetAttribute("MilesCamouflaged", true)
+	character:SetAttribute("MilesCamouflaged", true)
+
+	local parts: { BasePart } = {}
+	for _, part in character:GetDescendants() do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			table.insert(parts, part)
+			part.LocalTransparencyModifier = 0.85
+		end
+	end
+
+	camoConn = RunService.RenderStepped:Connect(function()
+		if not character.Parent or character:GetAttribute("MilesCamouflaged") ~= true or CombatDodge.camoState ~= "Active" then
+			if camoConn then camoConn:Disconnect() camoConn = nil end
+			return
+		end
+		for _, part in parts do
+			if part.Parent then
+				part.LocalTransparencyModifier = 0.85
+			end
+		end
+	end)
+end
+
+-- Continuous energy drain (5.0s) & refill (8.0s) state machine loop
+RunService.Heartbeat:Connect(function(dt)
+	local isMiles = (LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+	if not isMiles then
+		if CombatDodge.camoState == "Active" then
+			CombatDodge.dischargeCamo(LocalPlayer.Character)
+		end
+		return
+	end
+
+	if CombatDodge.camoState == "Active" then
+		CombatDodge.camoEnergy = math.clamp(CombatDodge.camoEnergy - (dt / 5.0), 0, 1)
+		LocalPlayer:SetAttribute("MilesCamoEnergy", CombatDodge.camoEnergy)
+		if CombatDodge.camoEnergy <= 0 then
+			CombatDodge.dischargeCamo(LocalPlayer.Character)
+		end
+	elseif CombatDodge.camoState == "Recharging" then
+		CombatDodge.camoEnergy = math.clamp(CombatDodge.camoEnergy + (dt / 8.0), 0, 1)
+		LocalPlayer:SetAttribute("MilesCamoEnergy", CombatDodge.camoEnergy)
+		if CombatDodge.camoEnergy >= 1 then
+			CombatDodge.camoState = "Ready"
+			LocalPlayer:SetAttribute("MilesCamoState", "Ready")
+		end
+	end
+end)
+
+
+
 CombatDodge.lastDodgeTime = 0
 CombatDodge.isDodging = false
 
@@ -39,6 +131,9 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 
 	CombatDodge.isDodging = true
 	CombatDodge.lastDodgeTime = now
+
+	-- 🕷️ Universal Comic Spider-Sense Warning Squiggles (\/\/\) for ALL suits
+	WebVisuals.createSpiderSenseSquiggles(character)
 
 	-- 🎥 Camera Evasion Kick: Punch FOV outward by +4° with 0.22s quad ease-out back to base FOV
 	local baseFov = camera.FieldOfView
@@ -58,7 +153,20 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 		end
 	end)
 
-	if isDodgePerk then
+	local isMiles = (LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (character:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+
+	local isGrounded = (humanoid.FloorMaterial ~= Enum.Material.Air)
+	local isCamoActivation = false
+
+	-- Miles Morales: Spider-Verse Chromatic Glitch Decoy & Camouflage Mode (5.0s window when Ready and Grounded)
+	if isMiles and CombatDodge.camoState == "Ready" and isGrounded then
+		isCamoActivation = true
+		WebVisuals.createChromaticGlitchDecoy(character, rootPart.CFrame)
+		CombatDodge.activateCamouflage(character)
+	end
+
+	if isDodgePerk and not isMiles then
 		local wasArchivable = character.Archivable
 		character.Archivable = true
 		local decoy = character:Clone()
@@ -87,7 +195,8 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 					desc.CanTouch = false
 					desc.CanQuery = false
 					desc.Material = Enum.Material.Neon
-					desc.Color = Color3.fromRGB(0, 255, 128)
+					local isMiles = (LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+					desc.Color = if isMiles then Color3.fromRGB(225, 35, 45) else Color3.fromRGB(0, 255, 128)
 					desc.Transparency = 0.45
 				end
 			end
@@ -263,10 +372,10 @@ function CombatDodge.performSpiderSenseDodge(character: Model, rootPart: BasePar
 		end
 
 		CombatStyleHUD.registerHit(12)
-		DodgeRemote:FireServer(threat, true)
+		DodgeRemote:FireServer(threat, true, isCamoActivation)
 		return nil
 	else
-		DodgeRemote:FireServer(nil, false)
+		DodgeRemote:FireServer(nil, false, isCamoActivation)
 		return nil
 	end
 end

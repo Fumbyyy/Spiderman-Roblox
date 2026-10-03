@@ -40,6 +40,22 @@ local function triggerHitStop(duration: number, camera: Camera, isHeavy: boolean
 	end)
 end
 
+-- Tactile Screen Shake: Micro camera shake on heavy impacts
+local function triggerCameraShake(camera: Camera, intensity: number, duration: number)
+	task.spawn(function()
+		local startTime = os.clock()
+		while (os.clock() - startTime) < duration do
+			local offset = Vector3.new(
+				(math.random() - 0.5) * 2 * intensity,
+				(math.random() - 0.5) * 2 * intensity,
+				0
+			)
+			camera.CFrame = camera.CFrame * CFrame.new(offset)
+			task.wait(0.016)
+		end
+	end)
+end
+
 function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, getCharacterParts: () -> (Model?, BasePart?, Humanoid?))
 	CombatVFXRemote.OnClientEvent:Connect(function(actionName: string, instigator: any, targetModel: any, extra: any, hitCountArg: any)
 		-- 🕸️ 1. Web Pellet Hit & Progressive Web VFX
@@ -69,7 +85,6 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			local weaponPart = targetModel:IsA("BasePart") and targetModel or (targetModel:FindFirstChild("Gun") :: BasePart?)
 			if sourceChar and weaponPart then
 				WebVisuals.createDisarmWebTether(sourceChar, weaponPart, 0.45)
-				WebVisuals.playWebSound(sourceChar:FindFirstChild("HumanoidRootPart"))
 			end
 		end
 
@@ -95,8 +110,7 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 					end
 					local b1 = WebVisuals.createWebBeam(leftAtt, propAtt, sourceChar:FindFirstChild("HumanoidRootPart") or propPart)
 					local b2 = WebVisuals.createWebBeam(rightAtt, propAtt, sourceChar:FindFirstChild("HumanoidRootPart") or propPart)
-					WebVisuals.playWebSound(sourceChar:FindFirstChild("HumanoidRootPart"))
-					task.delay(0.44, function()
+						task.delay(0.44, function()
 						if b1 then b1:Destroy() end
 						if b2 then b2:Destroy() end
 					end)
@@ -131,7 +145,6 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 					end
 				end
 
-				WebVisuals.playWebSound(enemyRoot)
 
 				local matrixFolder = Instance.new("Folder")
 				matrixFolder.Name = "WallPinWebMatrix"
@@ -211,7 +224,6 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 				weld.Part1 = cocoon
 				weld.Parent = cocoon
 
-				WebVisuals.playWebSound(enemyRoot)
 				Debris:AddItem(cocoon, 6.0)
 			end
 		end
@@ -254,11 +266,14 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			-- 🥊 Combo Registration for Local Player:
 			-- Each enemy struck by the primary slam or the radial shockwave increments the combo!
 			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
-			if isLocal and totalHits > 0 then
-				for _ = 1, totalHits do
-					CombatStyleHUD.registerHit(15)
+			if isLocal then
+				if totalHits > 0 then
+					for _ = 1, totalHits do
+						CombatStyleHUD.registerHit(15)
+					end
+					triggerHitStop(0.045, camera, true)
 				end
-				triggerHitStop(0.045, camera, true)
+				triggerCameraShake(camera, 0.28, 0.12)
 			end
 		end
 
@@ -295,6 +310,7 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			if isLocal then
 				CombatStyleHUD.registerHit(22)
 				triggerHitStop(0.045, camera, true)
+				triggerCameraShake(camera, 0.28, 0.12)
 			end
 		end
 
@@ -310,6 +326,9 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			if isLocal then
 				CombatStyleHUD.registerHit(hitNum == 3 and 18 or 10)
 				triggerHitStop(hitNum == 3 and 0.045 or 0.022, camera, hitNum == 3)
+				if hitNum == 3 then
+					triggerCameraShake(camera, 0.28, 0.12)
+				end
 			end
 		end
 
@@ -337,6 +356,72 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			local fireDir: Vector3 = targetModel
 			local dist = typeof(extra) == "number" and extra or 40
 			WebVisuals.createGunnerMuzzleFlash(muzzlePos, fireDir, dist)
+		end
+
+		-- ⚡ 14. Stark Tech Waldo Repulsor Shockwave (Expanding cyan ring pulse)
+		if actionName == "WaldoRepulsorShockwave" and typeof(targetModel) == "Vector3" then
+			local originPos: Vector3 = targetModel
+			local radius = typeof(extra) == "number" and extra or 14
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if not isLocal then
+				WebVisuals.createWaldoRepulsorShockwave(originPos, radius)
+			end
+		end
+
+		-- ⚡ 15. Miles Morales: Paralyzing Venom Stun VFX (Lightning arcs & sparks)
+		if actionName == "VenomStunVFX" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
+			local duration = typeof(extra) == "number" and extra or 2.0
+			WebVisuals.applyVenomStunVFX(targetModel, duration)
+		end
+
+		-- ⚡ 16. Miles Morales: Venom Blast Shockwave
+		if actionName == "VenomBlastVFX" and typeof(targetModel) == "Vector3" then
+			local originPos: Vector3 = targetModel
+			local radius = typeof(extra) == "number" and extra or 12
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if not isLocal then
+				WebVisuals.createVenomBlastShockwave(originPos, radius)
+			end
+		end
+
+		-- ⚡ 17. Miles Morales: Ambush Critical Hit Burst
+		if actionName == "AmbushCritVFX" and typeof(targetModel) == "Vector3" then
+			WebVisuals.createAmbushCritBurst(targetModel)
+		end
+
+		-- 🌑 18. Symbiote Alien Tendril Ground Slam VFX
+		if actionName == "TendrilGroundSlamVFX" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			local shockRadius: number = typeof(extra) == "number" and extra or 18
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if not isLocal then
+				WebVisuals.createTendrilGroundSlamVFX(pos, shockRadius)
+			end
+		end
+
+		-- 🌑 19. Symbiote Brutal Cleave VFX
+		if actionName == "SymbioteCleaveVFX" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			WebVisuals.createSymbioteCleaveVFX(pos)
+		end
+
+		-- 🕸️ 20. Scarlet Spider: Impact Web Explosion (10-stud kinetic shockwave)
+		if actionName == "ImpactWebExplosionVFX" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			local radius: number = typeof(extra) == "number" and extra or 10
+			WebVisuals.createImpactWebExplosionVFX(pos, radius)
+		end
+
+		-- 🤖 21. 2099 Cyber Suit: Supersonic Strike Impact VFX
+		if actionName == "CyberStrikeVFX" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			WebVisuals.createCyberStrikeVFX(pos)
+		end
+
+		-- 🤖 22. 2099 Cyber Suit: Claw Cross-Slash VFX
+		if actionName == "CyberSlashVFX" then
+			local pos: Vector3 = typeof(targetModel) == "Vector3" and targetModel or (typeof(instigator) == "Vector3" and instigator or Vector3.zero)
+			WebVisuals.createCyberCrossSlashVFX(pos)
 		end
 	end)
 end

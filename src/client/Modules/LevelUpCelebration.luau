@@ -176,33 +176,8 @@ end
 --------------------------------------------------------------------------------
 
 local function playFanfareAudio()
-	local phoneSounds = SoundService:FindFirstChild("PhoneSounds")
-	if phoneSounds then
-		local victoryFanfare = phoneSounds:FindFirstChild("VictoryFanfare") :: Sound?
-		if victoryFanfare then
-			victoryFanfare:Play()
-			return
-		end
-		local radioChirp = phoneSounds:FindFirstChild("RadioChirp") :: Sound?
-		if radioChirp then
-			radioChirp:Play()
-			return
-		end
-	end
-
-	-- Clean built-in fallback chime
-	local fallbackSound = Instance.new("Sound")
-	fallbackSound.Name = "LevelUpChimeFallback"
-	fallbackSound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-	fallbackSound.Volume = 0.75
-	fallbackSound.Parent = SoundService
-	fallbackSound:Play()
-
-	task.delay(2.5, function()
-		if fallbackSound and fallbackSound.Parent then
-			fallbackSound:Destroy()
-		end
-	end)
+	-- Zero SFX Policy: Completely silent visual-only level-up celebration
+	return
 end
 
 --------------------------------------------------------------------------------

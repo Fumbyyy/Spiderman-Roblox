@@ -196,14 +196,19 @@ function CombatReticle.update(camera: Camera, rootPart: BasePart?): (Model?, Ins
 						if onScreen then
 							-- 🎯 Aim Accuracy (Crosshair Alignment)
 							local aimAccuracy = math.clamp((dot - cosMaxEnemyAngle) / (1 - cosMaxEnemyAngle), 0, 1)
-							local aimScore = (aimAccuracy ^ 2.2) * 350
+							local aimScore = (aimAccuracy ^ 2.2) * 500
 
 							-- ⚡ Active Threat & Armed Priority
 							local isArmed = (enemy:GetAttribute("IsArmed") == true) or (enemy:FindFirstChild("Gun") ~= nil)
 							local isAttacking = enemy:GetAttribute("IsAttacking") == true
 							local threatScore = 0
-							if isAttacking then threatScore += 140 end
+							if isAttacking then threatScore += 30 end
 							if isArmed then threatScore += 90 end
+
+							-- Suppress off-axis threat scoring (under feet or off-screen)
+							if dot < 0.65 then
+								threatScore = 0
+							end
 
 							-- 📏 Proximity Base
 							local proximityScore = (1.0 - (distance / maxEnemyDist)) * 80

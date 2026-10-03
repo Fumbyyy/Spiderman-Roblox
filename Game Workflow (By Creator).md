@@ -1,4 +1,4 @@
-# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
+﻿# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
 
 > **Vision:** An accessible, high-momentum Spider-Man sandbox combining **fluid physics traversal**, **tactile Arkham/Insomniac combat**, and **seamless multiplayer crime-fighting** across an authentic 5,000 × 5,000 stud Manhattan city.
 >
@@ -149,7 +149,7 @@ LEVEL 5-6+ (2 – 4+ hours)    ➔ THE PINNACLE: True dedication. Spider-Armor M
   * **3. Web Silk Chromas & Trails:** Cosmetic visual flex (Classic White, Electric Cyan `$1,500`, Crimson Laser `$3,000`, Golden Spider `$6,000`, Void Tendrils `$10,000`).
 * [x] **Zero-Trust Server Authority:**
   * All XP, Levels, and Hero Cash are calculated and validated strictly on the server (`leaderstats`). No client exploitation possible.
-* [ ] **Gameplay Perk Execution Architecture (Making Suit Perks Work in Luau):**
+* [ ] **Optional / Post-Launch Quality of Life: Cosmetic Transmog (Appearance Lock):** Toggle inside the Spider-Phone allowing players to lock their favorite visual suit appearance while dynamically hot-swapping gameplay perk stances.*
   * **1. Classic Red & Blue (Baseline):** Standard physics, 1.0x multipliers across all systems.
   * **2. Stark Tech Advanced (`Velocity` - 1.15x):** `GrappleController.client.luau` reads `player:GetAttribute("SuitPerkType") == "Velocity"`, scaling max swing velocity from 195 to 224 studs/s and adding cyan jet thruster trails on catapult launches.
   * **3. Stealth Big Time (`Dodge` - +0.25s):** `CombatDodge.luau` increases invulnerability frames from 0.45s to 0.70s and leaves a neon-green holographic decoy that distracts gunners.
@@ -237,4 +237,5 @@ LEVEL 5-6+ (2 – 4+ hours)    ➔ THE PINNACLE: True dedication. Spider-Armor M
 * [ ] **Milestone 7: 5,000 × 5,000 Stud Manhattan City & Concurrent District Crimes:**
   * Dress alleyways and avenues using the 39-model asset library.
   * Wire dynamic concurrent crimes across 4 distinct visual biomes (Financial, Midtown, Queens/Alley, Waterfront).
+
 

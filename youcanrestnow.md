@@ -1,4 +1,32 @@
-# 🏆 What Counts As A Win (Daily Creator Checkpoints)
+﻿## 03/10/26 (TODAY) â€” HERO MOMENTUM & INTIMATE COMBAT OVERHAUL
+- **Win:** **Hero Momentum, Jump Apex Slam Guard & Intimate Street Brawler Knockback**
+- **Achievements:**
+  - **Target-Gated Web-Strike ([R]):** Pressing [R] verifies an enemy target within 95 studs before touching traversal forcesâ€”Spidey never drops out of web-swinging when no enemy is nearby.
+  - **Jump Apex Guard:** Left-Click ground-slam is strictly restricted to jump apex/falling (AssemblyLinearVelocity.Y <= 2), completely preventing accidental ground slams on rising jumps.
+  - **Post-Kick Momentum Follow-Through:** Spidey blasts through Web-Strike kicks carrying 60 studs/s forward momentum instead of grinding to a sudden stop.
+  - **Superhero Base Sprint:** On-foot player movement speed upgraded to 28 studs/s across spawn and state recovery.
+  - **Intimate Brawler Knockback:** Hits 1 & 2 deal 0 knockback (keeping thugs glued to Spidey's fists); Hit 3 Finisher stumbles enemies back 10 studs/s; Web-Strike acts as a true gap-closer with 4 studs/s tight stagger; horizontal knockback capped at 22 studs/s with >= 18 knockdown threshold.
+- **Tomorrow's Goal:** Studio Scene Dressing & Record Devlog #1 B-Roll!
+
+---
+## 26/09/26 (ACTIVE TODAY) — 6 MOVIE SUITS & AVATAR RIG PIPELINE
+- **Win:** **Full 3D Avatar Transformation & 6 Movie-Accurate Combat Identities**
+- **Achievements:**
+  - Integrated all 6 bespoke 3D Spider-Man avatar rigs into `SuitService.server.luau` with intelligent runtime auto-discovery.
+  - Built clean personal avatar stripping (hair, hats, layered clothes, civilian shirts/pants, transparent face decals).
+  - Resolved R6 vs R15 rig compatibility so both classic R6 rigs (Classic, Scarlet) and R15 rigs (Miles, Stark, Symbiote, 2099) move with full physical freedom.
+  - Enforced strict Zero SFX Policy across all suit modules.
+- **Active Sprint (Finish Today):**
+  - [x] **Suit 1 (Stark Tech):** Waldo Repulsor Finisher, Plasma Thrusters, Nanotech Shield HUD & Sonic Zip-Kick ✅
+  - [x] **Suit 2 (Miles Morales):** Bio-Electric Camo Energy Bar, True AI Stealth & 14m Venom Ambush Nova ✅
+  - [x] **Suit 3 (Symbiote Black):** +20% Brute Damage, 18m Tendril Slam, Black Silk & Parasitic Siphon ✅
+  - [x] **Suit 4 (Scarlet Spider):** 1-Shot Impact Web Cocooning & Slingshot Overdrive ✅
+  - [x] **Suit 5 (2099 Cyber):** Supersonic Claw Dropkick & Singularity Vortex ✅
+  - [x] **Suit 6 (Classic Peter):** Double Web-Slam, Leap-Frog Vault Counter, Universal Squiggles & Quick-Heal Purge ✅
+- **Tomorrow's Big Goal:** Record & Edit Devlog #1 for YouTube!
+
+---
+﻿# 🏆 What Counts As A Win (Daily Creator Checkpoints)
 
 ## 04/09/26 — COMPLETED ✅
 - **Win:** Built the full Stark Visor HUD & Spider-Phone Datapad (V1).
@@ -80,7 +108,7 @@
 
 ---
 
-## 11/09/26 (TODAY) — COMPLETED ✅
+## 11/09/26 — COMPLETED ✅
 - **Win:** **The 39-Model Production Armory, RTCC Framework & Pre-Midterms Code Freeze**
 - **Achievements:**
   - **Category 4: Spidey Gadgets & Collectibles (`spidey_gadgets/`):**
@@ -97,30 +125,38 @@
 
 ---
 
-## POST-MIDTERMS TARGET (THE NEXT WIN) 🎯
-- **Target:** **Record Devlog #1 Voiceover + Drop 5 Clips into CapCut**
-- **Estimated Time:** 30–45 minutes.
-
-### 📋 The Mission:
-1. Open CapCut and hit Record on the voiceover following [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md) using the calibrated Rexus Xora-II mic.
-2. Drop the 5 indexed clips into the timeline:
-   - Act 1 Hook: Simulator ➔ `Roblox Studio 2026.09.08 - 20.20.04.04.mp4` (Beat Drop swing)
-   - Act 2 Physics: `Roblox Studio 2026.08.30 - 18.21.46.07.mp4` (Last 8 mins)
-   - Act 3 Combat & Shoebox Car: `Desktop 2026.09.03 - 19.39.33.01.mp4` + Screenshot
-   - Act 4 Suits: `Desktop 2026.09.06 - 20.50.14.03.mp4` & `Roblox Studio 2026.09.08 - 19.44.49.01.mp4`
-   - Act 5 Outro: `Roblox Studio 2026.09.09 - 19.49.31.01.mp4` (Sunset skyline)
-3. Save the CapCut project.
-
-### 🏁 The Exact Finish Line:
-- Voiceover recorded.
-- 5 clips aligned on the CapCut timeline with the beat drop.
-- Video ready for final export!
+## 21/09/26 – 23/09/26 (TODAY) — COMPLETED ✅
+- **Win:** **Devlog #1 Master Script Overhaul & Authentic Storyboard Lock**
+- **Achievements:**
+  - **Eliminated Generic AI Dialogue:** Ruthlessly killed corporate YouTuber clichés, fake drama, and robotic script lines in favor of Rich's 100% authentic, humorous, and relatable indie dev voice.
+  - **Wrote & Completed Full 4-Act Master Script (In Google Docs):**
+    - *Act 1 (The Hook & Beat Drop):* Scrolling brainrot simulators, the *Across the Spider-Verse* creative spark, coding struggle, Kirby falling into the AI pit, and the hilarious Gemini prompt fail (heylo gemini pls make a roblox spiderman game) ➔ hard cut to the 220 stud/s swing beat drop.
+    - *Act 2 (Movement & Combat):* Dead silence & crickets on the baseplate (🦗 krikk krikkk), the God tells me you're Spider-Man fourth-wall break, MS Paint combat move montage, crowd knife-drawing transition, and the 3 live crimes showcase with the cliffhanger cutoff (*and FINALYY IM FI-*).
+    - *Act 3 (The Suits & The Blue Hoodie):* Blue hoodie freeze-frame with the iconic Scarlet Spider nerd-voice joke, catalog store modeling shortcut, Zelda coding jingle, and suit superpower showcase (Symbiote raw damage + 2099 gravity vortex) with zero-pause mid-fight hot-swapping.
+    - *Act 4 (The Outro & Wall Crash):* Honest 30-day solo dev reflection, Spider-Man crashing face-first into a wall, closing Studio, and the abrupt comedic sign-off (*BYEE*).
+  - **Repo Maintenance & Cleanup:**
+    - Safely purged legacy Devlog_1_Script.md—the script is now authoritatively owned in Google Docs.
+    - Verified all 39 bespoke 3D models and character rig architectures are ready for Studio scene dressing.
+- **Verdict:** Devlog #1 story and script are 100% finished and locked. The creative vision is authentic, hilarious, and ready for recording!
 
 ---
 
-## 🚫 Creator Anti-Burnout Rules:
-1. **School First:** Midterms always take priority over game dev.
-2. **One Milestone Only:** When back, only record the voiceover—don't start rebuilding city streets until the video is cut.
+## NEXT TARGET (TOMORROW'S TO-DO LIST) ðŸŽ¯
+- **Target:** **Studio Scene Dressing & Record Devlog #1 B-Roll**
+- **Estimated Time:** 45â€“60 minutes.
+
+### ðŸ“‹ What We Need To Do (No Code, Just Clean Tasks):
+1. **Thug Avatar Dressing:** Equip spawned test dummies in EnemySpawner.server.luau with the 5 bespoke 3D accessories from thug_wearables/ (ballistic hockey masks, ski masks, plate carriers, beanies, spiked bracers) and street clothes.
+2. **Alleyway Prop Dressing:** Bulk import curbside NYC props (mailboxes, hydrants, dumpsters, barricades) into the combat testing alleyway.
+3. **Radio HUD Proximity Fade:** Fade out the 2D "ALLEYWAY MUGGING" waypoint marker when within 35 studs of the crime scene to eliminate nametag clutter.
+4. **Record YouTube Devlog #1 B-Roll:** Capture cinematic web swinging, the 6 suit superpowers in action, and intimate street brawling following the 4-act Google Docs master script!
+
+### ðŸ The Exact Finish Line:
+- Cinematic NYC street thugs and dressed alleyway ready for high-octane B-roll capture and final Devlog #1 voiceover recording!
+
+---
+
+## ðŸš« Creator Anti-Burnout Rules:
+1. **School First:** High school academics always take priority over game dev.
+2. **One Milestone Only:** Focus on the next single winâ€”don't try to build the whole city at once.
 3. **Rest When Needed:** Creative energy is a finite resource. Protect it.
-
-

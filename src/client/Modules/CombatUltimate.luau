@@ -26,12 +26,11 @@ local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local RemotesFolder = ReplicatedStorage:WaitForChild("CombatRemotes")
 local WebCycloneRemote = RemotesFolder:WaitForChild("WebCycloneRemote") :: RemoteEvent
-local QuickHealRemote = RemotesFolder:WaitForChild("QuickHealRemote") :: RemoteEvent
 
 local CombatUltimate = {
 	isExecutingUltimate = false,
+	isUlting = false,
 	lastCycloneTime = 0,
-	lastHealTime = 0,
 }
 
 -- 🌪️ Perform 360° Web Cyclone Continuous DPS Blender (T Key)
@@ -40,11 +39,11 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	local cooldown = 15.0
 	if CombatUltimate.isExecutingUltimate or (now - CombatUltimate.lastCycloneTime) < cooldown then return end
 
-	-- 🛡️ Level Gate Check: Web Cyclone requires Level 2+
+	-- 🛡️ Level Gate Check: Web Cyclone requires Level 2+ (or Studio testing)
 	local LocalPlayer = Players.LocalPlayer
 	local leaderstats = LocalPlayer and LocalPlayer:FindFirstChild("leaderstats")
 	local playerLevel = leaderstats and leaderstats:FindFirstChild("Level") and (leaderstats.Level :: IntValue).Value or 1
-	if playerLevel < 2 then return end
+	if playerLevel < 2 and not RunService:IsStudio() then return end
 
 	-- Find primary target to spin: Active Reticle Target OR Fallback Camera Cone Sweep
 	local target = CombatReticle.getCurrentTarget()
@@ -80,9 +79,12 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 
 	CombatUltimate.lastCycloneTime = now
 	CombatUltimate.isExecutingUltimate = true
+	CombatUltimate.isUlting = true
 	CombatStyleHUD.setCooldown("WebCyclone", cooldown)
 
-	local isAcrobatic = (LocalPlayer and LocalPlayer:GetAttribute("SuitPerkType") == "Acrobatic")
+	local is2099 = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "Cyber2099")
+		or (character and character:GetAttribute("EquippedSuit") == "Cyber2099")
+	local isAcrobatic = is2099 or (LocalPlayer and LocalPlayer:GetAttribute("SuitPerkType") == "Acrobatic")
 	local centerPos = rootPart.Position
 	local spinDuration = 2.4
 	local spinRadius = if isAcrobatic then 12.35 else 9.5
@@ -96,7 +98,7 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	local webTether1 = Instance.new("Part")
 	webTether1.Name = "CycloneWeb1"
 	webTether1.Material = Enum.Material.Neon
-	webTether1.Color = Color3.fromRGB(245, 248, 255)
+	webTether1.Color = if is2099 then Color3.fromRGB(255, 45, 80) else Color3.fromRGB(245, 248, 255)
 	webTether1.Transparency = 0.15
 	webTether1.CanCollide = false
 	webTether1.Anchored = true
@@ -113,18 +115,41 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	vortex.Shape = Enum.PartType.Cylinder
 	vortex.Size = Vector3.new(0.3, 3, 3)
 	vortex.Material = Enum.Material.Neon
-	vortex.Color = Color3.fromRGB(85, 235, 255)
+	vortex.Color = if is2099 then Color3.fromRGB(255, 45, 80) else Color3.fromRGB(85, 235, 255)
 	vortex.Transparency = 0.35
 	vortex.CanCollide = false
 	vortex.Anchored = true
 	vortex.CFrame = CFrame.new(centerPos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	vortex.Parent = Workspace
 
+	local vortexEndDiameter = if isAcrobatic then 37.7 else 30
 	local vortexTween = TweenService:Create(vortex, TweenInfo.new(spinDuration, Enum.EasingStyle.Linear), {
-		Size = Vector3.new(0.3, 30, 30),
+		Size = Vector3.new(0.3, vortexEndDiameter, vortexEndDiameter),
 		Transparency = 0.8,
 	})
 	vortexTween:Play()
+
+	-- 🤖 2099 Cyber Suit: Concentric Cyan Geometric Holographic Ring
+	local cyberRing: Part? = nil
+	if is2099 then
+		cyberRing = Instance.new("Part")
+		cyberRing.Name = "CycloneCyberRing"
+		cyberRing.Shape = Enum.PartType.Cylinder
+		cyberRing.Size = Vector3.new(0.2, 3.5, 3.5)
+		cyberRing.Material = Enum.Material.Neon
+		cyberRing.Color = Color3.fromRGB(45, 220, 255)
+		cyberRing.Transparency = 0.4
+		cyberRing.CanCollide = false
+		cyberRing.Anchored = true
+		cyberRing.CFrame = CFrame.new(centerPos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		cyberRing.Parent = Workspace
+
+		local ringTween = TweenService:Create(cyberRing, TweenInfo.new(spinDuration, Enum.EasingStyle.Linear), {
+			Size = Vector3.new(0.2, 38, 38),
+			Transparency = 0.85,
+		})
+		ringTween:Play()
+	end
 
 	-- 🔄 Centrifugal 360° Continuous DPS Spin Loop
 	local spinConnection: RBXScriptConnection?
@@ -133,7 +158,9 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 		if webTether1 and webTether1.Parent then webTether1:Destroy() end
 		if webTether2 and webTether2.Parent then webTether2:Destroy() end
 		if vortex and vortex.Parent then vortex:Destroy() end
+		if cyberRing and cyberRing.Parent then cyberRing:Destroy() end
 		CombatUltimate.isExecutingUltimate = false
+		CombatUltimate.isUlting = false
 	end
 
 	spinConnection = RunService.RenderStepped:Connect(function()
@@ -181,38 +208,6 @@ function CombatUltimate.performWebCyclone(character: Model, rootPart: BasePart, 
 	end)
 end
 
--- 💚 Perform Quick-Heal (H Key - 20s Cooldown)
-function CombatUltimate.performQuickHeal(character: Model, rootPart: BasePart, humanoid: Humanoid)
-	local now = os.clock()
-	local cooldown = 20.0
-	if (now - CombatUltimate.lastHealTime) < cooldown then return end
-	if humanoid.Health >= humanoid.MaxHealth then return end
 
-	CombatUltimate.lastHealTime = now
-	CombatStyleHUD.setCooldown("QuickHeal", cooldown)
-	QuickHealRemote:FireServer(35)
-
-	-- Green Bio-Web Nano Healing Pulse VFX
-	local healRing = Instance.new("Part")
-	healRing.Shape = Enum.PartType.Cylinder
-	healRing.Size = Vector3.new(0.3, 2, 2)
-	healRing.Material = Enum.Material.Neon
-	healRing.Color = Color3.fromRGB(75, 255, 150)
-	healRing.Transparency = 0.2
-	healRing.CanCollide = false
-	healRing.Anchored = true
-	healRing.CFrame = CFrame.new(rootPart.Position - Vector3.new(0, 1.8, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	healRing.Parent = Workspace
-
-	local tween = TweenService:Create(healRing, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = Vector3.new(0.3, 14, 14),
-		CFrame = healRing.CFrame + Vector3.new(0, 3.5, 0),
-		Transparency = 1,
-	})
-	tween:Play()
-	Debris:AddItem(healRing, 0.5)
-
-	WebVisuals.playWebSound(rootPart)
-end
 
 return CombatUltimate

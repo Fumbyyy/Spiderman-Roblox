@@ -7,6 +7,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
@@ -44,7 +45,6 @@ local DisarmThrowRemote = getOrCreateRemote("DisarmAndThrow")
 local DodgeRemote = getOrCreateRemote("SpiderSenseDodge")
 local WebStrikeRemote = getOrCreateRemote("WebStrike")
 local WebCycloneRemote = getOrCreateRemote("WebCycloneRemote")
-local QuickHealRemote = getOrCreateRemote("QuickHealRemote")
 local PropThrowRemote = getOrCreateRemote("PropThrowRemote")
 local CombatVFXRemote = getOrCreateRemote("CombatVFX")
 
@@ -91,7 +91,7 @@ local function applyRagdoll(enemyModel: Model)
 end
 
 -- 💥 Apply Damage & Controlled Knockback (Zero Extreme Flinging!)
-local function damageEnemy(enemyModel: Model, damageAmount: number, knockbackDir: Vector3?)
+local function damageEnemy(enemyModel: Model, damageAmount: number, knockbackDir: Vector3?, attackingPlayer: Player?)
 	local humanoid = enemyModel:FindFirstChildOfClass("Humanoid")
 	local rootPart = (enemyModel:FindFirstChild("HumanoidRootPart") or enemyModel:FindFirstChild("Torso")) :: BasePart?
 	if not humanoid or humanoid.Health <= 0 or not rootPart then return end
@@ -108,8 +108,8 @@ local function damageEnemy(enemyModel: Model, damageAmount: number, knockbackDir
 	-- Visible physical knockback impulse
 	if knockbackDir and knockbackDir.Magnitude > 0 and (enemyModel:GetAttribute("IsPinned") ~= true) then
 		local clampedHoriz = Vector3.new(knockbackDir.X, 0, knockbackDir.Z)
-		if clampedHoriz.Magnitude > 24 then
-			clampedHoriz = clampedHoriz.Unit * 24
+		if clampedHoriz.Magnitude > 22 then
+			clampedHoriz = clampedHoriz.Unit * 22
 		end
 		local clampedY = math.clamp(knockbackDir.Y, -25, 18)
 		local finalVel = Vector3.new(clampedHoriz.X, clampedY, clampedHoriz.Z)
@@ -122,7 +122,33 @@ local function damageEnemy(enemyModel: Model, damageAmount: number, knockbackDir
 		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
 		bv.Velocity = finalVel
 		bv.Parent = rootPart
-		Debris:AddItem(bv, 0.16)
+		Debris:AddItem(bv, 0.26)
+
+		-- True Knockdown on heavy finishers and dropkicks
+		if clampedHoriz.Magnitude >= 18 then
+			humanoid.PlatformStand = true
+			task.delay(0.65, function()
+				if enemyModel.Parent and humanoid and humanoid.Health > 0 then
+					humanoid.PlatformStand = false
+				end
+			end)
+		end
+	end
+
+	-- TSB Hitstun: Freeze thug movement during melee combos
+	if enemyModel:GetAttribute("IsPinned") ~= true and enemyModel:GetAttribute("IsWebbed") ~= true and enemyModel:GetAttribute("VenomStunned") ~= true then
+		humanoid.WalkSpeed = 0
+		task.delay(0.40, function()
+			if enemyModel.Parent and humanoid and humanoid.Health > 0 then
+				if enemyModel:GetAttribute("IsPinned") ~= true and enemyModel:GetAttribute("IsWebbed") ~= true and enemyModel:GetAttribute("VenomStunned") ~= true then
+					humanoid.WalkSpeed = 14
+				end
+			end
+		end)
+	end
+
+	if attackingPlayer then
+		enemyModel:SetAttribute("LastAttackerUserId", attackingPlayer.UserId)
 	end
 
 	if humanoid.Health <= 0 then
@@ -130,6 +156,22 @@ local function damageEnemy(enemyModel: Model, damageAmount: number, knockbackDir
 		enemyModel:SetAttribute("IsPinned", false)
 		enemyModel:SetAttribute("WebStacks", 0)
 		applyRagdoll(enemyModel)
+
+		-- Adrenaline Survival: +5 HP on enemy kill!
+		local killer = attackingPlayer
+		if not killer then
+			local lastUid = enemyModel:GetAttribute("LastAttackerUserId")
+			if typeof(lastUid) == "number" then
+				killer = Players:GetPlayerByUserId(lastUid)
+			end
+		end
+
+		if killer and killer.Character then
+			local kHum = killer.Character:FindFirstChildOfClass("Humanoid")
+			if kHum and kHum.Health > 0 then
+				kHum.Health = math.clamp(kHum.Health + 5, 0, kHum.MaxHealth)
+			end
+		end
 	end
 end
 
@@ -262,7 +304,7 @@ end
 --------------------------------------------------------------------------------
 -- 1. 🥊 KINETIC STRIKE COMBO (L-Click Tap - Multi-Target AoE Cleave)
 --------------------------------------------------------------------------------
-KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, comboIndex: any)
+KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, comboIndex: any, isAmbushArg: any)
 	local hitNum = math.clamp(typeof(comboIndex) == "number" and comboIndex or 1, 1, 3)
 
 	local char = player.Character
@@ -280,8 +322,73 @@ KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: a
 	end
 
 	-- ⚡ Symbiote Black Suit Perk: +20% Punch & Cleave Damage
-	if player:GetAttribute("SuitPerkType") == "Damage" then
+	local isSymbioteMelee = (player:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (char and char:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (player:GetAttribute("SuitPerkType") == "Damage")
+	if isSymbioteMelee then
 		damage = damage * 1.20
+	end
+
+	-- ⚡ Miles Morales Ambush Critical Strike: 1.5x Damage from Camouflage
+	local isMilesPunch = (player:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (char and char:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+	local isAmbushPunch = isMilesPunch and (
+		isAmbushArg == true
+		or player:GetAttribute("MilesCamouflaged") == true
+		or (char and char:GetAttribute("MilesCamouflaged") == true)
+	)
+	if isAmbushPunch then
+		damage = damage * 1.5
+		player:SetAttribute("MilesCamouflaged", false)
+		if char then char:SetAttribute("MilesCamouflaged", false) end
+
+		-- ⚡ THE "HEY" AMBUSH NOVA: 14-stud Bio-Electric Stun Nova +50% critical AoE burst
+		CombatVFXRemote:FireAllClients("VenomBlastVFX", player, playerRoot.Position, 14)
+		CombatVFXRemote:FireAllClients("AmbushCritVFX", player, playerRoot.Position)
+
+		local novaRadius = 14
+		local candidateEnemies: { Model } = {}
+		for _, enemy in CollectionService:GetTagged("Enemy") do
+			if enemy:IsA("Model") and enemy.Parent then
+				table.insert(candidateEnemies, enemy)
+			end
+		end
+		if enemiesFolder then
+			for _, enemy in enemiesFolder:GetChildren() do
+				if enemy:IsA("Model") and not table.find(candidateEnemies, enemy) then
+					table.insert(candidateEnemies, enemy)
+				end
+			end
+		end
+
+		for _, enemy in candidateEnemies do
+			if enemy ~= char and enemy.Parent then
+				local enemyHum = enemy:FindFirstChildOfClass("Humanoid")
+				local enemyRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+				if enemyHum and enemyHum.Health > 0 and enemyRoot then
+					local offset = enemyRoot.Position - playerRoot.Position
+					local dist = offset.Magnitude
+					if dist <= novaRadius and dist > 0.1 then
+						enemy:SetAttribute("IsAttacking", false)
+						enemy:SetAttribute("AttackDodged", true)
+						enemy:SetAttribute("VenomStunned", true)
+						enemyHum.WalkSpeed = 0
+
+						CombatVFXRemote:FireAllClients("VenomStunVFX", player, enemy, 2.0)
+						damageEnemy(enemy, 18, Vector3.new(0, 6, 0), player)
+
+						task.delay(2.0, function()
+							if enemy.Parent and enemyHum and enemyHum.Health > 0 then
+								enemy:SetAttribute("VenomStunned", false)
+								if enemy:GetAttribute("IsPinned") ~= true and enemy:GetAttribute("IsWebbed") ~= true then
+									enemyHum.WalkSpeed = 14
+								end
+							end
+						end)
+					end
+				end
+			end
+		end
 	end
 
 	local forward = playerRoot.CFrame.LookVector
@@ -332,15 +439,13 @@ KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: a
 			local isFullyWebbed = enemyModel:GetAttribute("IsWebbed") == true or (enemyModel:GetAttribute("WebStacks") or 0) >= 3
 
 			local knockback: Vector3
-			if isFullyWebbed and hitNum < 3 then
-				knockback = Vector3.zero
-			elseif hitNum == 3 then
-				knockback = punchDir * 22 + Vector3.new(0, 4, 0)
+			if hitNum == 3 then
+				knockback = punchDir * 10 + Vector3.new(0, 2, 0)
 			else
-				knockback = punchDir * 8
+				knockback = Vector3.zero
 			end
 
-			damageEnemy(enemyModel, damage, knockback)
+			damageEnemy(enemyModel, damage, knockback, player)
 			CombatVFXRemote:FireAllClients("KineticHit", player, enemyModel, hitNum)
 
 			-- 💥 Wall-Pin Synergy on 3rd hit
@@ -350,6 +455,106 @@ KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: a
 						checkAndPinToWall(enemyModel, punchDir)
 					end
 				end)
+			end
+		end
+	end
+
+
+	-- ⚡ Symbiote Alien Suit: Brutal Dark Cleave & Parasitic Lifesteal (+6 HP) on Combo Step 3
+	if hitNum == 3 then
+		local isSymbioteFinisher = (player:GetAttribute("EquippedSuit") == "SymbioteBlack")
+			or (char:GetAttribute("EquippedSuit") == "SymbioteBlack")
+			or (player:GetAttribute("SuitPerkType") == "Damage")
+		if isSymbioteFinisher then
+			local cleavePos = playerRoot.Position + playerRoot.CFrame.LookVector * 3.5
+			CombatVFXRemote:FireAllClients("SymbioteCleaveVFX", player, cleavePos)
+
+			-- Parasitic Lifesteal: Heal player's Humanoid by +6 HP (clamped to MaxHealth) when hit lands
+			local playerHum = char:FindFirstChildOfClass("Humanoid")
+			if playerHum and playerHum.Health > 0 and next(hitEnemies) ~= nil then
+				playerHum.Health = math.clamp(playerHum.Health + 6, 0, playerHum.MaxHealth)
+			end
+		end
+	end
+
+	-- ⚡ 2099 Cyber Suit: Claw Cross-Slash & Heavy Brute Armor Shred on Combo Step 3
+	if hitNum == 3 then
+		local is2099 = (player:GetAttribute("EquippedSuit") == "Cyber2099")
+			or (char:GetAttribute("EquippedSuit") == "Cyber2099")
+		if is2099 then
+			local slashPos = playerRoot.Position + playerRoot.CFrame.LookVector * 3.5
+			CombatVFXRemote:FireAllClients("CyberSlashVFX", player, slashPos)
+
+			-- Instantly shatters Heavy Brute armor shields for hit enemies
+			for enemyModel in hitEnemies do
+				if enemyModel:IsA("Model") and enemyModel:GetAttribute("Archetype") == "Brute" then
+					enemyModel:SetAttribute("GuardBroken", true)
+					CombatVFXRemote:FireAllClients("GuardBreakVFX", enemyModel)
+					local breakDuration = CombatConfig.Archetypes and CombatConfig.Archetypes.Brute and CombatConfig.Archetypes.Brute.GuardBreakDuration or 3.5
+					task.delay(breakDuration, function()
+						if enemyModel.Parent then
+							local eHum = enemyModel:FindFirstChildOfClass("Humanoid")
+							if eHum and eHum.Health > 0 then
+								enemyModel:SetAttribute("GuardBroken", false)
+							end
+						end
+					end)
+				end
+			end
+		end
+	end
+
+	-- ⚡ Stark Tech Suit: Waldo Repulsor Shockwave Finisher on Combo Step 3
+	if hitNum == 3 then
+		local isStark = (player:GetAttribute("EquippedSuit") == "StarkTechSuit")
+			or (char:GetAttribute("EquippedSuit") == "StarkTechSuit")
+		if isStark then
+			CombatVFXRemote:FireAllClients("WaldoRepulsorShockwave", player, playerRoot.Position, 14)
+
+			local starkRadius = 14
+			local candidateEnemies: { Model } = {}
+			for _, enemy in CollectionService:GetTagged("Enemy") do
+				if enemy:IsA("Model") and enemy.Parent then
+					table.insert(candidateEnemies, enemy)
+				end
+			end
+			if enemiesFolder then
+				for _, enemy in enemiesFolder:GetChildren() do
+					if enemy:IsA("Model") and not table.find(candidateEnemies, enemy) then
+						table.insert(candidateEnemies, enemy)
+					end
+				end
+			end
+
+			for _, enemy in candidateEnemies do
+				if enemy ~= char and enemy.Parent then
+					local enemyHum = enemy:FindFirstChildOfClass("Humanoid")
+					local enemyRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					if enemyHum and enemyHum.Health > 0 and enemyRoot then
+						local offset = enemyRoot.Position - playerRoot.Position
+						local dist = offset.Magnitude
+						if dist <= starkRadius and dist > 0.1 then
+							local radialFlat = Vector3.new(offset.X, 0, offset.Z).Unit
+							local impulseVel = (radialFlat * 45) + Vector3.new(0, 12, 0)
+
+							-- Remove old knockback to guarantee instant radial blast
+							local oldBv = enemyRoot:FindFirstChild("KnockbackImpulse")
+							if oldBv then oldBv:Destroy() end
+
+							local shockBv = Instance.new("BodyVelocity")
+							shockBv.Name = "KnockbackImpulse"
+							shockBv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+							shockBv.Velocity = impulseVel
+							shockBv.Parent = enemyRoot
+							Debris:AddItem(shockBv, 0.22)
+
+							enemyRoot.AssemblyLinearVelocity = impulseVel
+
+							-- Apply concussive AoE damage and attack interrupt
+							damageEnemy(enemy, 15, Vector3.zero, player)
+						end
+					end
+				end
 			end
 		end
 	end
@@ -415,9 +620,14 @@ UppercutRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 							end
 						end)
 
-						local upperDmg = CombatConfig.Moves.Uppercut.Damage or 16
-						if player:GetAttribute("SuitPerkType") == "Damage" then upperDmg = upperDmg * 1.20 end
-						damageEnemy(enemy, upperDmg, Vector3.zero)
+						local upperDmg = 14
+						local isSymbioteUpper = (player:GetAttribute("EquippedSuit") == "SymbioteBlack")
+							or (char and char:GetAttribute("EquippedSuit") == "SymbioteBlack")
+							or (player:GetAttribute("SuitPerkType") == "Damage")
+						if isSymbioteUpper then
+							upperDmg = upperDmg * 1.20 -- 16.8 base damage
+						end
+						damageEnemy(enemy, upperDmg, Vector3.zero, player)
 						CombatVFXRemote:FireAllClients("Uppercut", player, enemy)
 					end
 				end
@@ -456,7 +666,7 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 				enemyRoot.AssemblyLinearVelocity = Vector3.new(0, -slamSpeed, 0)
 				local slamDmg = CombatConfig.Moves.AirGroundSlam.Damage or 24
 				if player:GetAttribute("SuitPerkType") == "Damage" then slamDmg = slamDmg * 1.20 end
-				damageEnemy(targetModel, slamDmg, Vector3.zero)
+				damageEnemy(targetModel, slamDmg, Vector3.zero, player)
 				impactPos = enemyRoot.Position
 				primaryHit = true
 				hitCount += 1
@@ -465,8 +675,12 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 		end
 	end
 
-	-- 2. Trigger AoE Radial Shockwave to all surrounding enemies (radius = 24 studs)
-	local radius = CombatConfig.Moves.AirGroundSlam.ShockwaveRadius or 24
+	-- 2. Trigger AoE Radial Shockwave to all surrounding enemies
+	local isSymbioteSlam = (player:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (char and char:GetAttribute("EquippedSuit") == "SymbioteBlack")
+		or (player:GetAttribute("SuitPerkType") == "Damage")
+
+	local radius = if isSymbioteSlam then 18 else (CombatConfig.Moves.AirGroundSlam.ShockwaveRadius or 24)
 	local allEnemies: { Model } = {}
 
 	for _, enemy in CollectionService:GetTagged("Enemy") do
@@ -492,9 +706,21 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 				local vertDiff = math.abs(otherRoot.Position.Y - impactPos.Y)
 				if horizDist <= radius and vertDiff <= 16 then
 					local pushDir = Vector3.new(otherRoot.Position.X - impactPos.X, 0.4, otherRoot.Position.Z - impactPos.Z).Unit
-					local shockDmg = CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15
-					if player:GetAttribute("SuitPerkType") == "Damage" then shockDmg = shockDmg * 1.20 end
-					damageEnemy(otherEnemy, shockDmg, pushDir * 18)
+					local shockDmg = if isSymbioteSlam then 30 else (CombatConfig.Moves.AirGroundSlam.ShockwaveDamage or 15)
+
+					-- Symbiote tendril slam cancels enemy attacks and knocks mobs flat to the floor
+					if isSymbioteSlam then
+						otherEnemy:SetAttribute("IsAttacking", false)
+						otherEnemy:SetAttribute("AttackDodged", true)
+						otherHum.PlatformStand = true
+						task.delay(1.2, function()
+							if otherHum and otherHum.Parent then
+								otherHum.PlatformStand = false
+							end
+						end)
+					end
+
+					damageEnemy(otherEnemy, shockDmg, pushDir * (if isSymbioteSlam then 22 else 18), player)
 					hitCount += 1
 				end
 			end
@@ -502,7 +728,17 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 	end
 
 	-- Replicate Shockwave VFX to all clients with total hit count for combo tracking
-	CombatVFXRemote:FireAllClients("GroundSlamShockwave", player, impactPos, radius, hitCount)
+	if isSymbioteSlam then
+		CombatVFXRemote:FireAllClients("TendrilGroundSlamVFX", player, impactPos, 18)
+
+		-- Parasitic Lifesteal: Heal player's Humanoid by +8 HP (clamped to MaxHealth) when ground slam lands
+		local playerHum = char:FindFirstChildOfClass("Humanoid")
+		if playerHum and playerHum.Health > 0 and (hitCount > 0 or primaryHit) then
+			playerHum.Health = math.clamp(playerHum.Health + 8, 0, playerHum.MaxHealth)
+		end
+	else
+		CombatVFXRemote:FireAllClients("GroundSlamShockwave", player, impactPos, radius, hitCount)
+	end
 end)
 
 local playerWebPelletCooldowns: { [Player]: number } = {}
@@ -512,7 +748,7 @@ Players.PlayerRemoving:Connect(function(player)
 	playerWebPelletCooldowns[player] = nil
 end)
 
-local function handleWebPelletHit(player: Player, targetModel: Model)
+local function handleWebPelletHit(player: Player, targetModel: Model, isImpact: boolean?)
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
@@ -536,9 +772,68 @@ local function handleWebPelletHit(player: Player, targetModel: Model)
 		local isPinned = checkAndPinToWall(targetModel, pushDir)
 		if not isPinned then
 			-- Still in open space: apply damage without disjointing the cocoon
-			damageEnemy(targetModel, CombatConfig.Moves.WebPellet.Damage or 4, Vector3.zero)
+			damageEnemy(targetModel, CombatConfig.Moves.WebPellet.Damage or 4, Vector3.zero, player)
 			CombatVFXRemote:FireAllClients("WebPelletHit", player, targetModel, 3)
 		end
+		return
+	end
+
+	local isScarletSuit = (player:GetAttribute("EquippedSuit") == "ScarletSpider")
+		or (char and char:GetAttribute("EquippedSuit") == "ScarletSpider")
+
+	-- 💥 Scarlet Spider Impact Web Blast: 10-stud AoE, 2 Web Stacks & 18 studs/s outward impulse
+	if isImpact == true and isScarletSuit then
+		damageEnemy(targetModel, 8, pushDir * 18, player)
+		local curStacks = math.clamp(math.max(targetModel:GetAttribute("WebStacks") or 0, 2), 2, 3)
+		targetModel:SetAttribute("WebStacks", curStacks)
+		enemyHum.WalkSpeed = 3
+
+		local impactPos = enemyRoot.Position
+		local candidateMobs: { Model } = {}
+		for _, enemy in CollectionService:GetTagged("Enemy") do
+			if enemy:IsA("Model") and enemy.Parent then
+				table.insert(candidateMobs, enemy)
+			end
+		end
+		local enemiesFolder = Workspace:FindFirstChild("Enemies")
+		if enemiesFolder then
+			for _, enemy in enemiesFolder:GetChildren() do
+				if enemy:IsA("Model") and not table.find(candidateMobs, enemy) then
+					table.insert(candidateMobs, enemy)
+				end
+			end
+		end
+
+		for _, mob in candidateMobs do
+			if mob ~= char and mob.Parent then
+				local mRoot = (mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso")) :: BasePart?
+				local mHum = mob:FindFirstChildOfClass("Humanoid")
+				if mRoot and mHum and mHum.Health > 0 then
+					local offset = mRoot.Position - impactPos
+					if offset.Magnitude <= 10 and offset.Magnitude > 0.1 then
+						mob:SetAttribute("IsAttacking", false)
+						mob:SetAttribute("AttackDodged", true)
+						local mStacks = math.clamp(math.max(mob:GetAttribute("WebStacks") or 0, 2), 2, 3)
+						mob:SetAttribute("WebStacks", mStacks)
+						mHum.WalkSpeed = 3
+						local pushOut = (offset.Unit + Vector3.new(0, 0.25, 0)).Unit
+						damageEnemy(mob, 8, pushOut * 18, player)
+
+						local decayId = os.clock()
+						enemyWebDecayTimers[mob] = decayId
+						task.delay(2.8, function()
+							if enemyWebDecayTimers[mob] == decayId and mob.Parent and mHum.Health > 0 and (mob:GetAttribute("IsWebbed") ~= true) and (mob:GetAttribute("IsPinned") ~= true) then
+								mob:SetAttribute("WebStacks", 0)
+								mHum.WalkSpeed = 16
+								CombatVFXRemote:FireAllClients("CocoonBreakVFX", mob)
+							end
+						end)
+					end
+				end
+			end
+		end
+
+		CombatVFXRemote:FireAllClients("ImpactWebExplosionVFX", player, impactPos, 10)
 		return
 	end
 
@@ -552,7 +847,7 @@ local function handleWebPelletHit(player: Player, targetModel: Model)
 	local pelletKnockback = isBlockingFrontal and Vector3.zero or (pushDir * 4)
 
 	if pelletDamage > 0 or pelletKnockback.Magnitude > 0 then
-		damageEnemy(targetModel, pelletDamage, pelletKnockback)
+		damageEnemy(targetModel, pelletDamage, pelletKnockback, player)
 	end
 	CombatVFXRemote:FireAllClients("WebPelletHit", player, targetModel, currentStacks)
 
@@ -605,7 +900,7 @@ end
 --------------------------------------------------------------------------------
 -- 4. 🕸️ RAPID WEB-PELLETS & WALL-PINNING (E Key)
 --------------------------------------------------------------------------------
-WebPelletRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
+WebPelletRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, isImpactArg: any)
 	if typeof(targetModel) ~= "Instance" or not targetModel:IsA("Model") then return end
 
 	-- 🛡️ Anti-Spam Rate Limit Validation
@@ -614,7 +909,7 @@ WebPelletRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 	if (now - lastFired) < 0.18 then return end
 	playerWebPelletCooldowns[player] = now
 
-	handleWebPelletHit(player, targetModel)
+	handleWebPelletHit(player, targetModel, isImpactArg == true)
 end)
 
 local playerDisarmCooldowns: { [Player]: number } = {}
@@ -678,7 +973,7 @@ DisarmThrowRemote.OnServerEvent:Connect(function(player: Player, targetModel: an
 
 		-- 🏃 Physical Snatch Reaction: Thug gets yanked forward from the web tension!
 		local pullDir = (playerRoot.Position - enemyRoot.Position).Unit
-		damageEnemy(targetModel, 0, pullDir * 12 + Vector3.new(0, 2, 0))
+		damageEnemy(targetModel, 0, pullDir * 12 + Vector3.new(0, 2, 0), player)
 
 		-- 1. Web Snatch & Overhead Whip Arc
 		CombatVFXRemote:FireAllClients("DisarmYankVFX", player, weaponHandle)
@@ -724,7 +1019,7 @@ DisarmThrowRemote.OnServerEvent:Connect(function(player: Player, targetModel: an
 
 					-- Heavy projectile damage & physical knockback
 					if targetModel.Parent and enemyHum.Health > 0 then
-						damageEnemy(targetModel, CombatConfig.Moves.DisarmAndThrow.Damage or 28, throwDir * (CombatConfig.Moves.DisarmAndThrow.KnockbackForce or 18))
+						damageEnemy(targetModel, CombatConfig.Moves.DisarmAndThrow.Damage or 28, throwDir * (CombatConfig.Moves.DisarmAndThrow.KnockbackForce or 18), player)
 					end
 
 					CombatVFXRemote:FireAllClients("WeaponImpactVFX", throwTargetPos, throwDir)
@@ -737,11 +1032,85 @@ end)
 --------------------------------------------------------------------------------
 -- 5b. 📦 CONTEXTUAL WEB-YANK & PROP THROW (Q Key)
 --------------------------------------------------------------------------------
-PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any, targetModel: any)
+PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any, targetModel: any, secondaryTargetArg: any?)
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local playerHum = char and char:FindFirstChildOfClass("Humanoid")
 	if not char or not playerRoot or not playerHum or playerHum.Health <= 0 then return end
+
+	-- 🕸️ Classic Peter Parker: Double Web-Slam
+	if propInstance == "DoubleWebSlam" then
+		local enemyA = targetModel
+		local enemyB = secondaryTargetArg
+		if typeof(enemyA) ~= "Instance" or not enemyA:IsA("Model") or not enemyA.Parent then return end
+		if typeof(enemyB) ~= "Instance" or not enemyB:IsA("Model") or not enemyB.Parent then return end
+
+		local aRoot = (enemyA:FindFirstChild("HumanoidRootPart") or enemyA:FindFirstChild("Torso")) :: BasePart?
+		local aHum = enemyA:FindFirstChildOfClass("Humanoid")
+		local bRoot = (enemyB:FindFirstChild("HumanoidRootPart") or enemyB:FindFirstChild("Torso")) :: BasePart?
+		local bHum = enemyB:FindFirstChildOfClass("Humanoid")
+
+		if not aRoot or not aHum or aHum.Health <= 0 or not bRoot or not bHum or bHum.Health <= 0 then return end
+
+		-- Authoritatively validate distance (<= 45 studs from player)
+		local distA = (aRoot.Position - playerRoot.Position).Magnitude
+		local distB = (bRoot.Position - playerRoot.Position).Magnitude
+		if distA > 48 or distB > 48 then return end
+
+		local midPos = (aRoot.Position + bRoot.Position) * 0.5
+		local dirA = (midPos - aRoot.Position)
+		local dirB = (midPos - bRoot.Position)
+
+		local pullA = (if dirA.Magnitude > 0.1 then dirA.Unit else playerRoot.CFrame.LookVector) * 38 + Vector3.new(0, 4, 0)
+		local pullB = (if dirB.Magnitude > 0.1 then dirB.Unit else -playerRoot.CFrame.LookVector) * 38 + Vector3.new(0, 4, 0)
+
+		-- Pull both enemies inward toward each other with 38 studs/s impulse
+		aRoot.AssemblyLinearVelocity = pullA
+		bRoot.AssemblyLinearVelocity = pullB
+
+		-- Break Brute guard stances
+		if enemyA:GetAttribute("Archetype") == "Brute" then
+			enemyA:SetAttribute("GuardBroken", true)
+			CombatVFXRemote:FireAllClients("GuardBreakVFX", enemyA)
+			task.delay(4.0, function()
+				if enemyA.Parent and aHum and aHum.Health > 0 then
+					enemyA:SetAttribute("GuardBroken", false)
+				end
+			end)
+		end
+		if enemyB:GetAttribute("Archetype") == "Brute" then
+			enemyB:SetAttribute("GuardBroken", true)
+			CombatVFXRemote:FireAllClients("GuardBreakVFX", enemyB)
+			task.delay(4.0, function()
+				if enemyB.Parent and bHum and bHum.Health > 0 then
+					enemyB:SetAttribute("GuardBroken", false)
+				end
+			end)
+		end
+
+		-- Apply 2 web stacks to both
+		local stacksA = (enemyA:GetAttribute("WebStacks") or 0) + 2
+		enemyA:SetAttribute("WebStacks", stacksA)
+		if stacksA >= 3 then
+			enemyA:SetAttribute("IsWebbed", true)
+			aHum.WalkSpeed = 0
+		end
+
+		local stacksB = (enemyB:GetAttribute("WebStacks") or 0) + 2
+		enemyB:SetAttribute("WebStacks", stacksB)
+		if stacksB >= 3 then
+			enemyB:SetAttribute("IsWebbed", true)
+			bHum.WalkSpeed = 0
+		end
+
+		-- Deal 32 impact damage to both enemies
+		damageEnemy(enemyA, 32, pullA.Unit * 14, player)
+		damageEnemy(enemyB, 32, pullB.Unit * 14, player)
+
+		-- Broadcast WeaponImpactSparks at midPos
+		CombatVFXRemote:FireAllClients("WeaponImpactSparks", midPos)
+		return
+	end
 
 	-- Anti-Spam Rate Limit Validation
 	local now = os.clock()
@@ -831,7 +1200,7 @@ PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any
 
 				-- Apply heavy damage & physical knockback
 				local flingVec = impactDir * knockbackForce + Vector3.new(0, 5, 0)
-				damageEnemy(targetModel, throwDamage, flingVec)
+				damageEnemy(targetModel, throwDamage, flingVec, player)
 				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
 			else
 				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
@@ -850,7 +1219,7 @@ PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any
 								otherEnemy:SetAttribute("GuardBroken", true)
 								CombatVFXRemote:FireAllClients("GuardBreakVFX", otherEnemy)
 							end
-							damageEnemy(otherEnemy, splashDamage, splashDir * 16 + Vector3.new(0, 4, 0))
+							damageEnemy(otherEnemy, splashDamage, splashDir * 16 + Vector3.new(0, 4, 0), player)
 						end
 					end
 				end
@@ -871,7 +1240,7 @@ end)
 --------------------------------------------------------------------------------
 -- 6. ⚡ SPIDER-SENSE PERFECT DODGE & ZZZ COUNTER (F Key)
 --------------------------------------------------------------------------------
-DodgeRemote.OnServerEvent:Connect(function(player: Player, attackerModel: any, isPerfect: any)
+DodgeRemote.OnServerEvent:Connect(function(player: Player, attackerModel: any, isPerfect: any, isCamoActivation: any)
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not char or not playerRoot then return end
@@ -880,6 +1249,40 @@ DodgeRemote.OnServerEvent:Connect(function(player: Player, attackerModel: any, i
 
 	-- 🛡️ Grant full AoE invulnerability frames (i-frames) against all mob attacks
 	char:SetAttribute("IsInvulnerable", true)
+
+	local isMilesDodge = (player:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (char:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+	if isMilesDodge and isCamoActivation == true then
+		player:SetAttribute("MilesCamouflaged", true)
+		char:SetAttribute("MilesCamouflaged", true)
+
+		-- 👤 Drop enemy aggro & cancel laser/melee attacks on all mobs threatening cloaked player
+		local enemiesFolder = Workspace:FindFirstChild("Enemies")
+		if enemiesFolder and playerRoot then
+			for _, enemy in enemiesFolder:GetChildren() do
+				if enemy:IsA("Model") then
+					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					if eRoot and (eRoot.Position - playerRoot.Position).Magnitude <= 80 then
+						enemy:SetAttribute("IsAttacking", false)
+						enemy:SetAttribute("AttackDodged", true)
+						local eHum = enemy:FindFirstChildOfClass("Humanoid")
+						if eHum then
+							eHum:MoveTo(eRoot.Position)
+						end
+					end
+				end
+			end
+		end
+
+		task.delay(5.0, function()
+			if player and player:GetAttribute("MilesCamouflaged") == true then
+				player:SetAttribute("MilesCamouflaged", false)
+			end
+			if char and char.Parent and char:GetAttribute("MilesCamouflaged") == true then
+				char:SetAttribute("MilesCamouflaged", false)
+			end
+		end)
+	end
 
 	task.delay(iFrameDuration, function()
 		if char and char.Parent then
@@ -911,7 +1314,7 @@ DodgeRemote.OnServerEvent:Connect(function(player: Player, attackerModel: any, i
 end)
 
 -- ⚡ Web-Strike Remote (60-Stud Zip Dropkick)
-WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
+WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, isAmbushArg: any)
 	if typeof(targetModel) ~= "Instance" or not targetModel:IsA("Model") then return end
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -923,9 +1326,35 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 	local maxDist = (CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.MaxDistance or 65) + 10
 	if dist > maxDist then return end
 
+	local isStark = (player:GetAttribute("EquippedSuit") == "StarkTechSuit")
+		or (char and char:GetAttribute("EquippedSuit") == "StarkTechSuit")
+	local is2099 = (player:GetAttribute("EquippedSuit") == "Cyber2099")
+		or (char and char:GetAttribute("EquippedSuit") == "Cyber2099")
+
 	local strikeDir = (enemyRoot.Position - playerRoot.Position).Unit
-	local damage = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ImpactDamage or 22
-	local knockback = strikeDir * (CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.KnockbackForce or 26) + Vector3.new(0, 4, 0)
+	-- Overcharged Stark Tech Impact (35 HP) / 2099 Cyber Strike (32 HP) vs 22 base
+	local damage = if isStark then 35
+		elseif is2099 then 32
+		else (CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ImpactDamage or 22)
+
+	-- ⚡ Miles Morales Ambush Critical Strike: 1.5x Damage from Camouflage on Web-Strike
+	local isMilesStrike = (player:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (char and char:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+	local isAmbushStrike = isMilesStrike and (
+		isAmbushArg == true
+		or player:GetAttribute("MilesCamouflaged") == true
+		or (char and char:GetAttribute("MilesCamouflaged") == true)
+	)
+	if isAmbushStrike then
+		damage = damage * 1.5
+		player:SetAttribute("MilesCamouflaged", false)
+		if char then char:SetAttribute("MilesCamouflaged", false) end
+		CombatVFXRemote:FireAllClients("VenomBlastVFX", player, enemyRoot.Position, 14)
+		CombatVFXRemote:FireAllClients("AmbushCritVFX", player, enemyRoot.Position)
+	end
+	local punchDir = strikeDir
+	-- Tight Intimate Stagger: Leaves the enemy right in Spidey's face for melee follow-up!
+	local knockback = punchDir * 4
 
 	-- 💥 Guard Break Synergy: Web-Strike breaks Heavy Brute's guard stance!
 	local isBrute = targetModel:GetAttribute("Archetype") == "Brute"
@@ -940,8 +1369,42 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 		end)
 	end
 
-	damageEnemy(targetModel, damage, knockback)
+	damageEnemy(targetModel, damage, knockback, player)
 	CombatVFXRemote:FireAllClients("WebStrikeHit", player, targetModel)
+
+	if is2099 then
+		CombatVFXRemote:FireAllClients("CyberStrikeVFX", player, enemyRoot.Position)
+	end
+
+	-- ⚡ Miles Morales: Electric Web-Strike 2.0s Paralyzing Stun (Strictly on Camo Ambush)
+	if isMilesStrike then
+		if isAmbushStrike then
+			targetModel:SetAttribute("IsAttacking", false)
+			targetModel:SetAttribute("AttackDodged", true)
+			targetModel:SetAttribute("VenomStunned", true)
+			enemyHum.WalkSpeed = 0
+			CombatVFXRemote:FireAllClients("VenomStunVFX", player, targetModel, 2.0)
+			CombatVFXRemote:FireAllClients("VenomBlastVFX", player, enemyRoot.Position, 10)
+
+			task.delay(2.0, function()
+				if targetModel.Parent and enemyHum and enemyHum.Health > 0 then
+					targetModel:SetAttribute("VenomStunned", false)
+					if targetModel:GetAttribute("IsPinned") ~= true and targetModel:GetAttribute("IsWebbed") ~= true then
+						enemyHum.WalkSpeed = 14
+					end
+				end
+			end)
+		else
+			-- Non-ambush Web-Strike: +8 electric shock bonus damage and spark VFX without paralyzing stun
+			damageEnemy(targetModel, 8, Vector3.zero, player)
+			CombatVFXRemote:FireAllClients("VenomBlastVFX", player, enemyRoot.Position, 8)
+		end
+	end
+
+	if isStark then
+		-- Trigger cyan repulsor shockwave VFX at point of impact
+		CombatVFXRemote:FireAllClients("WaldoRepulsorShockwave", player, enemyRoot.Position, 10)
+	end
 
 	-- 💥 AoE Crowd Splash: Blast all nearby clumped enemies in the impact zone!
 	local splashRadius = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.SplashRadius or 8.0
@@ -967,7 +1430,25 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any)
 								end
 							end)
 						end
-						damageEnemy(otherEnemy, splashDamage, pushOutDir * 18)
+						damageEnemy(otherEnemy, splashDamage, pushOutDir * 18, player)
+
+						-- ⚡ Miles Morales Splash Electric Stun (Strictly on Camo Ambush)
+						if isMilesStrike and isAmbushStrike and otherEnemy:GetAttribute("VenomStunned") ~= true then
+							otherEnemy:SetAttribute("IsAttacking", false)
+							otherEnemy:SetAttribute("AttackDodged", true)
+							otherEnemy:SetAttribute("VenomStunned", true)
+							oHum.WalkSpeed = 0
+							CombatVFXRemote:FireAllClients("VenomStunVFX", player, otherEnemy, 2.0)
+
+							task.delay(2.0, function()
+								if otherEnemy.Parent and oHum and oHum.Health > 0 then
+									otherEnemy:SetAttribute("VenomStunned", false)
+									if otherEnemy:GetAttribute("IsPinned") ~= true and otherEnemy:GetAttribute("IsWebbed") ~= true then
+										oHum.WalkSpeed = 14
+									end
+								end
+							end)
+						end
 					end
 				end
 			end
@@ -991,29 +1472,29 @@ WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any,
 	local playerRoot = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not playerRoot then return end
 
-	-- 🛡️ Zero-Trust Server Authority: Web Cyclone requires Level >= 2
+	-- 🛡️ Zero-Trust Server Authority: Web Cyclone requires Level >= 2 (or Studio testing)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local playerLevel = leaderstats and leaderstats:FindFirstChild("Level") and (leaderstats.Level :: IntValue).Value or 1
-	if playerLevel < 2 then return end
+	if playerLevel < 2 and not RunService:IsStudio() then return end
 
 	if (actionType == "CycloneTick" or actionType == "StartCyclone") and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
-		local isAcrobatic = (player:GetAttribute("SuitPerkType") == "Acrobatic")
+		local is2099Suit = (player:GetAttribute("EquippedSuit") == "Cyber2099")
+			or (character and character:GetAttribute("EquippedSuit") == "Cyber2099")
+		local isAcrobatic = is2099Suit or (player:GetAttribute("SuitPerkType") == "Acrobatic")
 		local cycloneRadius = if isAcrobatic then 18.85 else 14.5
-		local tickDamage = 6 -- Ticking damage per 0.20s revolution (60 total DPS across 10 ticks)
+		local tickDamage = if isAcrobatic then 8 else 6 -- Ticking damage per 0.20s revolution (80 total DPS across 10 ticks for 2099, 60 base)
 
-		-- 🌪️ Acrobatic 2099 Suit Perk: Authoritative Gravitational Vortex pulling tagged enemies within 25 studs
-		if isAcrobatic then
-			for _, enemy in CollectionService:GetTagged("Enemy") do
-				if enemy ~= targetModel and enemy:IsA("Model") and enemy.Parent then
-					local eHum = enemy:FindFirstChildOfClass("Humanoid")
-					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-					if eHum and eHum.Health > 0 and eRoot then
-						local toPlayer = playerRoot.Position - eRoot.Position
-						local dist = toPlayer.Magnitude
-						if dist > 3 and dist <= 25 then
-							local pullDir = toPlayer.Unit
-							eRoot.AssemblyLinearVelocity = Vector3.new(pullDir.X * 32, eRoot.AssemblyLinearVelocity.Y, pullDir.Z * 32)
-						end
+		-- 🌪️ Universal Black Hole Gravitational Vortex: ALL players pull tagged enemies within 25 studs toward the cyclone center
+		for _, enemy in CollectionService:GetTagged("Enemy") do
+			if enemy ~= targetModel and enemy:IsA("Model") and enemy.Parent then
+				local eHum = enemy:FindFirstChildOfClass("Humanoid")
+				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+				if eHum and eHum.Health > 0 and eRoot then
+					local toPlayer = playerRoot.Position - eRoot.Position
+					local dist = toPlayer.Magnitude
+					if dist > 3 and dist <= 25 then
+						local pullDir = toPlayer.Unit
+						eRoot.AssemblyLinearVelocity = Vector3.new(pullDir.X * 32, eRoot.AssemblyLinearVelocity.Y, pullDir.Z * 32)
 					end
 				end
 			end
@@ -1034,7 +1515,7 @@ WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any,
 								enemy:SetAttribute("GuardBroken", true)
 								CombatVFXRemote:FireAllClients("GuardBreakVFX", enemy)
 							end
-							damageEnemy(enemy, tickDamage, flingDir * 12)
+							damageEnemy(enemy, tickDamage, flingDir * 12, player)
 							CombatVFXRemote:FireAllClients("KineticHit", player, enemy, 1)
 						end
 					end
@@ -1059,7 +1540,7 @@ WebCycloneRemote.OnServerEvent:Connect(function(player: Player, actionType: any,
 
 		-- Launch target into wall with finisher damage & velocity
 		if enemyHum and enemyHum.Health > 0 then
-			damageEnemy(targetModel, 25, throwDir * throwSpeed)
+			damageEnemy(targetModel, 25, throwDir * throwSpeed, player)
 		else
 			-- Enemy was defeated mid-spin: still physically rocket ragdoll into the wall!
 			local existingBv = enemyRoot:FindFirstChild("CycloneThrowImpulse")
@@ -1125,23 +1606,13 @@ DodgeRemote.OnServerEvent:Connect(function(player: Player, targetEnemy: any, isC
 
 			-- Point-Blank Web Counter Damage & Knockback
 			local counterDmg = CombatConfig.Moves.SpiderSenseDodge and CombatConfig.Moves.SpiderSenseDodge.CounterDamage or 12
-			damageEnemy(targetEnemy, counterDmg, -enemyRoot.CFrame.LookVector * 14)
+			damageEnemy(targetEnemy, counterDmg, -enemyRoot.CFrame.LookVector * 14, player)
 
 			-- Add web stack on face-web counter
 			local curStacks = (targetEnemy:GetAttribute("WebStacks") or 0) + 1
 			targetEnemy:SetAttribute("WebStacks", curStacks)
 			CombatVFXRemote:FireAllClients("WebPelletHit", player, targetEnemy, curStacks)
 		end
-	end
-end)
-
--- 💚 Quick-Heal Remote Listener
-QuickHealRemote.OnServerEvent:Connect(function(player: Player, healAmount: any)
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid and humanoid.Health > 0 then
-		local amount = typeof(healAmount) == "number" and math.clamp(healAmount, 10, 50) or 35
-		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + amount)
 	end
 end)
 
@@ -1163,4 +1634,4 @@ end
 
 Workspace.DescendantAdded:Connect(registerThrowableCandidate)
 
-print("⚔️ Spider-Man Combat Service (with Prop Throwing, Soft Melee Snapping, 360° Cyclone, Dodge & Quick-Heal) online!")
+print("⚔️ Spider-Man Combat Service (with Prop Throwing, Soft Melee Snapping, 360° Cyclone, Dodge & Adrenaline Survival) online!")

@@ -144,45 +144,13 @@ end
 -- 🎵 AUDIO SYNTHESIS & SFX HELPER
 --------------------------------------------------------------------------------
 
-local function playDispatchSound(soundType: "RadioSquelch" | "Victory" | "Siren")
-	if PoliceRadioHUD.isRadioMuted then return end
-
-	local soundId = ""
-	local volume = 0.8
-	local pitch = 1.0
-
-	if soundType == "RadioSquelch" then
-		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.RadioSquelchId ~= "" and CrimeConfig.Audio.RadioSquelchId) or "rbxassetid://9114223177"
-		pitch = 1.15
-	elseif soundType == "Victory" then
-		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.VictoryFanfareId ~= "" and CrimeConfig.Audio.VictoryFanfareId) or "rbxassetid://9069609200"
-		volume = 1.0
-	else
-		soundId = (CrimeConfig.Audio and CrimeConfig.Audio.DispatchSirenId ~= "" and CrimeConfig.Audio.DispatchSirenId) or "rbxassetid://6026987989"
-		pitch = 1.0
-	end
-
-	if soundId == "" then return end
-
-	pcall(function()
-		local sound = Instance.new("Sound")
-		sound.Volume = volume
-		sound.PlaybackSpeed = pitch
-		sound.SoundId = soundId
-		sound.Parent = SoundService
-		sound:Play()
-
-		sound.Ended:Connect(function()
-			sound:Destroy()
-		end)
-		task.delay(4, function()
-			if sound and sound.Parent then sound:Destroy() end
-		end)
-	end)
+local function playDispatchSound(_soundType: "RadioSquelch" | "Victory" | "Siren")
+	-- Zero SFX Policy: Completely silent visual-only dispatch
+	return
 end
 
 --------------------------------------------------------------------------------
--- 🎨 PROGRAMMATIC GLASSMORPHIC UI GENERATION
+-- PROGRAMMATIC GLASSMORPHIC UI GENERATION
 --------------------------------------------------------------------------------
 
 local function createHUD()

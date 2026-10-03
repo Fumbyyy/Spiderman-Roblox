@@ -25,12 +25,24 @@ local PropThrowRemote = RemotesFolder:WaitForChild("PropThrowRemote") :: RemoteE
 local ModulesFolder = script.Parent
 local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
+local CombatDodge = require(ModulesFolder:WaitForChild("CombatDodge"))
+local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local CombatWebs = {}
 
 -- State
 CombatWebs.lastWebPelletTime = 0
+CombatWebs.lastImpactWebTime = 0
 CombatWebs.lastDisarmTime = 0
+
+-- Initialize Scarlet Spider Impact Web Ready attribute
+task.spawn(function()
+	local Players = game:GetService("Players")
+	local lp = Players.LocalPlayer
+	if lp then
+		lp:SetAttribute("ScarletImpactReady", true)
+	end
+end)
 CombatWebs.lastWebStrikeTime = 0
 CombatWebs.lastPropThrowTime = 0
 CombatWebs.isHoldingWebPellet = false
@@ -98,11 +110,11 @@ function CombatWebs.createCombatWebLines(sourceModel: Model, targetModel: Model,
 	local leftAtt = WebVisuals.getHandAttachment(sourceModel, false)
 	local rightAtt = WebVisuals.getHandAttachment(sourceModel, true)
 
-	local beamRight = WebVisuals.createWebBeam(rightAtt, targetAtt, sourceRoot)
+	local beamRight = WebVisuals.createWebBeam(rightAtt, targetAtt, sourceRoot, sourceModel)
 	local beamLeft: Beam? = nil
 
 	if dualWebs then
-		beamLeft = WebVisuals.createWebBeam(leftAtt, targetAtt, sourceRoot)
+		beamLeft = WebVisuals.createWebBeam(leftAtt, targetAtt, sourceRoot, sourceModel)
 	end
 
 	WebVisuals.playWebSound(sourceRoot)
@@ -119,7 +131,11 @@ end
 
 function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera, isHoldingAttack: boolean, lastMeleeActionTime: number)
 	local now = os.clock()
-	local cooldown = CombatConfig.Moves.WebPellet.Cooldown or 0.32
+	local Players = game:GetService("Players")
+	local lp = Players.LocalPlayer
+	local isClassic = (lp and lp:GetAttribute("EquippedSuit") == "ClassicSuit")
+		or (character and character:GetAttribute("EquippedSuit") == "ClassicSuit")
+	local cooldown = if isClassic then 0.16 else (CombatConfig.Moves.WebPellet.Cooldown or 0.32)
 	if (now - CombatWebs.lastWebPelletTime) < cooldown then return end
 	if isHoldingAttack or (now - lastMeleeActionTime) < 0.22 then return end
 
@@ -136,8 +152,35 @@ function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, human
 	local handAtt = WebVisuals.getHandAttachment(character, CombatWebs.isRightHandWeb)
 	local targetWorldPos = targetRoot.Position + Vector3.new(0, 0.4, 0)
 
-	WebPelletRemote:FireServer(target)
-	WebVisuals.launchWebPelletProjectile(handAtt, targetWorldPos)
+	local Players = game:GetService("Players")
+	local lp = Players.LocalPlayer
+	local isScarlet = (lp and lp:GetAttribute("EquippedSuit") == "ScarletSpider")
+		or (character and character:GetAttribute("EquippedSuit") == "ScarletSpider")
+
+	if isScarlet and (now - CombatWebs.lastImpactWebTime) >= 6.0 then
+		CombatWebs.lastImpactWebTime = now
+		if lp then lp:SetAttribute("ScarletImpactReady", false) end
+		task.delay(6.0, function()
+			if lp then lp:SetAttribute("ScarletImpactReady", true) end
+		end)
+
+		WebPelletRemote:FireServer(target, true)
+		WebVisuals.launchImpactWebProjectile(handAtt, targetWorldPos)
+		CombatStyleHUD.setCooldown("WebPellet", 6.0)
+
+		-- Camera FOV punch (-4° inward punch for 0.15s)
+		local baseFov = camera.FieldOfView
+		camera.FieldOfView = math.max(40, baseFov - 4)
+		local tween = TweenService:Create(camera, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			FieldOfView = baseFov,
+		})
+		tween:Play()
+	else
+		WebPelletRemote:FireServer(target, false)
+		WebVisuals.launchWebPelletProjectile(handAtt, targetWorldPos)
+		CombatStyleHUD.setCooldown("WebPellet", if isClassic then 0.16 else 0.3)
+	end
+
 	WebVisuals.playWebSound(rootPart)
 end
 
@@ -197,6 +240,93 @@ function CombatWebs.performPropThrow(character: Model, rootPart: BasePart, human
 	local cooldown = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.Cooldown) or 2.0
 	if (now - CombatWebs.lastPropThrowTime) < cooldown or CombatWebs.isYankingProp then return end
 
+	local lp = Players.LocalPlayer
+	local isClassic = (lp and lp:GetAttribute("EquippedSuit") == "ClassicSuit")
+		or (character and character:GetAttribute("EquippedSuit") == "ClassicSuit")
+
+	if isClassic then
+		local primaryEnemy = CombatReticle.getCurrentTarget() or findEnemyInCone(rootPart, camera, 60, 0.30, false)
+		if primaryEnemy and primaryEnemy.Parent then
+			local pRoot = (primaryEnemy:FindFirstChild("HumanoidRootPart") or primaryEnemy:FindFirstChild("Torso")) :: BasePart?
+			local pHum = primaryEnemy:FindFirstChildOfClass("Humanoid")
+			if pRoot and pHum and pHum.Health > 0 then
+				local secondaryEnemy: Model? = nil
+				local bestSecDist = 35.0
+
+				local candidateEnemies: { Model } = {}
+				for _, enemy in CollectionService:GetTagged("Enemy") do
+					if enemy:IsA("Model") and enemy ~= primaryEnemy and enemy.Parent then
+						table.insert(candidateEnemies, enemy)
+					end
+				end
+				local enemiesFolder = Workspace:FindFirstChild("Enemies")
+				if enemiesFolder then
+					for _, enemy in enemiesFolder:GetChildren() do
+						if enemy:IsA("Model") and enemy ~= primaryEnemy and not table.find(candidateEnemies, enemy) then
+							table.insert(candidateEnemies, enemy)
+						end
+					end
+				end
+
+				for _, enemy in candidateEnemies do
+					local eHum = enemy:FindFirstChildOfClass("Humanoid")
+					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+					if eHum and eHum.Health > 0 and eRoot then
+						local d = (eRoot.Position - pRoot.Position).Magnitude
+						if d <= bestSecDist then
+							bestSecDist = d
+							secondaryEnemy = enemy
+						end
+					end
+				end
+
+				if secondaryEnemy and secondaryEnemy.Parent then
+					local sRoot = (secondaryEnemy:FindFirstChild("HumanoidRootPart") or secondaryEnemy:FindFirstChild("Torso")) :: BasePart?
+					if sRoot then
+						CombatWebs.lastPropThrowTime = now
+						CombatWebs.isHoldingWebPellet = false
+
+						-- Dual Web Lines from both hands to two enemies
+						local leftAtt = WebVisuals.getHandAttachment(character, false)
+						local rightAtt = WebVisuals.getHandAttachment(character, true)
+
+						local pAtt = pRoot:FindFirstChild("DoubleSlamAtt") :: Attachment?
+						if not pAtt then
+							pAtt = Instance.new("Attachment")
+							pAtt.Name = "DoubleSlamAtt"
+							pAtt.Parent = pRoot
+						end
+
+						local sAtt = sRoot:FindFirstChild("DoubleSlamAtt") :: Attachment?
+						if not sAtt then
+							sAtt = Instance.new("Attachment")
+							sAtt.Name = "DoubleSlamAtt"
+							sAtt.Parent = sRoot
+						end
+
+						local beamL = WebVisuals.createWebBeam(leftAtt, pAtt, rootPart, character)
+						local beamR = WebVisuals.createWebBeam(rightAtt, sAtt, rootPart, character)
+						WebVisuals.playWebSound(rootPart)
+
+						task.delay(0.35, function()
+							if beamL and beamL.Parent then beamL:Destroy() end
+							if beamR and beamR.Parent then beamR:Destroy() end
+							if pAtt and pAtt.Parent then pAtt:Destroy() end
+							if sAtt and sAtt.Parent then sAtt:Destroy() end
+						end)
+
+						local centerPos = (pRoot.Position + sRoot.Position) * 0.5
+						WebVisuals.createDoubleWebSlamVFX(pRoot.Position, sRoot.Position, centerPos)
+
+						PropThrowRemote:FireServer("DoubleWebSlam", primaryEnemy, secondaryEnemy)
+						CombatStyleHUD.registerHit(32)
+						return
+					end
+				end
+			end
+		end
+	end
+
 	local propInstance, propPart = CombatReticle.getCurrentThrowable()
 	if not propInstance or not propPart or not propPart.Parent then
 		-- Fallback: If no prop is targeted, check if player is facing an armed enemy to disarm
@@ -235,8 +365,8 @@ function CombatWebs.performPropThrow(character: Model, rootPart: BasePart, human
 		propAtt.Parent = propPart
 	end
 
-	local beamL = WebVisuals.createWebBeam(leftAtt, propAtt, rootPart)
-	local beamR = WebVisuals.createWebBeam(rightAtt, propAtt, rootPart)
+	local beamL = WebVisuals.createWebBeam(leftAtt, propAtt, rootPart, character)
+	local beamR = WebVisuals.createWebBeam(rightAtt, propAtt, rootPart, character)
 	WebVisuals.playWebSound(rootPart)
 
 	-- Athletic pivot and crouch stance
@@ -396,19 +526,38 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	local cooldown = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.Cooldown or 2.0
 	if CombatWebs.isWebStriking or (now - CombatWebs.lastWebStrikeTime) < cooldown then return end
 
-	local target = CombatReticle.getCurrentTarget() or findEnemyInCone(rootPart, camera, 65, 0.55, false)
+	local target = CombatReticle.getCurrentTarget()
+	if target then
+		local tRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
+		if tRoot then
+			local camPos = camera.CFrame.Position
+			local targetPos = tRoot.Position
+			local toTarget = (targetPos - camPos).Unit
+			local dot = camera.CFrame.LookVector:Dot(toTarget)
+			if dot < 0.40 then
+				target = nil
+			end
+		else
+			target = nil
+		end
+	end
+
+	if not target then
+		target = findEnemyInCone(rootPart, camera, 95, 0.40, false)
+	end
 	if not target then return end
 
 	local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
 	local targetHum = target:FindFirstChildOfClass("Humanoid")
 	if not targetRoot or not targetHum or targetHum.Health <= 0 then return end
 
-	local maxDist = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.MaxDistance or 65
+	local maxDist = 95
 	local dist = (targetRoot.Position - rootPart.Position).Magnitude
 	if dist > maxDist or dist < 1.5 then return end
 
 	CombatWebs.isWebStriking = true
 	CombatWebs.lastWebStrikeTime = now
+	CombatStyleHUD.setCooldown("WebStrike", cooldown)
 	CombatWebs.isHoldingWebPellet = false
 
 	-- Clean up previous movement constraints
@@ -437,14 +586,51 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
 	lv.Parent = rootPart
 
-	local zipSpeed = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ZipSpeed or 120
+	local isStark = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "StarkTechSuit")
+		or (character and character:GetAttribute("EquippedSuit") == "StarkTechSuit")
+	local is2099 = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "Cyber2099")
+		or (character and character:GetAttribute("EquippedSuit") == "Cyber2099")
+
+	-- Overcharged Sonic Zip-Kick: 175 studs/s for Stark Tech, 160 studs/s for 2099 vs 120 base
+	local incomingSpeed = rootPart.AssemblyLinearVelocity.Magnitude
+	local baseSpeed = if isStark then 175 elseif is2099 then 160 else (CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ZipSpeed or 130)
+	local zipSpeed = math.clamp(math.max(incomingSpeed * 1.15, baseSpeed), baseSpeed, 215)
 	local originalAutoRotate = humanoid.AutoRotate
 	humanoid.AutoRotate = false
 
-	local fovTweenIn = TweenService:Create(camera, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		FieldOfView = 76,
+	-- Snappy camera FOV kick (-8° inward zoom during the dive: 62° vs 76°)
+	local targetFov = if (isStark or is2099) then 62 else 76
+	local fovTweenIn = TweenService:Create(camera, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		FieldOfView = targetFov,
 	})
 	fovTweenIn:Play()
+
+	-- Ignite cyan repulsor jet particles during flight
+	local upperTorso = (character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) :: BasePart?
+	if isStark and upperTorso then
+		WebVisuals.activateStarkThrusters(character, upperTorso, 175)
+	end
+
+	local isMiles = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+		or (character and character:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+
+	local isCloaked = isMiles and (
+		(LocalPlayer and LocalPlayer:GetAttribute("MilesCamouflaged") == true)
+		or (character and character:GetAttribute("MilesCamouflaged") == true)
+		or CombatDodge.camoState == "Active"
+	)
+
+	local isAmbushStrike = false
+	if isCloaked then
+		isAmbushStrike = true
+		WebVisuals.createVenomBlastShockwave(rootPart.Position, 14)
+		CombatDodge.dischargeCamo(character)
+	end
+
+	-- ⚡ Miles Morales: Trailing electric bio-sparks during supersonic Web-Strike flight
+	if isMiles then
+		WebVisuals.activateMilesBioSparks(character, 120)
+	end
 
 	local zipStartTime = os.clock()
 	local maxZipDuration = 0.65
@@ -453,6 +639,12 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	task.delay(0.70, function()
 		if lv and lv.Parent then lv:Destroy() end
 		if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
+		if isStark then
+			WebVisuals.cleanupStarkThrusters(false)
+		end
+		if isMiles then
+			WebVisuals.cleanupMilesBioSparks(false)
+		end
 		CombatWebs.isWebStriking = false
 	end)
 
@@ -463,6 +655,16 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 			if zipConn then zipConn:Disconnect() end
 			if lv and lv.Parent then lv:Destroy() end
 			if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
+			if isStark then
+				WebVisuals.cleanupStarkThrusters(false)
+			end
+			if isMiles then
+				WebVisuals.cleanupMilesBioSparks(false)
+			end
+			local fovTweenOut = TweenService:Create(camera, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				FieldOfView = 70,
+			})
+			fovTweenOut:Play()
 			CombatWebs.isWebStriking = false
 			return
 		end
@@ -471,6 +673,10 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 		local zipDir = (targetRoot.Position - rootPart.Position).Unit
 		rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + Vector3.new(zipDir.X, 0, zipDir.Z))
 		lv.VectorVelocity = zipDir * zipSpeed
+
+		if is2099 then
+			WebVisuals.spawnCyberGlitchPolygon(rootPart.Position + Vector3.new(math.random(-15, 15) * 0.1, math.random(-8, 8) * 0.1, math.random(-15, 15) * 0.1))
+		end
 
 		-- Impact Threshold: Target contact or cluster collision
 		local hitCandidate: Model? = nil
@@ -503,23 +709,39 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 
 			if flatZipDir.Magnitude > 0.1 then
 				flatZipDir = flatZipDir.Unit
-				local strikePos = hitRoot.Position - (flatZipDir * 4.2)
-				rootPart.CFrame = CFrame.lookAt(Vector3.new(strikePos.X, rootPart.Position.Y, strikePos.Z), hitRoot.Position)
+			else
+				flatZipDir = rootPart.CFrame.LookVector
 			end
 
-			WebStrikeRemote:FireServer(hitCandidate)
+			WebStrikeRemote:FireServer(hitCandidate, isAmbushStrike)
 			WebVisuals.createMeleeHitSparks(hitRoot.Position + Vector3.new(0, 0.5, 0), true)
+
+			local isMiles = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+				or (character and character:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
+			if isMiles and (character:GetAttribute("MilesCamouflaged") == true or (LocalPlayer and LocalPlayer:GetAttribute("MilesCamouflaged") == true)) then
+				CombatDodge.breakCamouflage(character)
+			end
+			if isStark then
+				WebVisuals.cleanupStarkThrusters(false)
+			end
+			if isMiles then
+				WebVisuals.cleanupMilesBioSparks(false)
+			end
 
 			local fovTweenOut = TweenService:Create(camera, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				FieldOfView = 70,
 			})
 			fovTweenOut:Play()
 
-			-- Athletic kick-off rebound pop (smooth backstep bounce, perfectly positioned to combo!)
-			rootPart.AssemblyLinearVelocity = (-flatZipDir * 12) + Vector3.new(0, 8, 0)
+			-- High-Speed Follow-Through: Spidey blasts through the strike carrying high kinetic speed!
+			local carryDir = Vector3.new(flatZipDir.X, 0, flatZipDir.Z).Unit
+			rootPart.AssemblyLinearVelocity = (carryDir * 60) + Vector3.new(0, 10, 0)
 			CombatWebs.isWebStriking = false
 		end
 	end)
 end
+
+CombatWebs.performWebYank = CombatWebs.performPropThrow
+CombatWebs.findEnemyInCone = findEnemyInCone
 
 return CombatWebs

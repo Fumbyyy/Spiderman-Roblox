@@ -49,10 +49,30 @@ local CameraController = require(ModulesFolder:WaitForChild("CameraController"))
 local PoliceRadioHUD = require(ModulesFolder:WaitForChild("PoliceRadioHUD"))
 local SpiderPhoneHUD = require(ModulesFolder:WaitForChild("SpiderPhoneHUD"))
 local LevelUpCelebration = require(ModulesFolder:WaitForChild("LevelUpCelebration"))
+local PlayerHealthHUD = require(ModulesFolder:WaitForChild("PlayerHealthHUD"))
+local TargetFinder = require(ModulesFolder:WaitForChild("TargetFinder"))
 
 local lastCombatActionTime = 0
 local function registerCombatAction()
 	lastCombatActionTime = os.clock()
+end
+
+-- Traversal and Combat Action Lock Guards
+local function isTraversing(rootPart: BasePart?): boolean
+	if not rootPart then return false end
+	return (rootPart:FindFirstChild("WebSwingVelocity") ~= nil)
+		or (rootPart:FindFirstChild("SlingshotVelocity") ~= nil)
+		or (rootPart:FindFirstChild("WallRunVelocity") ~= nil)
+		or (rootPart:FindFirstChild("GlidingVelocity") ~= nil)
+		or (rootPart:FindFirstChild("WebGlideVelocity") ~= nil)
+end
+
+local function isCombatBusy(): boolean
+	local isUlting = (CombatUltimate.isUlting == true) or (CombatUltimate.isExecutingUltimate == true)
+	return (CombatWebs.isWebStriking == true)
+		or (CombatWebs.isYankingProp == true)
+		or (isUlting == true)
+		or (CombatDodge.isDodging == true)
 end
 
 -- Character Utility Helper
@@ -99,6 +119,7 @@ LocalPlayer.CharacterAdded:Connect(onCharacterSpawn)
 
 -- Initialize Multiplayer VFX Listener
 CombatVFXListener.init(CombatVFXRemote, Camera, getCharacterParts)
+PlayerHealthHUD.init(PlayerGui, LocalPlayer)
 
 -- Spider-Sense Threat Detection State
 local activeThreatEnemy: Model? = nil
@@ -140,18 +161,18 @@ end)
 local SUIT_KEY_MAP: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.One] = "ClassicSuit",
 	[Enum.KeyCode.Two] = "StarkTechSuit",
-	[Enum.KeyCode.Three] = "StealthBigTime",
+	[Enum.KeyCode.Three] = "MilesSpiderVerse",
 	[Enum.KeyCode.Four] = "SymbioteBlack",
-	[Enum.KeyCode.Five] = "SpiderArmorMK4",
+	[Enum.KeyCode.Five] = "ScarletSpider",
 	[Enum.KeyCode.Six] = "Cyber2099",
 }
 
 local CANONICAL_SUIT_ORDER = {
 	"ClassicSuit",
 	"StarkTechSuit",
-	"StealthBigTime",
+	"MilesSpiderVerse",
 	"SymbioteBlack",
-	"SpiderArmorMK4",
+	"ScarletSpider",
 	"Cyber2099",
 }
 
@@ -414,18 +435,24 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- 🥊 Left-Click: Tap for Combo (1-2-3), Hold for Uppercut, In-Air for Ground Slam
 	if input.UserInputType == (CombatConfig.Keybinds.Attack or Enum.UserInputType.MouseButton1) then
+		if isCombatBusy() or isTraversing(rootPart) then return end
 		CombatWebs.isHoldingWebPellet = false
 		registerCombatAction()
 
-		if humanoid.FloorMaterial == Enum.Material.Air then
+		local isAirborne = humanoid.FloorMaterial == Enum.Material.Air
+		local isApexOrFalling = rootPart.AssemblyLinearVelocity.Y <= 2
+		local isHighInAir = not TargetFinder.isNearGround(rootPart, character)
+
+		if isAirborne and isApexOrFalling and isHighInAir then
 			CombatMelee.performAirGroundSlam(character, rootPart, humanoid, CombatWebs.createCombatWebLines)
 		else
 			CombatMelee.isHoldingAttack = true
 			CombatMelee.attackPressStartTime = os.clock()
 		end
 
-	-- 🕸️ E Key -> Contextual Smart Web Shooters (Rapid Web Pellets / Disarm Snipers)
+	-- E Key -> Contextual Smart Web Shooters (Rapid Web Pellets / Disarm Snipers)
 	elseif input.KeyCode == (CombatConfig.Keybinds.WebGadget or Enum.KeyCode.E) then
+		if isCombatBusy() or isTraversing(rootPart) then return end
 		if CombatMelee.isHoldingAttack or (os.clock() - CombatMelee.lastMeleeActionTime) < 0.22 then return end
 		registerCombatAction()
 
@@ -435,10 +462,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		CombatWebs.isHoldingWebPellet = true
 		task.spawn(function()
 			while CombatWebs.isHoldingWebPellet do
-				task.wait(CombatConfig.Moves.WebPellet.Cooldown or 0.24)
+				local isClassic = (LocalPlayer:GetAttribute("EquippedSuit") == "ClassicSuit")
+				task.wait(if isClassic then 0.16 else (CombatConfig.Moves.WebPellet.Cooldown or 0.24))
 				if CombatWebs.isHoldingWebPellet and not CombatMelee.isHoldingAttack and (os.clock() - CombatMelee.lastMeleeActionTime) >= 0.22 then
 					local char, root, hum = getCharacterParts()
-					if char and root and hum and hum.Health > 0 then
+					if char and root and hum and hum.Health > 0 and not isCombatBusy() and not isTraversing(root) then
 						CombatWebs.performWebPellet(char, root, hum, Camera, CombatMelee.isHoldingAttack, CombatMelee.lastMeleeActionTime)
 					else
 						CombatWebs.isHoldingWebPellet = false
@@ -448,35 +476,47 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			end
 		end)
 
-	-- 📦 Q Key -> Contextual Web-Yank & Prop Throw (or Disarm Sniper)
+	-- Q Key -> Contextual Web-Yank & Prop Throw (or Disarm Sniper)
 	elseif input.KeyCode == (CombatConfig.Keybinds.PropThrow or Enum.KeyCode.Q) then
+		if isCombatBusy() or isTraversing(rootPart) then return end
 		if CombatMelee.isHoldingAttack or (os.clock() - CombatMelee.lastMeleeActionTime) < 0.22 then return end
 		registerCombatAction()
 		CombatWebs.performPropThrow(character, rootPart, humanoid, Camera)
 
-	-- 🚀 R Key -> 65-Stud Web-Strike Zip Dropkick!
+	-- R Key -> Web-Strike Zip Dropkick (Target-Gated: Never cancels swing without a target!)
 	elseif input.KeyCode == (CombatConfig.Keybinds.WebStrike or Enum.KeyCode.R) then
-		registerCombatAction()
-		CombatWebs.performWebStrike(character, rootPart, humanoid, Camera)
+		if isCombatBusy() then return end
 
-	-- ⚡ F Key -> Spider-Sense Perfect Dodge & Face-Web Counter (Ground Combat Only!)
+		local target = CombatReticle.getCurrentTarget()
+		if not target then
+			target = CombatWebs.findEnemyInCone(rootPart, Camera, 95, 0.40, false)
+		end
+
+		if target then
+			if isTraversing(rootPart) then
+				local swingVel = rootPart:FindFirstChild("WebSwingVelocity")
+				if swingVel then swingVel:Destroy() end
+				local slingVel = rootPart:FindFirstChild("SlingshotVelocity")
+				if slingVel then slingVel:Destroy() end
+				local glideVel = rootPart:FindFirstChild("WebGlideVelocity")
+				if glideVel then glideVel:Destroy() end
+			end
+			registerCombatAction()
+			CombatWebs.performWebStrike(character, rootPart, humanoid, Camera)
+		end
+
+	-- F Key -> Spider-Sense Perfect Dodge & Face-Web Counter (Ground Combat Only!)
 	elseif input.KeyCode == (CombatConfig.Keybinds.Dodge or Enum.KeyCode.F) then
 		if humanoid.FloorMaterial == Enum.Material.Air then return end
-		if rootPart:FindFirstChild("WebSwingVelocity") or rootPart:FindFirstChild("SlingshotVelocity") or rootPart:FindFirstChild("WallRunVelocity") or rootPart:FindFirstChild("GlidingVelocity") then
-			return
-		end
+		if isCombatBusy() or isTraversing(rootPart) then return end
 		registerCombatAction()
 		activeThreatEnemy = CombatDodge.performSpiderSenseDodge(character, rootPart, humanoid, Camera, activeThreatEnemy)
 
-	-- 🌪️ T Key -> Continuous 360° Web Cyclone DPS Blender
+	-- T Key -> Continuous 360-degree Web Cyclone DPS Blender
 	elseif input.KeyCode == (CombatConfig.Keybinds.Ultimate or Enum.KeyCode.T) then
+		if isCombatBusy() or isTraversing(rootPart) then return end
 		registerCombatAction()
 		CombatUltimate.performWebCyclone(character, rootPart, humanoid, Camera)
-
-	-- 💚 H Key -> Quick-Heal (+35 HP)
-	elseif input.KeyCode == (CombatConfig.Keybinds.QuickHeal or Enum.KeyCode.H) then
-		registerCombatAction()
-		CombatUltimate.performQuickHeal(character, rootPart, humanoid)
 	end
 end)
 

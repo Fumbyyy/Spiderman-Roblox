@@ -170,65 +170,112 @@ local function createHUD()
 	abilityTray.Name = "AbilityTray"
 	abilityTray.AnchorPoint = Vector2.new(1, 1)
 	abilityTray.Position = UDim2.new(0.98, 0, 0.96, 0)
-	abilityTray.Size = UDim2.new(0, 180, 0, 26)
+	abilityTray.Size = UDim2.new(0, 290, 0, 26)
 	abilityTray.BackgroundTransparency = 1
-	abilityTray.Visible = false
+	abilityTray.Visible = true
 	abilityTray.Parent = gui
 
 	local trayLayout = Instance.new("UIListLayout")
 	trayLayout.FillDirection = Enum.FillDirection.Horizontal
 	trayLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	trayLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	trayLayout.Padding = UDim.new(0, 8)
+	trayLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	trayLayout.Padding = UDim.new(0, 6)
 	trayLayout.Parent = abilityTray
 
-	-- 💚 [H] Quick-Heal Button Pill
-	local healPill = Instance.new("Frame")
-	healPill.Name = "HealPill"
-	healPill.Size = UDim2.new(0, 82, 0, 24)
-	healPill.BackgroundColor3 = Color3.fromRGB(12, 18, 16)
-	healPill.BackgroundTransparency = 0.35
-	healPill.BorderSizePixel = 0
-	healPill.Parent = abilityTray
+	-- 🕸️ [E] Web-Pellet / Impact Blast Pill
+	local pelletPill = Instance.new("Frame")
+	pelletPill.Name = "PelletPill"
+	pelletPill.LayoutOrder = 1
+	pelletPill.Size = UDim2.new(0, 86, 0, 24)
+	pelletPill.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+	pelletPill.BackgroundTransparency = 0.35
+	pelletPill.BorderSizePixel = 0
+	pelletPill.Parent = abilityTray
 
-	local healCorner = Instance.new("UICorner")
-	healCorner.CornerRadius = UDim.new(0, 6)
-	healCorner.Parent = healPill
+	local pelletCorner = Instance.new("UICorner")
+	pelletCorner.CornerRadius = UDim.new(0, 6)
+	pelletCorner.Parent = pelletPill
 
-	local healStroke = Instance.new("UIStroke")
-	healStroke.Name = "HealStroke"
-	healStroke.Thickness = 1.0
-	healStroke.Color = Color3.fromRGB(65, 225, 130)
-	healStroke.Transparency = 0.35
-	healStroke.Parent = healPill
+	local pelletStroke = Instance.new("UIStroke")
+	pelletStroke.Name = "PelletStroke"
+	pelletStroke.Thickness = 1.0
+	pelletStroke.Color = Color3.fromRGB(195, 215, 245)
+	pelletStroke.Transparency = 0.35
+	pelletStroke.Parent = pelletPill
 
-	local healCooldownOverlay = Instance.new("Frame")
-	healCooldownOverlay.Name = "CooldownOverlay"
-	healCooldownOverlay.Size = UDim2.new(0, 0, 1, 0)
-	healCooldownOverlay.BackgroundColor3 = Color3.fromRGB(40, 15, 20)
-	healCooldownOverlay.BackgroundTransparency = 0.6
-	healCooldownOverlay.BorderSizePixel = 0
-	healCooldownOverlay.Parent = healPill
+	local pelletCooldownOverlay = Instance.new("Frame")
+	pelletCooldownOverlay.Name = "CooldownOverlay"
+	pelletCooldownOverlay.Size = UDim2.new(0, 0, 1, 0)
+	pelletCooldownOverlay.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+	pelletCooldownOverlay.BackgroundTransparency = 0.6
+	pelletCooldownOverlay.BorderSizePixel = 0
+	pelletCooldownOverlay.Parent = pelletPill
 
-	local healOverlayCorner = Instance.new("UICorner")
-	healOverlayCorner.CornerRadius = UDim.new(0, 6)
-	healOverlayCorner.Parent = healCooldownOverlay
+	local pelletOverlayCorner = Instance.new("UICorner")
+	pelletOverlayCorner.CornerRadius = UDim.new(0, 6)
+	pelletOverlayCorner.Parent = pelletCooldownOverlay
 
-	local healLabel = Instance.new("TextLabel")
-	healLabel.Name = "HealLabel"
-	healLabel.Size = UDim2.new(1, 0, 1, 0)
-	healLabel.BackgroundTransparency = 1
-	healLabel.Font = Enum.Font.GothamBold
-	healLabel.Text = "[H] 💚 HEAL"
-	healLabel.TextColor3 = Color3.fromRGB(85, 245, 150)
-	healLabel.TextSize = 10
-	healLabel.ZIndex = 2
-	healLabel.Parent = healPill
+	local pelletLabel = Instance.new("TextLabel")
+	pelletLabel.Name = "PelletLabel"
+	pelletLabel.Size = UDim2.new(1, 0, 1, 0)
+	pelletLabel.BackgroundTransparency = 1
+	pelletLabel.Font = Enum.Font.GothamBold
+	pelletLabel.Text = "[E] 🕸️ PELLET"
+	pelletLabel.TextColor3 = Color3.fromRGB(220, 235, 255)
+	pelletLabel.TextSize = 10
+	pelletLabel.ZIndex = 2
+	pelletLabel.Parent = pelletPill
+
+	-- ⚡ [R] Web-Strike Zip-Kick Pill
+	local strikePill = Instance.new("Frame")
+	strikePill.Name = "StrikePill"
+	strikePill.LayoutOrder = 2
+	strikePill.Size = UDim2.new(0, 92, 0, 24)
+	strikePill.BackgroundColor3 = Color3.fromRGB(18, 16, 26)
+	strikePill.BackgroundTransparency = 0.35
+	strikePill.BorderSizePixel = 0
+	strikePill.Parent = abilityTray
+
+	local strikeCorner = Instance.new("UICorner")
+	strikeCorner.CornerRadius = UDim.new(0, 6)
+	strikeCorner.Parent = strikePill
+
+	local strikeStroke = Instance.new("UIStroke")
+	strikeStroke.Name = "StrikeStroke"
+	strikeStroke.Thickness = 1.0
+	strikeStroke.Color = Color3.fromRGB(240, 180, 60)
+	strikeStroke.Transparency = 0.35
+	strikeStroke.Parent = strikePill
+
+	local strikeCooldownOverlay = Instance.new("Frame")
+	strikeCooldownOverlay.Name = "CooldownOverlay"
+	strikeCooldownOverlay.Size = UDim2.new(0, 0, 1, 0)
+	strikeCooldownOverlay.BackgroundColor3 = Color3.fromRGB(45, 35, 20)
+	strikeCooldownOverlay.BackgroundTransparency = 0.6
+	strikeCooldownOverlay.BorderSizePixel = 0
+	strikeCooldownOverlay.Parent = strikePill
+
+	local strikeOverlayCorner = Instance.new("UICorner")
+	strikeOverlayCorner.CornerRadius = UDim.new(0, 6)
+	strikeOverlayCorner.Parent = strikeCooldownOverlay
+
+	local strikeLabel = Instance.new("TextLabel")
+	strikeLabel.Name = "StrikeLabel"
+	strikeLabel.Size = UDim2.new(1, 0, 1, 0)
+	strikeLabel.BackgroundTransparency = 1
+	strikeLabel.Font = Enum.Font.GothamBold
+	strikeLabel.Text = "[R] ⚡ ZIP-KICK"
+	strikeLabel.TextColor3 = Color3.fromRGB(255, 210, 85)
+	strikeLabel.TextSize = 10
+	strikeLabel.ZIndex = 2
+	strikeLabel.Parent = strikePill
 
 	-- 🌪️ [T] Web Cyclone Button Pill
 	local cyclonePill = Instance.new("Frame")
 	cyclonePill.Name = "CyclonePill"
-	cyclonePill.Size = UDim2.new(0, 92, 0, 24)
+	cyclonePill.LayoutOrder = 3
+	cyclonePill.Size = UDim2.new(0, 96, 0, 24)
 	cyclonePill.BackgroundColor3 = Color3.fromRGB(12, 16, 24)
 	cyclonePill.BackgroundTransparency = 0.35
 	cyclonePill.BorderSizePixel = 0
@@ -267,6 +314,8 @@ local function createHUD()
 	cycloneLabel.TextSize = 10
 	cycloneLabel.ZIndex = 2
 	cycloneLabel.Parent = cyclonePill
+
+
 
 	gui.Parent = PlayerGui
 
@@ -325,19 +374,25 @@ local function playHitBounce(isNewRank: boolean)
 end
 
 -- ⏳ Cooldown Tracking State
-local healCooldownEnd = 0
-local healCooldownTotal = 20.0
+local pelletCooldownEnd = 0
+local pelletCooldownTotal = 0.3
+
+local strikeCooldownEnd = 0
+local strikeCooldownTotal = 2.0
 
 local cycloneCooldownEnd = 0
 local cycloneCooldownTotal = 15.0
 
-function CombatStyleHUD.setCooldown(skillName: "QuickHeal" | "WebCyclone", duration: number)
-	if skillName == "QuickHeal" then
-		healCooldownEnd = os.clock() + duration
-		healCooldownTotal = duration
-	elseif skillName == "WebCyclone" then
+function CombatStyleHUD.setCooldown(skillName: string, duration: number)
+	if skillName == "WebCyclone" then
 		cycloneCooldownEnd = os.clock() + duration
 		cycloneCooldownTotal = duration
+	elseif skillName == "WebPellet" or skillName == "ImpactBlast" then
+		pelletCooldownEnd = os.clock() + duration
+		pelletCooldownTotal = duration
+	elseif skillName == "WebStrike" then
+		strikeCooldownEnd = os.clock() + duration
+		strikeCooldownTotal = duration
 	end
 end
 
@@ -439,32 +494,65 @@ RunService.RenderStepped:Connect(function()
 	-- Cooldown Hotbar Updates (Optimized: only executes when AbilityTray is visible)
 	local abilityTray = screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?
 	if abilityTray and abilityTray.Visible then
-		local healPill = abilityTray:FindFirstChild("HealPill") :: Frame?
-		if healPill then
-			local healLabel = healPill:FindFirstChild("HealLabel") :: TextLabel?
-			local healOverlay = healPill:FindFirstChild("CooldownOverlay") :: Frame?
-			local healStroke = healPill:FindFirstChild("HealStroke") :: UIStroke?
+		-- [E] Web-Pellet / Impact Blast Pill
+		local pelletPill = abilityTray:FindFirstChild("PelletPill") :: Frame?
+		if pelletPill then
+			local pelletLabel = pelletPill:FindFirstChild("PelletLabel") :: TextLabel?
+			local pelletOverlay = pelletPill:FindFirstChild("CooldownOverlay") :: Frame?
+			local pelletStroke = pelletPill:FindFirstChild("PelletStroke") :: UIStroke?
+			local isScarlet = LocalPlayer:GetAttribute("EquippedSuit") == "ScarletSpider"
 
-			if now < healCooldownEnd then
-				local rem = math.ceil(healCooldownEnd - now)
-				local ratio = math.clamp((healCooldownEnd - now) / math.max(0.1, healCooldownTotal), 0, 1)
-				if healLabel then
-					healLabel.Text = string.format("[H] ⏳ %ds", rem)
-					healLabel.TextColor3 = Color3.fromRGB(160, 175, 190)
+			if now < pelletCooldownEnd then
+				local rem = pelletCooldownEnd - now
+				local ratio = math.clamp(rem / math.max(0.1, pelletCooldownTotal), 0, 1)
+				if pelletLabel then
+					pelletLabel.Text = if rem >= 1.0 then string.format("[E] ⏳ %ds", math.ceil(rem)) else string.format("[E] ⏳ %.1fs", rem)
+					pelletLabel.TextColor3 = Color3.fromRGB(160, 175, 190)
 				end
-				if healOverlay then healOverlay.Size = UDim2.new(ratio, 0, 1, 0) end
-				if healStroke then healStroke.Color = Color3.fromRGB(60, 70, 80) end
+				if pelletOverlay then pelletOverlay.Size = UDim2.new(ratio, 0, 1, 0) end
+				if pelletStroke then pelletStroke.Color = Color3.fromRGB(60, 70, 80) end
 			else
-				if healLabel then
-					healLabel.Text = "[H] 💚 HEAL"
-					healLabel.TextColor3 = Color3.fromRGB(80, 245, 150)
+				if pelletLabel then
+					if isScarlet then
+						pelletLabel.Text = "[E] 💥 BLAST"
+						pelletLabel.TextColor3 = Color3.fromRGB(255, 120, 130)
+					else
+						pelletLabel.Text = "[E] 🕸️ PELLET"
+						pelletLabel.TextColor3 = Color3.fromRGB(220, 235, 255)
+					end
 				end
-				if healOverlay then healOverlay.Size = UDim2.new(0, 0, 1, 0) end
-				if healStroke then healStroke.Color = Color3.fromRGB(65, 225, 130) end
+				if pelletOverlay then pelletOverlay.Size = UDim2.new(0, 0, 1, 0) end
+				if pelletStroke then pelletStroke.Color = if isScarlet then Color3.fromRGB(240, 50, 60) else Color3.fromRGB(195, 215, 245) end
 			end
 		end
 
-		-- Web Cyclone Cooldown Update
+		-- [R] Web-Strike Zip-Kick Pill
+		local strikePill = abilityTray:FindFirstChild("StrikePill") :: Frame?
+		if strikePill then
+			local strikeLabel = strikePill:FindFirstChild("StrikeLabel") :: TextLabel?
+			local strikeOverlay = strikePill:FindFirstChild("CooldownOverlay") :: Frame?
+			local strikeStroke = strikePill:FindFirstChild("StrikeStroke") :: UIStroke?
+
+			if now < strikeCooldownEnd then
+				local rem = strikeCooldownEnd - now
+				local ratio = math.clamp(rem / math.max(0.1, strikeCooldownTotal), 0, 1)
+				if strikeLabel then
+					strikeLabel.Text = string.format("[R] ⏳ %.1fs", rem)
+					strikeLabel.TextColor3 = Color3.fromRGB(160, 175, 190)
+				end
+				if strikeOverlay then strikeOverlay.Size = UDim2.new(ratio, 0, 1, 0) end
+				if strikeStroke then strikeStroke.Color = Color3.fromRGB(60, 70, 80) end
+			else
+				if strikeLabel then
+					strikeLabel.Text = "[R] ⚡ ZIP-KICK"
+					strikeLabel.TextColor3 = Color3.fromRGB(255, 210, 85)
+				end
+				if strikeOverlay then strikeOverlay.Size = UDim2.new(0, 0, 1, 0) end
+				if strikeStroke then strikeStroke.Color = Color3.fromRGB(240, 180, 60) end
+			end
+		end
+
+		-- [T] Web Cyclone Cooldown Update
 		local cyclonePill = abilityTray:FindFirstChild("CyclonePill") :: Frame?
 		if cyclonePill then
 			local cycloneLabel = cyclonePill:FindFirstChild("CycloneLabel") :: TextLabel?
@@ -489,6 +577,8 @@ RunService.RenderStepped:Connect(function()
 				if cycloneStroke then cycloneStroke.Color = Color3.fromRGB(75, 215, 255) end
 			end
 		end
+
+
 	end
 end)
 

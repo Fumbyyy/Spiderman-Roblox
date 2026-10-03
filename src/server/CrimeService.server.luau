@@ -359,6 +359,22 @@ local function attachCrimeHealthBar(enemyModel: Model, enemyName: string, archet
 			end
 		end
 	end)
+
+	-- ⚡ Overhead Venom Stunned Visual Tag
+	enemyModel:GetAttributeChangedSignal("VenomStunned"):Connect(function()
+		local isStunned = enemyModel:GetAttribute("VenomStunned") == true
+		if humanoid.Health > 0 then
+			if isStunned then
+				nameLabel.Text = string.format("⚡ STUNNED // %s", string.upper(enemyName))
+				nameLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
+				healthFill.BackgroundColor3 = Color3.fromRGB(255, 230, 60)
+			else
+				nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
+				nameLabel.TextColor3 = defaultTextColor
+				healthFill.BackgroundColor3 = if archetype == "Brute" then Color3.fromRGB(60, 180, 255) elseif archetype == "Gunner" then Color3.fromRGB(240, 65, 65) else Color3.fromRGB(225, 75, 75)
+			end
+		end
+	end)
 end
 
 -- Spawn Physical Enemy Model with Full Archetype Attributes
@@ -521,7 +537,7 @@ local function spawnCrimeEnemy(spawnCFrame: CFrame, archetype: "Gunner" | "Brute
 				rootPart.CFrame = spawnCFrame * CFrame.new(0, isBrute and 3.8 or 3.0, 0)
 			end
 
-			if character:GetAttribute("IsWebbed") == true or character:GetAttribute("IsPinned") == true then
+			if character:GetAttribute("IsWebbed") == true or character:GetAttribute("IsPinned") == true or character:GetAttribute("VenomStunned") == true then
 				humanoid:MoveTo(rootPart.Position)
 				continue
 			end
@@ -532,6 +548,9 @@ local function spawnCrimeEnemy(spawnCFrame: CFrame, archetype: "Gunner" | "Brute
 
 			for _, player in Players:GetPlayers() do
 				local pChar = player.Character
+				if pChar and (pChar:GetAttribute("MilesCamouflaged") == true or player:GetAttribute("MilesCamouflaged") == true) then
+					continue -- 👤 Spider-Verse Camouflage: Ignore cloaked players completely
+				end
 				local pRoot = pChar and pChar:FindFirstChild("HumanoidRootPart") :: BasePart?
 				local pHum = pChar and pChar:FindFirstChildOfClass("Humanoid")
 				if pRoot and pHum and pHum.Health > 0 then
@@ -622,7 +641,7 @@ local function spawnCrimeEnemy(spawnCFrame: CFrame, archetype: "Gunner" | "Brute
 								CombatVFXRemote:FireAllClients("GunnerMuzzleVFX", muzzlePos, fireDir, fireDist)
 							end
 
-							local playerInvulnerable = pChar:GetAttribute("IsInvulnerable") == true
+							local playerInvulnerable = pChar:GetAttribute("IsInvulnerable") == true or pChar:GetAttribute("MilesCamouflaged") == true or nearestPlayer:GetAttribute("MilesCamouflaged") == true
 							if not playerInvulnerable and fireDist <= (maxStandoff + 10) then
 								pHum:TakeDamage(12)
 							end
