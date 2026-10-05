@@ -446,7 +446,7 @@ KineticComboRemote.OnServerEvent:Connect(function(player: Player, targetModel: a
 			end
 
 			damageEnemy(enemyModel, damage, knockback, player)
-			CombatVFXRemote:FireAllClients("KineticHit", player, enemyModel, hitNum)
+			CombatVFXRemote:FireAllClients("KineticHit", player, enemyModel, hitNum, damage)
 
 			-- 💥 Wall-Pin Synergy on 3rd hit
 			if hitNum == 3 and isFullyWebbed then
@@ -643,12 +643,27 @@ end)
 --------------------------------------------------------------------------------
 -- 3. 💥 WEB-LINE GROUND SLAM (In-Air Finisher & AoE Shockwave)
 --------------------------------------------------------------------------------
+local playerGroundSlamCooldowns: { [Player]: number } = {}
+Players.PlayerRemoving:Connect(function(player)
+	playerGroundSlamCooldowns[player] = nil
+end)
+
 GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any, customImpactPos: any)
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not playerRoot then return end
 
-	local impactPos = typeof(customImpactPos) == "Vector3" and customImpactPos or playerRoot.Position
+	-- 🛡️ Server cooldown (80% tolerance for network jitter)
+	local now = os.clock()
+	local slamCooldown = (CombatConfig.Moves.AirGroundSlam.Cooldown or 1.4) * 0.8
+	if now - (playerGroundSlamCooldowns[player] or 0) < slamCooldown then return end
+	playerGroundSlamCooldowns[player] = now
+
+	-- 🛡️ Never trust a client impact point more than 12 studs from the player's replicated root
+	local impactPos = playerRoot.Position
+	if typeof(customImpactPos) == "Vector3" and (customImpactPos - playerRoot.Position).Magnitude <= 12 then
+		impactPos = customImpactPos
+	end
 
 	-- 1. If target enemy model is provided and in whip range, smash them down with heavy impact!
 	local primaryHit = false
@@ -670,6 +685,7 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 				impactPos = enemyRoot.Position
 				primaryHit = true
 				hitCount += 1
+				CombatVFXRemote:FireAllClients("GroundSlamHit", player, targetModel, slamDmg)
 				CombatVFXRemote:FireAllClients("GroundSlamWebs", player, targetModel)
 			end
 		end
@@ -737,7 +753,8 @@ GroundSlamRemote.OnServerEvent:Connect(function(player: Player, targetModel: any
 			playerHum.Health = math.clamp(playerHum.Health + 8, 0, playerHum.MaxHealth)
 		end
 	else
-		CombatVFXRemote:FireAllClients("GroundSlamShockwave", player, impactPos, radius, hitCount)
+		-- Primary hit is already combo-registered by the attacker's client prediction
+		CombatVFXRemote:FireAllClients("GroundSlamShockwave", player, impactPos, radius, hitCount - (if primaryHit then 1 else 0))
 	end
 end)
 
@@ -1201,7 +1218,7 @@ PropThrowRemote.OnServerEvent:Connect(function(player: Player, propInstance: any
 				-- Apply heavy damage & physical knockback
 				local flingVec = impactDir * knockbackForce + Vector3.new(0, 5, 0)
 				damageEnemy(targetModel, throwDamage, flingVec, player)
-				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
+				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir, throwDamage)
 			else
 				CombatVFXRemote:FireAllClients("WeaponImpactVFX", destPos, impactDir)
 			end
@@ -1318,12 +1335,15 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any,
 	if typeof(targetModel) ~= "Instance" or not targetModel:IsA("Model") then return end
 	local char = player.Character
 	local playerRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
+	local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart")
+		or targetModel:FindFirstChild("Torso")
+		or targetModel.PrimaryPart
+		or targetModel:FindFirstChildWhichIsA("BasePart")) :: BasePart?
 	local enemyHum = targetModel:FindFirstChildOfClass("Humanoid")
 	if not playerRoot or not enemyRoot or not enemyHum or enemyHum.Health <= 0 then return end
 
 	local dist = (enemyRoot.Position - playerRoot.Position).Magnitude
-	local maxDist = (CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.MaxDistance or 65) + 10
+	local maxDist = 120 -- Generous replication buffer so high-speed client zip replication lag never drops a hit
 	if dist > maxDist then return end
 
 	local isStark = (player:GetAttribute("EquippedSuit") == "StarkTechSuit")
@@ -1370,7 +1390,7 @@ WebStrikeRemote.OnServerEvent:Connect(function(player: Player, targetModel: any,
 	end
 
 	damageEnemy(targetModel, damage, knockback, player)
-	CombatVFXRemote:FireAllClients("WebStrikeHit", player, targetModel)
+	CombatVFXRemote:FireAllClients("WebStrikeHit", player, targetModel, damage)
 
 	if is2099 then
 		CombatVFXRemote:FireAllClients("CyberStrikeVFX", player, enemyRoot.Position)

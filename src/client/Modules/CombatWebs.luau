@@ -12,6 +12,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
@@ -27,6 +29,7 @@ local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
 local CombatDodge = require(ModulesFolder:WaitForChild("CombatDodge"))
 local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
+local CombatVFXListener = require(ModulesFolder:WaitForChild("CombatVFXListener"))
 
 local CombatWebs = {}
 
@@ -37,10 +40,8 @@ CombatWebs.lastDisarmTime = 0
 
 -- Initialize Scarlet Spider Impact Web Ready attribute
 task.spawn(function()
-	local Players = game:GetService("Players")
-	local lp = Players.LocalPlayer
-	if lp then
-		lp:SetAttribute("ScarletImpactReady", true)
+	if LocalPlayer then
+		LocalPlayer:SetAttribute("ScarletImpactReady", true)
 	end
 end)
 CombatWebs.lastWebStrikeTime = 0
@@ -58,12 +59,12 @@ local function isArmedEnemy(enemy: Model): boolean
 	return (enemy:GetAttribute("IsArmed") == true) or (enemy:FindFirstChild("Gun") ~= nil)
 end
 
--- Scan camera view cone for valid enemy targets (fallback when reticle target is nil)
+-- Scan camera view cone for valid enemy targets (crosshair-prioritized aim weighting)
 local function findEnemyInCone(rootPart: BasePart, camera: Camera, maxDist: number, minDot: number, requireArmed: boolean?): Model?
 	local enemies = CollectionService:GetTagged("Enemy")
 	local camCFrame = camera.CFrame
 	local bestTarget: Model? = nil
-	local bestDist = maxDist
+	local bestScore = -math.huge
 
 	for _, enemy in enemies do
 		if enemy:IsA("Model") then
@@ -76,12 +77,17 @@ local function findEnemyInCone(rootPart: BasePart, camera: Camera, maxDist: numb
 			if eHum and eHum.Health > 0 and eRoot then
 				local offset = eRoot.Position - rootPart.Position
 				local d = offset.Magnitude
-				if d <= maxDist and d < bestDist then
+				if d <= maxDist then
 					local toEnemy = (eRoot.Position - camCFrame.Position).Unit
 					local dot = camCFrame.LookVector:Dot(toEnemy)
 					if dot > minDot then
-						bestTarget = enemy
-						bestDist = d
+						local aimScore = (dot ^ 3) * 500
+						local distScore = (1 - (d / maxDist)) * 60
+						local totalScore = aimScore + distScore
+						if totalScore > bestScore then
+							bestScore = totalScore
+							bestTarget = enemy
+						end
 					end
 				end
 			end
@@ -131,8 +137,7 @@ end
 
 function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera, isHoldingAttack: boolean, lastMeleeActionTime: number)
 	local now = os.clock()
-	local Players = game:GetService("Players")
-	local lp = Players.LocalPlayer
+	local lp = LocalPlayer
 	local isClassic = (lp and lp:GetAttribute("EquippedSuit") == "ClassicSuit")
 		or (character and character:GetAttribute("EquippedSuit") == "ClassicSuit")
 	local cooldown = if isClassic then 0.16 else (CombatConfig.Moves.WebPellet.Cooldown or 0.32)
@@ -152,8 +157,6 @@ function CombatWebs.performWebPellet(character: Model, rootPart: BasePart, human
 	local handAtt = WebVisuals.getHandAttachment(character, CombatWebs.isRightHandWeb)
 	local targetWorldPos = targetRoot.Position + Vector3.new(0, 0.4, 0)
 
-	local Players = game:GetService("Players")
-	local lp = Players.LocalPlayer
 	local isScarlet = (lp and lp:GetAttribute("EquippedSuit") == "ScarletSpider")
 		or (character and character:GetAttribute("EquippedSuit") == "ScarletSpider")
 
@@ -240,7 +243,7 @@ function CombatWebs.performPropThrow(character: Model, rootPart: BasePart, human
 	local cooldown = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.Cooldown) or 2.0
 	if (now - CombatWebs.lastPropThrowTime) < cooldown or CombatWebs.isYankingProp then return end
 
-	local lp = Players.LocalPlayer
+	local lp = LocalPlayer
 	local isClassic = (lp and lp:GetAttribute("EquippedSuit") == "ClassicSuit")
 		or (character and character:GetAttribute("EquippedSuit") == "ClassicSuit")
 
@@ -381,111 +384,98 @@ function CombatWebs.performPropThrow(character: Model, rootPart: BasePart, human
 	})
 	camTweenIn:Play()
 
+	-- Return prop to physics if the throw is interrupted (prevents mid-air freeze)
+	local function releaseProp(part: BasePart, inst: Instance?)
+		if part.Parent then
+			part.Anchored = false
+			part.CanCollide = true
+			part:SetAttribute("IsThrown", nil)
+		end
+		if inst and inst.Parent then
+			inst:SetAttribute("IsThrown", nil)
+		end
+	end
+
 	-- Take physical control of prop
 	propPart.Anchored = true
 	propPart.CanCollide = false
-
-	-- Phase 1: Snatch/Lift off ground to player's right flank apex (0.16s)
-	local sideApex = rootPart.Position + (rootPart.CFrame.RightVector * 3.4) + Vector3.new(0, 3.2, 0) - (rootPart.CFrame.LookVector * 1.0)
-	local yankTween = TweenService:Create(propPart, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	-- Stage 1: The Snatch - Pull prop from location to Spidey's throwing flank in 0.10s
+	local sideApex = rootPart.Position + (rootPart.CFrame.RightVector * 3.2) + Vector3.new(0, 2.4, 0) - (rootPart.CFrame.LookVector * 1.0)
+	local snatchTween = TweenService:Create(propPart, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		CFrame = CFrame.new(sideApex) * CFrame.Angles(math.rad(25), math.rad(45), math.rad(20)),
 	})
-	yankTween:Play()
+	snatchTween:Play()
 
 	-- Hard safety timeout to release state if character falls or gets interrupted
-	task.delay(0.90, function()
+	task.delay(0.65, function()
 		if CombatWebs.isYankingProp then
 			if beamL and beamL.Parent then beamL:Destroy() end
 			if beamR and beamR.Parent then beamR:Destroy() end
+			releaseProp(propPart, propInstance)
 			CombatWebs.isYankingProp = false
 		end
 	end)
 
-	yankTween.Completed:Connect(function()
+	snatchTween.Completed:Connect(function()
 		if not propPart.Parent or not character.Parent or humanoid.Health <= 0 then
 			if beamL then beamL:Destroy() end
 			if beamR then beamR:Destroy() end
+			releaseProp(propPart, propInstance)
 			CombatWebs.isYankingProp = false
 			return
 		end
 
-		-- Phase 2: 360° Overhead Kinetic Arc (0.26s)
-		local arcDuration = 0.26
-		local arcStart = os.clock()
-		local arcConn: RBXScriptConnection? = nil
+		-- Stage 2: The Yeet - Immediately launch prop straight at enemy at 160 studs/s
+		if beamL and beamL.Parent then beamL:Destroy() end
+		if beamR and beamR.Parent then beamR:Destroy() end
+		WebVisuals.playWebSound(rootPart)
 
-		arcConn = RunService.Heartbeat:Connect(function()
-			if not propPart.Parent or not character.Parent or humanoid.Health <= 0 then
-				if arcConn then arcConn:Disconnect() end
-				if beamL and beamL.Parent then beamL:Destroy() end
-				if beamR and beamR.Parent then beamR:Destroy() end
-				CombatWebs.isYankingProp = false
-				return
-			end
+		local curPlayerPos = rootPart.Position
+		local lookVec = rootPart.CFrame.LookVector
 
-			local elapsed = os.clock() - arcStart
-			local progress = math.clamp(elapsed / arcDuration, 0, 1)
-			local phi = progress * math.pi * 2
+		local destPos: Vector3
+		if targetEnemy and targetEnemy.Parent then
+			local eRoot = (targetEnemy:FindFirstChild("HumanoidRootPart") or targetEnemy:FindFirstChild("Torso")) :: BasePart?
+			destPos = eRoot and (eRoot.Position + Vector3.new(0, 0.8, 0)) or (curPlayerPos + lookVec * 45)
+		else
+			destPos = curPlayerPos + lookVec * 45
+		end
 
-			local curPlayerPos = rootPart.Position
-			local upVec = rootPart.CFrame.UpVector
-			local rightVec = rootPart.CFrame.RightVector
-			local lookVec = rootPart.CFrame.LookVector
+		local throwDir = (destPos - propPart.Position).Unit
+		local throwDist = (destPos - propPart.Position).Magnitude
+		local throwSpeed = 160
+		local flightTime = math.clamp(throwDist / throwSpeed, 0.08, 0.28)
 
-			-- Parametric 360° overhead centrifugal arc
-			local arcPos = curPlayerPos + (upVec * (3.8 + math.sin(phi) * 0.8)) + (rightVec * math.cos(phi) + lookVec * math.sin(phi)) * 3.6
-			propPart.CFrame = CFrame.new(arcPos) * CFrame.Angles(phi * 2.2, phi * 1.6, phi)
+		-- Dynamic camera recovery
+		local camTweenOut = TweenService:Create(camera, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			FieldOfView = 70,
+		})
+		camTweenOut:Play()
 
-			if progress >= 1 then
-				if arcConn then arcConn:Disconnect() end
-				arcConn = nil
+		-- Slight forward whip impulse to Spidey (12 studs/s)
+		rootPart.AssemblyLinearVelocity = (lookVec * 12) + Vector3.new(0, 1.5, 0)
 
-				-- Phase 3: Release & Kinetic Slingshot Hurl into Enemy!
-				if beamL then beamL:Destroy() end
-				if beamR then beamR:Destroy() end
-				WebVisuals.playWebSound(rootPart)
+		-- Direct Ballistic Missile Launch
+		local yeetTween = TweenService:Create(propPart, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), {
+			CFrame = CFrame.new(destPos) * CFrame.Angles(math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360))),
+		})
+		yeetTween:Play()
 
-				local destPos: Vector3
-				if targetEnemy and targetEnemy.Parent then
-					local eRoot = (targetEnemy:FindFirstChild("HumanoidRootPart") or targetEnemy:FindFirstChild("Torso")) :: BasePart?
-					destPos = eRoot and (eRoot.Position + Vector3.new(0, 0.8, 0)) or (curPlayerPos + lookVec * 45)
-				else
-					destPos = curPlayerPos + lookVec * 45
+		yeetTween.Completed:Connect(function()
+			if propPart.Parent then
+				propPart.Anchored = false
+				propPart.CanCollide = true
+				propPart.AssemblyLinearVelocity = throwDir * 24 + Vector3.new(0, 8, 0)
+				propPart.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+				propPart:SetAttribute("IsThrown", nil)
+				if propInstance and propInstance.Parent then
+					propInstance:SetAttribute("IsThrown", nil)
 				end
 
-				local throwDir = (destPos - propPart.Position).Unit
-				local throwDist = (destPos - propPart.Position).Magnitude
-				local throwSpeed = (CombatConfig.Moves and CombatConfig.Moves.PropThrow and CombatConfig.Moves.PropThrow.ThrowSpeed) or 125
-				local flightTime = math.clamp(throwDist / throwSpeed, 0.12, 0.32)
-
-				-- Dynamic camera recovery
-				local camTweenOut = TweenService:Create(camera, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					FieldOfView = 70,
-				})
-				camTweenOut:Play()
-
-				-- Spider-Man whip recoil
-				rootPart.AssemblyLinearVelocity = (lookVec * 10) + Vector3.new(0, 1.2, 0)
-
-				-- Kinetic Hurl Tween
-				local hurlTween = TweenService:Create(propPart, TweenInfo.new(flightTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					CFrame = CFrame.new(destPos) * CFrame.Angles(math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360)), math.rad(math.random(-360, 360))),
-				})
-				hurlTween:Play()
-
-				hurlTween.Completed:Connect(function()
-					if propPart.Parent then
-						propPart.Anchored = false
-						propPart.CanCollide = true
-						propPart.AssemblyLinearVelocity = throwDir * 22 + Vector3.new(0, 8, 0)
-						propPart.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
-
-						WebVisuals.createWeaponImpactSparks(destPos, throwDir)
-						WebVisuals.createImpactSplatVFX(destPos, throwDir)
-					end
-					CombatWebs.isYankingProp = false
-				end)
+				WebVisuals.createWeaponImpactSparks(destPos, throwDir)
+				WebVisuals.createImpactSplatVFX(destPos, throwDir)
 			end
+			CombatWebs.isYankingProp = false
 		end)
 	end)
 end
@@ -526,34 +516,37 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	local cooldown = CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.Cooldown or 2.0
 	if CombatWebs.isWebStriking or (now - CombatWebs.lastWebStrikeTime) < cooldown then return end
 
-	local target = CombatReticle.getCurrentTarget()
-	if target then
-		local tRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
-		if tRoot then
-			local camPos = camera.CFrame.Position
-			local targetPos = tRoot.Position
-			local toTarget = (targetPos - camPos).Unit
-			local dot = camera.CFrame.LookVector:Dot(toTarget)
-			if dot < 0.40 then
+	-- Prioritize crosshair-focused target over off-axis soft target
+	local target = findEnemyInCone(rootPart, camera, 95, 0.40, false)
+	if not target then
+		target = CombatReticle.getCurrentTarget()
+		if target then
+			local tRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
+			if tRoot then
+				local camPos = camera.CFrame.Position
+				local targetPos = tRoot.Position
+				local toTarget = (targetPos - camPos).Unit
+				local dot = camera.CFrame.LookVector:Dot(toTarget)
+				if dot < 0.40 then
+					target = nil
+				end
+			else
 				target = nil
 			end
-		else
-			target = nil
 		end
-	end
-
-	if not target then
-		target = findEnemyInCone(rootPart, camera, 95, 0.40, false)
 	end
 	if not target then return end
 
-	local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
+	local targetRoot = (target:FindFirstChild("HumanoidRootPart")
+		or target:FindFirstChild("Torso")
+		or target.PrimaryPart
+		or target:FindFirstChildWhichIsA("BasePart")) :: BasePart?
 	local targetHum = target:FindFirstChildOfClass("Humanoid")
 	if not targetRoot or not targetHum or targetHum.Health <= 0 then return end
 
 	local maxDist = 95
 	local dist = (targetRoot.Position - rootPart.Position).Magnitude
-	if dist > maxDist or dist < 1.5 then return end
+	if dist > maxDist then return end
 
 	CombatWebs.isWebStriking = true
 	CombatWebs.lastWebStrikeTime = now
@@ -633,10 +626,10 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	end
 
 	local zipStartTime = os.clock()
-	local maxZipDuration = 0.65
+	local maxZipDuration = 1.1
 
 	-- Hard safety reset timer
-	task.delay(0.70, function()
+	task.delay(1.20, function()
 		if lv and lv.Parent then lv:Destroy() end
 		if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
 		if isStark then
@@ -649,9 +642,11 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 	end)
 
 	local zipConn: RBXScriptConnection? = nil
+	local previousDist: number = (targetRoot.Position - rootPart.Position).Magnitude
+
 	zipConn = RunService.RenderStepped:Connect(function()
 		local elapsed = os.clock() - zipStartTime
-		if not character.Parent or humanoid.Health <= 0 or not target.Parent or targetHum.Health <= 0 or elapsed >= maxZipDuration then
+		if not character.Parent or humanoid.Health <= 0 or not target.Parent or targetHum.Health <= 0 then
 			if zipConn then zipConn:Disconnect() end
 			if lv and lv.Parent then lv:Destroy() end
 			if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
@@ -678,42 +673,37 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 			WebVisuals.spawnCyberGlitchPolygon(rootPart.Position + Vector3.new(math.random(-15, 15) * 0.1, math.random(-8, 8) * 0.1, math.random(-15, 15) * 0.1))
 		end
 
-		-- Impact Threshold: Target contact or cluster collision
-		local hitCandidate: Model? = nil
-		if currentDist <= 5.5 then
-			hitCandidate = target
-		else
-			local enemies = CollectionService:GetTagged("Enemy")
-			for _, enemy in enemies do
-				if enemy:IsA("Model") then
-					local eHum = enemy:FindFirstChildOfClass("Humanoid")
-					local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
-					if eHum and eHum.Health > 0 and eRoot then
-						if (eRoot.Position - rootPart.Position).Magnitude <= 4.8 then
-							hitCandidate = enemy
-							break
-						end
-					end
-				end
-			end
-		end
+		-- Bulletproof Impact Detection: Proximity (<= 8.2), Overshoot (previous <= 12 and dist > prev), Collision stall, or Timeout Delivery (<= 14 studs)
+		local isOvershoot = previousDist <= 12.0 and currentDist > previousDist
+		local isTimeoutDelivery = elapsed >= maxZipDuration and currentDist <= 14.0
+		local isCollisionStall = elapsed > 0.15 and currentDist <= 10.0 and rootPart.AssemblyLinearVelocity.Magnitude < 35
+		local isImpact = currentDist <= 8.2 or isOvershoot or isTimeoutDelivery or isCollisionStall
 
-		if hitCandidate then
+		if isImpact then
 			if zipConn then zipConn:Disconnect() end
 			if lv and lv.Parent then lv:Destroy() end
 			if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
 
-			local hitRoot = (hitCandidate:FindFirstChild("HumanoidRootPart") or hitCandidate:FindFirstChild("Torso")) :: BasePart? or targetRoot
+			local hitRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart? or targetRoot
 			local impactDir = (hitRoot.Position - rootPart.Position).Unit
 			local flatZipDir = Vector3.new(impactDir.X, 0, impactDir.Z)
 
-			if flatZipDir.Magnitude > 0.1 then
-				flatZipDir = flatZipDir.Unit
-			else
-				flatZipDir = rootPart.CFrame.LookVector
+			local carryDir = if flatZipDir.Magnitude > 0.1 then flatZipDir.Unit else rootPart.CFrame.LookVector
+
+			-- 100% Target Alignment: Spidey lands squarely facing the enemy
+			rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + carryDir)
+
+			-- Immediately compute client-predicted damage, spawn popup, and register style points (0ms latency)
+			local baseDmg = (CombatConfig.Moves and CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ImpactDamage) or 22
+			local predictedDmg = if isStark then 35 elseif is2099 then 32 else baseDmg
+			if isAmbushStrike then
+				predictedDmg = predictedDmg * 1.5
 			end
 
-			WebStrikeRemote:FireServer(hitCandidate, isAmbushStrike)
+			CombatVFXListener.spawnDamageNumber(hitRoot.Position, "-" .. math.floor(predictedDmg), predictedDmg > 22)
+			CombatStyleHUD.registerHit(predictedDmg)
+			CombatStyleHUD.showAbilityTray()
+			WebStrikeRemote:FireServer(target, isAmbushStrike)
 			WebVisuals.createMeleeHitSparks(hitRoot.Position + Vector3.new(0, 0.5, 0), true)
 
 			local isMiles = (LocalPlayer and LocalPlayer:GetAttribute("EquippedSuit") == "MilesSpiderVerse")
@@ -733,11 +723,31 @@ function CombatWebs.performWebStrike(character: Model, rootPart: BasePart, human
 			})
 			fovTweenOut:Play()
 
-			-- High-Speed Follow-Through: Spidey blasts through the strike carrying high kinetic speed!
-			local carryDir = Vector3.new(flatZipDir.X, 0, flatZipDir.Z).Unit
-			rootPart.AssemblyLinearVelocity = (carryDir * 60) + Vector3.new(0, 10, 0)
+			-- Intimate Post-Kick Carry (16 studs/s with guarded carryDir)
+			rootPart.AssemblyLinearVelocity = (carryDir * 16) + Vector3.new(0, 3, 0)
 			CombatWebs.isWebStriking = false
+			return
 		end
+
+		if elapsed >= maxZipDuration then
+			if zipConn then zipConn:Disconnect() end
+			if lv and lv.Parent then lv:Destroy() end
+			if humanoid and humanoid.Parent then humanoid.AutoRotate = originalAutoRotate end
+			if isStark then
+				WebVisuals.cleanupStarkThrusters(false)
+			end
+			if isMiles then
+				WebVisuals.cleanupMilesBioSparks(false)
+			end
+			local fovTweenOut = TweenService:Create(camera, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				FieldOfView = 70,
+			})
+			fovTweenOut:Play()
+			CombatWebs.isWebStriking = false
+			return
+		end
+
+		previousDist = currentDist
 	end)
 end
 

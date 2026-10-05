@@ -3,8 +3,8 @@
 > **Project:** *Spider-Man: Web of Destiny* (Roblox / Luau / Rojo)  
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
-> **Date of Pre-Midterm Code Freeze:** September 11, 2026  
-> **Active Git Head:** `d881806` (Fully committed & synced with `origin/main`)
+> **Date:** October 5, 2026  
+> **Milestone Status:** Combat Polish, Floating Comic Damage Numbers, Ability Tray Latch, & Crime Auto-Clear Verified  
 
 ---
 
@@ -46,11 +46,14 @@ Rich operates with a clear two-tier AI setup:
 - **Configuration Hub:** All physical constants (tensions, damping, max distances, speeds) are centralized in `src/shared/GrappleConfig.luau`.
 
 ### B. Combat & Melee Engine
-*Status: IMPLEMENTED & VERIFIED.*
-- **Light Combo String:** 4-hit sequence with input buffering windows and progressive forward momentum impulses.
-- **Verticality:** Aerial launcher uppercut (knocks enemies into air for aerial combat) and ground-pound slam with radial shockwave.
-- **Evasion:** Directional dodge roll featuring invulnerability frames (i-frames) and instant camera tracking.
-- **Hit Registration & Feedback:** Authoritative server validation on hitboxes; client-side immediate sound effects, hit-spark visual triggers, and enemy ragdoll/stun states.
+*Status: IMPLEMENTED & POLISHED.*
+- **Light Combo String:** 3-hit rhythmic sequence (0.28s cadence) with 100% magnetic target alignment and step-in velocity impulses.
+- **Verticality & Aerial Finisher:** 1-2-3 combo $\rightarrow$ Jump $\rightarrow$ Air Ground Slam (`performAirGroundSlam`) with instant 0ms client-predicted floating comic damage numbers (`"-24 SLAM!"`), screen crunch, and twin web descent lines.
+- **Floating Comic Damage Numbers:** Lightweight client-side popup system (`CombatVFXListener.spawnDamageNumber`) with critical yellow/red styling, billboard camera tracking, and automatic `Debris` cleanup.
+- **Dynamic Ability Tray Latch:** In `CombatStyleHUD`, `isTrayLockedHidden` prevents skill pills (`[E] PELLET`, `[R] ZIP-KICK`, `[T] CYCLONE`) from reopening after quests clear or when out of combat; only intentional player combat inputs (`registerCombatAction`) re-arm visibility.
+- **Procedural Crime Auto-Clear:** Quests complete and pay out immediately when all living enemies are eliminated, auto-disabling getaway vehicles without spurious dialog.
+- **Evasion & Dodge:** Spider-Sense dodge roll (F key) with invulnerability frames (i-frames) and camera FOV punch.
+- **Hit Registration & Security:** Server-authoritative validation with rate-limiting cooldown tables, 12-stud impact sanity checks, wall-pinning synergy, and platform-stand hitstun.
 
 ### C. Character Rig & Suit Architecture
 *Status: ARCHITECTURAL STANDARD LOCKED IN.*

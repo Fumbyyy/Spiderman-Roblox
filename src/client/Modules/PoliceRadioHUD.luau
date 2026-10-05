@@ -612,6 +612,10 @@ end
 
 -- 🚨 Display Victory Banner & Rewards Payout (Task 4)
 function PoliceRadioHUD.onCrimeCleared(data: CrimeData)
+	local CombatStyleHUD = require(script.Parent:WaitForChild("CombatStyleHUD"))
+	CombatStyleHUD.hideAbilityTray(true)
+	CombatStyleHUD.resetCombo()
+
 	PoliceRadioHUD.isCrimeActive = false
 	PoliceRadioHUD.activeCrimeData = nil
 	PoliceRadioHUD.isRadioSpeaking = false
@@ -807,117 +811,126 @@ RunService.RenderStepped:Connect(function()
 		local playerPos = root and root.Position or Vector3.zero
 
 		local distStuds = (playerPos - epicenter).Magnitude
-		local distMeters = math.floor(distStuds / 3)
 
-		-- Elevation Tracking
-		local deltaY = epicenter.Y - playerPos.Y
-		local elevationSymbol = "◆"
-		local elevationDesc = "Level"
-
-		if deltaY > 18 then
-			elevationSymbol = "▲"
-			elevationDesc = "High-Rise"
-		elseif deltaY < -18 then
-			elevationSymbol = "▼"
-			elevationDesc = "Street"
-		end
-
-		-- Detect if commCard is displayed (Task 3)
-		local isCommCardVisible = (commCard ~= nil and commCard.Position.Y.Offset > 0)
-		local isDistant = distMeters > 90
-
-		if isCommCardVisible then
-			-- Suppress redundant title when Yuri Dispatch card is active on screen! (Task 3)
-			if waypointTitleLabel and waypointTitleLabel.Visible then
-				waypointTitleLabel.Visible = false
-			end
-			waypointMarker.Size = UDim2.new(0, 114, 0, 26)
-			waypointMarker.BackgroundTransparency = 0.22
-			if waypointMarkerStroke then
-				waypointMarkerStroke.Transparency = 0.25
-			end
-			if waypointIconLabel then
-				waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -8)
-				waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
-				waypointIconLabel.TextSize = 12
-			end
-			if waypointDistLabel then
-				waypointDistLabel.Position = UDim2.new(0, 24, 0, 0)
-				waypointDistLabel.Size = UDim2.new(1, -28, 1, 0)
-				waypointDistLabel.TextSize = 10
-				waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
-			end
-		elseif isDistant then
-			if waypointTitleLabel and waypointTitleLabel.Visible then
-				waypointTitleLabel.Visible = false
-			end
-			waypointMarker.Size = UDim2.new(0, 68, 0, 24)
-			waypointMarker.BackgroundTransparency = 0.35
-			if waypointMarkerStroke then
-				waypointMarkerStroke.Transparency = 0.45
-			end
-			if waypointIconLabel then
-				waypointIconLabel.Position = UDim2.new(0, 4, 0.5, -8)
-				waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
-				waypointIconLabel.TextSize = 11
-			end
-			if waypointDistLabel then
-				waypointDistLabel.Position = UDim2.new(0, 22, 0, 0)
-				waypointDistLabel.Size = UDim2.new(1, -24, 1, 0)
-				waypointDistLabel.TextSize = 10
-				waypointDistLabel.Text = string.format("%s %dm", elevationSymbol, distMeters)
+		-- Waypoint Proximity Combat Fade: When within 35 studs of the crime epicenter, hide 2D waypoint to avoid cluttering melee combat
+		if distStuds <= 35 or PoliceRadioHUD.isVisorOpen then
+			waypointMarker.Visible = false
+			if pointerArrow then
+				pointerArrow.Visible = false
 			end
 		else
-			if waypointTitleLabel and not waypointTitleLabel.Visible then
-				waypointTitleLabel.Visible = true
-			end
-			waypointMarker.Size = UDim2.new(0, 150, 0, 34)
-			waypointMarker.BackgroundTransparency = 0.18
-			if waypointMarkerStroke then
-				waypointMarkerStroke.Transparency = 0.20
-			end
-			if waypointIconLabel then
-				waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -9)
-				waypointIconLabel.Size = UDim2.new(0, 18, 0, 18)
-				waypointIconLabel.TextSize = 13
-			end
-			if waypointDistLabel then
-				waypointDistLabel.Position = UDim2.new(0, 28, 0, 17)
-				waypointDistLabel.Size = UDim2.new(1, -32, 0, 14)
-				waypointDistLabel.TextSize = 9.5
-				waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
-			end
-		end
+			local distMeters = math.floor(distStuds / 3)
 
-		if waypointDistLabel then
+			-- Elevation Tracking
+			local deltaY = epicenter.Y - playerPos.Y
+			local elevationSymbol = "◆"
+			local elevationDesc = "Level"
+
 			if deltaY > 18 then
-				waypointDistLabel.TextColor3 = Color3.fromRGB(255, 195, 60)
+				elevationSymbol = "▲"
+				elevationDesc = "High-Rise"
 			elseif deltaY < -18 then
-				waypointDistLabel.TextColor3 = Color3.fromRGB(255, 95, 95)
-			else
-				waypointDistLabel.TextColor3 = Color3.fromRGB(85, 220, 255)
+				elevationSymbol = "▼"
+				elevationDesc = "Street"
 			end
-		end
 
-		-- Target World Anchor (Head height over crime scene)
-		local targetWorldPos = epicenter + Vector3.new(0, 6.5, 0)
-		-- Top Margin Clamp: 135 when Yuri card is active, 90 otherwise (Task 3)
-		local topMargin = if isCommCardVisible then 135 else 90
-		local screenPos2D, onScreen, angleDeg, dirVector = calculateScreenPoint(targetWorldPos, 90, topMargin)
+			-- Detect if commCard is displayed (Task 3)
+			local isCommCardVisible = (commCard ~= nil and commCard.Position.Y.Offset > 0)
+			local isDistant = distMeters > 90
 
-		-- Position the main pill
-		waypointMarker.Position = UDim2.new(0, screenPos2D.X, 0, screenPos2D.Y)
-		waypointMarker.Visible = true
-
-		if pointerArrow then
-			if onScreen then
-				-- When looking straight at the objective, hide the directional arrow
-				pointerArrow.Visible = false
+			if isCommCardVisible then
+				-- Suppress redundant title when Yuri Dispatch card is active on screen! (Task 3)
+				if waypointTitleLabel and waypointTitleLabel.Visible then
+					waypointTitleLabel.Visible = false
+				end
+				waypointMarker.Size = UDim2.new(0, 114, 0, 26)
+				waypointMarker.BackgroundTransparency = 0.22
+				if waypointMarkerStroke then
+					waypointMarkerStroke.Transparency = 0.25
+				end
+				if waypointIconLabel then
+					waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -8)
+					waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
+					waypointIconLabel.TextSize = 12
+				end
+				if waypointDistLabel then
+					waypointDistLabel.Position = UDim2.new(0, 24, 0, 0)
+					waypointDistLabel.Size = UDim2.new(1, -28, 1, 0)
+					waypointDistLabel.TextSize = 10
+					waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
+				end
+			elseif isDistant then
+				if waypointTitleLabel and waypointTitleLabel.Visible then
+					waypointTitleLabel.Visible = false
+				end
+				waypointMarker.Size = UDim2.new(0, 68, 0, 24)
+				waypointMarker.BackgroundTransparency = 0.35
+				if waypointMarkerStroke then
+					waypointMarkerStroke.Transparency = 0.45
+				end
+				if waypointIconLabel then
+					waypointIconLabel.Position = UDim2.new(0, 4, 0.5, -8)
+					waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
+					waypointIconLabel.TextSize = 11
+				end
+				if waypointDistLabel then
+					waypointDistLabel.Position = UDim2.new(0, 22, 0, 0)
+					waypointDistLabel.Size = UDim2.new(1, -24, 1, 0)
+					waypointDistLabel.TextSize = 10
+					waypointDistLabel.Text = string.format("%s %dm", elevationSymbol, distMeters)
+				end
 			else
-				-- When off-screen, show the arrow floating cleanly outside the pill pointing to the target!
-				pointerArrow.Visible = true
-				pointerArrow.Position = UDim2.new(0, screenPos2D.X + (dirVector.X * 32), 0, screenPos2D.Y + (dirVector.Y * 24))
-				pointerArrow.Rotation = angleDeg
+				if waypointTitleLabel and not waypointTitleLabel.Visible then
+					waypointTitleLabel.Visible = true
+				end
+				waypointMarker.Size = UDim2.new(0, 150, 0, 34)
+				waypointMarker.BackgroundTransparency = 0.18
+				if waypointMarkerStroke then
+					waypointMarkerStroke.Transparency = 0.20
+				end
+				if waypointIconLabel then
+					waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -9)
+					waypointIconLabel.Size = UDim2.new(0, 18, 0, 18)
+					waypointIconLabel.TextSize = 13
+				end
+				if waypointDistLabel then
+					waypointDistLabel.Position = UDim2.new(0, 28, 0, 17)
+					waypointDistLabel.Size = UDim2.new(1, -32, 0, 14)
+					waypointDistLabel.TextSize = 9.5
+					waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
+				end
+			end
+
+			if waypointDistLabel then
+				if deltaY > 18 then
+					waypointDistLabel.TextColor3 = Color3.fromRGB(255, 195, 60)
+				elseif deltaY < -18 then
+					waypointDistLabel.TextColor3 = Color3.fromRGB(255, 95, 95)
+				else
+					waypointDistLabel.TextColor3 = Color3.fromRGB(85, 220, 255)
+				end
+			end
+
+			-- Target World Anchor (Head height over crime scene)
+			local targetWorldPos = epicenter + Vector3.new(0, 6.5, 0)
+			-- Top Margin Clamp: 135 when Yuri card is active, 90 otherwise (Task 3)
+			local topMargin = if isCommCardVisible then 135 else 90
+			local screenPos2D, onScreen, angleDeg, dirVector = calculateScreenPoint(targetWorldPos, 90, topMargin)
+
+			-- Position the main pill
+			waypointMarker.Position = UDim2.new(0, screenPos2D.X, 0, screenPos2D.Y)
+			waypointMarker.Visible = true
+
+			if pointerArrow then
+				if onScreen then
+					-- When looking straight at the objective, hide the directional arrow
+					pointerArrow.Visible = false
+				else
+					-- When off-screen, show the arrow floating cleanly outside the pill pointing to the target!
+					pointerArrow.Visible = true
+					pointerArrow.Position = UDim2.new(0, screenPos2D.X + (dirVector.X * 32), 0, screenPos2D.Y + (dirVector.Y * 24))
+					pointerArrow.Rotation = angleDeg
+				end
 			end
 		end
 	end

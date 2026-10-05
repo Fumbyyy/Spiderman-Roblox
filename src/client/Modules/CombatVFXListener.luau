@@ -17,6 +17,9 @@ local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
 local ModulesFolder = script.Parent
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
 local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
@@ -55,6 +58,60 @@ local function triggerCameraShake(camera: Camera, intensity: number, duration: n
 		end
 	end)
 end
+
+-- Floating Comic Damage Numbers System (Lightweight Client-Side Popups)
+function CombatVFXListener.spawnDamageNumber(position: Vector3, text: string, isCrit: boolean)
+	local anchorPart = Instance.new("Part")
+	anchorPart.Name = "DamageNumberAnchor"
+	anchorPart.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchorPart.Transparency = 1
+	anchorPart.CanCollide = false
+	anchorPart.CanQuery = false
+	anchorPart.CanTouch = false
+	anchorPart.Anchored = true
+
+	local spreadX = (math.random() - 0.5) * 2.8
+	local spreadY = 1.8 + (math.random() * 0.8)
+	local spreadZ = (math.random() - 0.5) * 2.8
+	anchorPart.Position = position + Vector3.new(spreadX, spreadY, spreadZ)
+	anchorPart.Parent = Workspace
+
+	local bbg = Instance.new("BillboardGui")
+	bbg.Name = "DamageBillboard"
+	bbg.Size = UDim2.new(0, 240, 0, 60)
+	bbg.StudsOffset = Vector3.zero
+	bbg.AlwaysOnTop = true
+	bbg.MaxDistance = 90
+	bbg.Parent = anchorPart
+
+	local label = Instance.new("TextLabel")
+	label.Name = "DamageText"
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.Text = text
+	label.TextScaled = false
+	label.TextSize = if isCrit then 28 else 24
+	label.TextColor3 = if isCrit then Color3.fromRGB(255, 225, 45) else Color3.fromRGB(255, 255, 255)
+	label.TextStrokeColor3 = if isCrit then Color3.fromRGB(140, 25, 0) else Color3.fromRGB(120, 15, 15)
+	label.TextStrokeTransparency = 0
+	label.Parent = bbg
+
+	local tweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local tweenOffset = TweenService:Create(bbg, tweenInfo, {
+		StudsOffset = Vector3.new(spreadX * 0.3, 3.2, spreadZ * 0.3),
+	})
+	local tweenFade = TweenService:Create(label, tweenInfo, {
+		TextTransparency = 1,
+		TextStrokeTransparency = 1,
+	})
+
+	tweenOffset:Play()
+	tweenFade:Play()
+	Debris:AddItem(anchorPart, 0.58)
+end
+
+local spawnDamageNumber = CombatVFXListener.spawnDamageNumber
 
 function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, getCharacterParts: () -> (Model?, BasePart?, Humanoid?))
 	CombatVFXRemote.OnClientEvent:Connect(function(actionName: string, instigator: any, targetModel: any, extra: any, hitCountArg: any)
@@ -128,6 +185,9 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			if rootPart and (rootPart.Position - hitPos).Magnitude <= 40 then
 				CombatStyleHUD.registerHit(26)
 				triggerHitStop(0.045, camera, true)
+				if typeof(extra) == "number" and extra > 0 then
+					spawnDamageNumber(hitPos, "-" .. math.floor(extra) .. " CRUSH!", true)
+				end
 			end
 		end
 
@@ -228,6 +288,18 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 			end
 		end
 
+		-- 💥 5a. Ground Slam Direct Hit Replication (Multiplayer Damage Popup)
+		if actionName == "GroundSlamHit" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
+			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
+			if not isLocal then
+				local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
+				if enemyRoot then
+					local slamDmg = (typeof(extra) == "number" and extra > 0) and extra or 24
+					spawnDamageNumber(enemyRoot.Position + Vector3.new(0, 0.6, 0), "-" .. math.floor(slamDmg) .. " SLAM!", true)
+				end
+			end
+		end
+
 		-- 🕸️ 5b. Ground Slam Multiplayer Web Lines Replication
 		if actionName == "GroundSlamWebs" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
 			local sourceChar = instigator:IsA("Player") and instigator.Character or instigator
@@ -300,7 +372,10 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 
 		-- 🚀 9. Web-Strike Dropkick Impact VFX
 		if actionName == "WebStrikeHit" and typeof(targetModel) == "Instance" and targetModel:IsA("Model") then
-			local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChild("Torso")) :: BasePart?
+			local enemyRoot = (targetModel:FindFirstChild("HumanoidRootPart")
+				or targetModel:FindFirstChild("Torso")
+				or targetModel.PrimaryPart
+				or targetModel:FindFirstChildWhichIsA("BasePart")) :: BasePart?
 			if enemyRoot then
 				WebVisuals.createMeleeHitSparks(enemyRoot.Position + Vector3.new(0, 0.5, 0), true)
 				WebVisuals.createWeaponImpactSparks(enemyRoot.Position, Vector3.new(0, 1, 0))
@@ -308,9 +383,14 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 
 			local isLocal = instigator == LocalPlayer or instigator == LocalPlayer.Character
 			if isLocal then
-				CombatStyleHUD.registerHit(22)
 				triggerHitStop(0.045, camera, true)
 				triggerCameraShake(camera, 0.28, 0.12)
+			else
+				if enemyRoot then
+					local actualDamage = (typeof(extra) == "number" and extra > 0) and extra or (CombatConfig.Moves and CombatConfig.Moves.WebStrike and CombatConfig.Moves.WebStrike.ImpactDamage or 22)
+					local isCrit = actualDamage > 22
+					spawnDamageNumber(enemyRoot.Position, "-" .. math.floor(actualDamage), isCrit)
+				end
 			end
 		end
 
@@ -328,6 +408,13 @@ function CombatVFXListener.init(CombatVFXRemote: RemoteEvent, camera: Camera, ge
 				triggerHitStop(hitNum == 3 and 0.045 or 0.022, camera, hitNum == 3)
 				if hitNum == 3 then
 					triggerCameraShake(camera, 0.28, 0.12)
+				end
+				if enemyRoot and typeof(hitCountArg) == "number" and hitCountArg > 0 then
+					if hitNum == 3 then
+						spawnDamageNumber(enemyRoot.Position, "-" .. math.floor(hitCountArg) .. " FINISHER", true)
+					else
+						spawnDamageNumber(enemyRoot.Position, "-" .. math.floor(hitCountArg), false)
+					end
 				end
 			end
 		end

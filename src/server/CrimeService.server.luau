@@ -1386,9 +1386,12 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 
-		-- If all enemies down and (for vehicle chase, van is disabled)
-		local vehicleDone = not crime.Archetype.IsVehicleChase or (crime.Folder:FindFirstChild("ArmoredGetawayVan") and crime.Folder.ArmoredGetawayVan:GetAttribute("IsDisabled") == true)
-		if livingEnemies == 0 and vehicleDone and (elapsed > 2.0) and (crime.State == "InProgress" or #crime.Enemies > 0) then
+		-- Auto-clear crime when all enemies are defeated (auto-disables getaway vehicle if present)
+		if livingEnemies == 0 and (elapsed > 1.5) and (crime.State == "InProgress" or #crime.Enemies > 0) then
+			local van = crime.Folder:FindFirstChild("ArmoredGetawayVan")
+			if van and van:GetAttribute("IsDisabled") ~= true then
+				van:SetAttribute("IsDisabled", true)
+			end
 			clearActiveCrime(crime)
 		end
 

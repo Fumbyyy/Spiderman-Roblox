@@ -773,8 +773,8 @@ local function purgeRogueLimbWelds(character: Model)
 	if humanoid then
 		humanoid.PlatformStand = false
 		humanoid.Sit = false
-		if humanoid.WalkSpeed < 28 then
-			humanoid.WalkSpeed = 28
+		if humanoid.WalkSpeed < 20 then
+			humanoid.WalkSpeed = 20
 		end
 	end
 end

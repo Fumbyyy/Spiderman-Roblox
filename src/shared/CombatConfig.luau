@@ -38,11 +38,11 @@ local CombatConfig = {
 			CleaveRadius = 7.0,                   -- Forward AoE punch cleave reach for hitting clumped enemies
 			FinisherCleaveRadius = 8.2,           -- 3rd hit wide roundhouse cleave reach (studs)
 			CleaveConeAngle = 70,                 -- Forward cleave arc (degrees)
-			HitCooldown = 0.42,                   -- Tuned rhythmic punch pacing
+			HitCooldown = 0.28,                   -- Tuned rhythmic punch pacing (0.28s for responsive combos)
 			FinisherCooldown = 0.65,              -- Heavy finisher cooldown after 3rd hit
 			ComboResetTime = 1.10,                -- Time before combo resets to hit 1
 			-- 🥋 Natural Grounded Step & Auto-Facing
-			StepScanRange = 8.5,                  -- Max reach to auto-face and step toward enemy (studs)
+			StepScanRange = 9.0,                  -- Max reach to auto-face and step toward enemy (studs)
 			LungeForce = 12,                      -- Natural forward velocity impulse (studs/s)
 		},
 

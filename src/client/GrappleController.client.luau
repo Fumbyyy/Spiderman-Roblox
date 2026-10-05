@@ -674,7 +674,7 @@ end)
 -- Character setup
 local function onCharacterAdded(char: Model)
 	local hum = char:WaitForChild("Humanoid") :: Humanoid
-	hum.WalkSpeed = 28
+	hum.WalkSpeed = 20
 	CameraController.setupCharacter(hum)
 	hum.Died:Connect(function()
 		stopGrapple(false)

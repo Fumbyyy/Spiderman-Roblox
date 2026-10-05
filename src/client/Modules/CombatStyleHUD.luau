@@ -34,6 +34,8 @@ local rankTitle: TextLabel? = nil
 local decayBarFill: Frame? = nil
 local decayBarBackground: Frame? = nil
 local activeSlideTween: Tween? = nil
+local abilityTrayFrame: Frame? = nil
+local abilityTrayTween: Tween? = nil
 
 -- 🎨 Build GUI Elements Programmatically
 local function createHUD()
@@ -169,10 +171,10 @@ local function createHUD()
 	local abilityTray = Instance.new("Frame")
 	abilityTray.Name = "AbilityTray"
 	abilityTray.AnchorPoint = Vector2.new(1, 1)
-	abilityTray.Position = UDim2.new(0.98, 0, 0.96, 0)
+	abilityTray.Position = UDim2.new(0.98, 0, 1.15, 0)
 	abilityTray.Size = UDim2.new(0, 290, 0, 26)
 	abilityTray.BackgroundTransparency = 1
-	abilityTray.Visible = true
+	abilityTray.Visible = false
 	abilityTray.Parent = gui
 
 	local trayLayout = Instance.new("UIListLayout")
@@ -328,6 +330,7 @@ local function createHUD()
 	rankTitle = rTitle
 	decayBarFill = decayFill
 	decayBarBackground = decayBg
+	abilityTrayFrame = abilityTray
 end
 
 -- 🏆 Get Style Rank based on Hit Count
@@ -396,11 +399,63 @@ function CombatStyleHUD.setCooldown(skillName: string, duration: number)
 	end
 end
 
+CombatStyleHUD.isTrayLockedHidden = false
+
+-- 🎮 Dynamic Ability Tray Visibility (Slides in on combat, slides out when clear)
+function CombatStyleHUD.unlockAbilityTray()
+	CombatStyleHUD.isTrayLockedHidden = false
+end
+
+function CombatStyleHUD.showAbilityTray()
+	if CombatStyleHUD.isTrayLockedHidden then return end
+	local tray = abilityTrayFrame or (screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?)
+	if not tray then return end
+	abilityTrayFrame = tray
+
+	if not tray.Visible or tray.Position.Y.Scale > 0.98 then
+		if abilityTrayTween then abilityTrayTween:Cancel() end
+		tray.Visible = true
+		abilityTrayTween = TweenService:Create(tray, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.98, 0, 0.96, 0),
+		})
+		abilityTrayTween:Play()
+	end
+end
+
+function CombatStyleHUD.hideAbilityTray(isImmediateLock: boolean?)
+	local tray = abilityTrayFrame or (screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?)
+	if not tray then return end
+	abilityTrayFrame = tray
+
+	if isImmediateLock then
+		CombatStyleHUD.isTrayLockedHidden = true
+		if abilityTrayTween then abilityTrayTween:Cancel() end
+		tray.Visible = false
+		tray.Position = UDim2.new(0.98, 0, 1.15, 0)
+		return
+	end
+
+	if not tray.Visible and tray.Position.Y.Scale >= 1.10 then return end
+	if abilityTrayTween then abilityTrayTween:Cancel() end
+	abilityTrayTween = TweenService:Create(tray, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Position = UDim2.new(0.98, 0, 1.15, 0),
+	})
+	abilityTrayTween:Play()
+	abilityTrayTween.Completed:Connect(function(playbackState: Enum.PlaybackState)
+		-- Cancelled tweens also fire Completed (deferred); only hide on a true finish
+		if playbackState == Enum.PlaybackState.Completed and abilityTrayFrame and abilityTrayFrame.Position.Y.Scale >= 1.05 then
+			abilityTrayFrame.Visible = false
+		end
+	end)
+end
+
 -- 🥊 Register a successful attack hit on enemy
 function CombatStyleHUD.registerHit(damage: number?)
 	if not screenGui or not mainContainer then
 		createHUD()
 	end
+	-- Respects isTrayLockedHidden: only local offensive input (CombatController) re-arms the tray
+	CombatStyleHUD.showAbilityTray()
 
 	local now = os.clock()
 	local wasInactive = not CombatStyleHUD.isActive
@@ -447,6 +502,7 @@ end
 
 -- ⏳ Reset Combo (Decay Timeout or Taking Damage)
 function CombatStyleHUD.resetCombo()
+	CombatStyleHUD.hideAbilityTray()
 	if not CombatStyleHUD.isActive then return end
 	CombatStyleHUD.isActive = false
 	CombatStyleHUD.currentCombo = 0
@@ -461,7 +517,7 @@ function CombatStyleHUD.resetCombo()
 		activeSlideTween.Completed:Connect(function()
 			if not CombatStyleHUD.isActive and mainContainer then
 				mainContainer.Visible = false
-				mainContainer.Position = UDim2.new(1, -36, 0.44, 0)
+				mainContainer.Position = UDim2.new(1, 80, 0.44, 0)
 			end
 		end)
 	end
@@ -492,7 +548,7 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	-- Cooldown Hotbar Updates (Optimized: only executes when AbilityTray is visible)
-	local abilityTray = screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?
+	local abilityTray = abilityTrayFrame
 	if abilityTray and abilityTray.Visible then
 		-- [E] Web-Pellet / Impact Blast Pill
 		local pelletPill = abilityTray:FindFirstChild("PelletPill") :: Frame?

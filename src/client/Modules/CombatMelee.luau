@@ -28,6 +28,8 @@ local ModulesFolder = script.Parent
 local CombatReticle = require(ModulesFolder:WaitForChild("CombatReticle"))
 local WebVisuals = require(ModulesFolder:WaitForChild("WebVisuals"))
 local CombatDodge = require(ModulesFolder:WaitForChild("CombatDodge"))
+local CombatVFXListener = require(ModulesFolder:WaitForChild("CombatVFXListener"))
+local CombatStyleHUD = require(ModulesFolder:WaitForChild("CombatStyleHUD"))
 
 local CombatMelee = {}
 
@@ -49,18 +51,21 @@ end
 -- 1. 🥊 KINETIC STRIKE COMBO (L-Click Tap on Ground)
 function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, humanoid: Humanoid, camera: Camera)
 	local now = os.clock()
-	local requiredCooldown = (CombatMelee.comboIndex == 1) and (CombatConfig.Moves.KineticCombo.FinisherCooldown or 0.55) or (CombatConfig.Moves.KineticCombo.HitCooldown or 0.28)
+	local isFinisherRecovery = (CombatMelee.comboIndex >= 4)
+	local requiredCooldown = if isFinisherRecovery
+		then (CombatConfig.Moves.KineticCombo.FinisherCooldown or 0.65)
+		else (CombatConfig.Moves.KineticCombo.HitCooldown or 0.28)
 	if (now - CombatMelee.lastHitTime) < requiredCooldown then return end
 
-	if (now - CombatMelee.lastHitTime) > (CombatConfig.Moves.KineticCombo.ComboResetTime or 1.10) then
+	if isFinisherRecovery or (now - CombatMelee.lastHitTime) > (CombatConfig.Moves.KineticCombo.ComboResetTime or 1.10) then
 		CombatMelee.comboIndex = 1
 	end
 
 	CombatMelee.lastHitTime = now
 	CombatMelee.lastMeleeActionTime = now
 
-	-- 1. Melee Target & Step-In Scan (Reticle target or nearest forward enemy within 8.5 studs)
-	local stepInScanRange = (CombatConfig.Moves.KineticCombo.MagneticSnapMaxDist or 8.5)
+	-- 1. Melee Target & Step-In Scan (Reticle target or nearest forward enemy within 9.0 studs)
+	local stepInScanRange = (CombatConfig.Moves.KineticCombo.StepScanRange or 9.0)
 	local target = CombatReticle.getCurrentTarget()
 	if target then
 		local targetRoot = (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
@@ -85,7 +90,7 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 					if dist <= stepInScanRange and dist < bestDist then
 						local flatToEnemy = Vector3.new(toEnemy.X, 0, toEnemy.Z).Unit
 						local dot = camLook:Dot(flatToEnemy)
-						if dot >= 0.25 or dist <= 4.5 then
+						if dot >= 0.20 or dist <= 4.5 then
 							target = enemy
 							bestDist = dist
 						end
@@ -95,7 +100,7 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 		end
 	end
 
-	-- 2. 🥋 Natural Grounded Step & Auto-Facing (Option 1: Zero Ice-Skating)
+	-- 2. 🥋 Magnetic Freeflow Snapping & 100% Target Alignment
 	local camLook = camera.CFrame.LookVector
 	local forwardFlat = Vector3.new(camLook.X, 0, camLook.Z).Unit
 	local targetRoot = target and ((target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?)
@@ -109,17 +114,22 @@ function CombatMelee.performKineticCombo(character: Model, rootPart: BasePart, h
 			forwardFlat = Vector3.new(offset.X, 0, offset.Z).Unit
 		end
 
-		-- Clean auto-facing: Smooth lerp rotation to eliminate robotic 1-frame snapping
-		local targetRot = CFrame.lookAt(rootPart.Position, Vector3.new(enemyPos.X, rootPart.Position.Y, enemyPos.Z))
-		rootPart.CFrame = rootPart.CFrame:Lerp(targetRot, 0.65)
+		-- 100% Target Alignment: Direct horizontal orientation towards target
+		rootPart.CFrame = CFrame.lookAt(rootPart.Position, Vector3.new(enemyPos.X, rootPart.Position.Y, enemyPos.Z))
 
-		-- Natural grounded step: Uses normal velocity impulse so feet stay on the pavement
+		-- Magnetic Gap-Closing Step vs Close-Range Cushion
 		local stepForce: number
-		if horizDist > 4.2 then
-			stepForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 11)
+		if horizDist >= 4.0 and horizDist <= 9.0 then
+			-- Calculate targeted glide impulse to place Spidey right at 3.2 studs striking range
+			local gapToCover = horizDist - 3.2
+			stepForce = math.clamp(gapToCover / 0.18, 12, 28)
+		elseif horizDist < 4.0 and horizDist > 3.5 then
+			stepForce = math.clamp((horizDist - 3.2) / 0.18, 4.0, 10.0)
+		elseif horizDist <= 3.5 then
+			-- Close-Range Cushion: Subtle contact nudge (3.5 studs/s) so Spidey stays firmly in the pocket
+			stepForce = 3.5
 		else
-			-- Close contact punch: subtle contact nudge so player doesn't clip into enemy
-			stepForce = 4.0
+			stepForce = CombatMelee.comboIndex == 3 and 14 or (CombatConfig.Moves.KineticCombo.LungeForce or 11)
 		end
 
 		rootPart.AssemblyLinearVelocity = Vector3.new(forwardFlat.X * stepForce, 0, forwardFlat.Z * stepForce)
@@ -274,6 +284,24 @@ function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, 
 		end
 	end
 
+	-- Fallback scan: auto-target nearest living enemy within 35 studs
+	if not target then
+		local bestDist = 35
+		for _, enemy in CollectionService:GetTagged("Enemy") do
+			if enemy:IsA("Model") then
+				local eHum = enemy:FindFirstChildOfClass("Humanoid")
+				local eRoot = (enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChild("Torso")) :: BasePart?
+				if eHum and eHum.Health > 0 and eRoot then
+					local dist = (eRoot.Position - rootPart.Position).Magnitude
+					if dist < bestDist then
+						target = enemy
+						bestDist = dist
+					end
+				end
+			end
+		end
+	end
+
 	if target and createWebLinesFunc then
 		-- Shoot twin webs and whip close enemy down
 		createWebLinesFunc(character, target, true, 0.45)
@@ -309,15 +337,29 @@ function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, 
 
 		if isSymbioteSlam then
 			WebVisuals.createTendrilGroundSlamVFX(finalPos, 18)
-			-- Camera FOV punch by -6° for heavy impact crunch
-			local camera = Workspace.CurrentCamera
-			if camera then
-				local baseFov = camera.FieldOfView
-				camera.FieldOfView = math.max(45, baseFov - 6)
-				TweenService:Create(camera, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					FieldOfView = baseFov,
-				}):Play()
+		end
+
+		-- Camera FOV punch by -6° for heavy impact crunch
+		local camera = Workspace.CurrentCamera
+		if camera then
+			local baseFov = camera.FieldOfView
+			camera.FieldOfView = math.max(45, baseFov - 6)
+			TweenService:Create(camera, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				FieldOfView = baseFov,
+			}):Play()
+		end
+
+		-- 💥 Spawn Floating Comic Damage Number immediately on impact (only on a real, living target)
+		local tRoot = target and (target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")) :: BasePart?
+		local tHum = target and target:FindFirstChildOfClass("Humanoid")
+		if tRoot and tHum and tHum.Health > 0 then
+			local slamDmg = (CombatConfig.Moves and CombatConfig.Moves.AirGroundSlam and CombatConfig.Moves.AirGroundSlam.Damage) or 24
+			if (LocalPlayer and LocalPlayer:GetAttribute("SuitPerkType") == "Damage")
+				or (character and character:GetAttribute("SuitPerkType") == "Damage") then
+				slamDmg = slamDmg * 1.20
 			end
+			CombatVFXListener.spawnDamageNumber(tRoot.Position + Vector3.new(0, 0.6, 0), "-" .. math.floor(slamDmg) .. " SLAM!", true)
+			CombatStyleHUD.registerHit(slamDmg)
 		end
 
 		GroundSlamRemote:FireServer(target, finalPos)

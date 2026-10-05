@@ -55,6 +55,7 @@ local TargetFinder = require(ModulesFolder:WaitForChild("TargetFinder"))
 local lastCombatActionTime = 0
 local function registerCombatAction()
 	lastCombatActionTime = os.clock()
+	CombatStyleHUD.unlockAbilityTray()
 end
 
 -- Traversal and Combat Action Lock Guards
@@ -439,11 +440,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		CombatWebs.isHoldingWebPellet = false
 		registerCombatAction()
 
-		local isAirborne = humanoid.FloorMaterial == Enum.Material.Air
-		local isApexOrFalling = rootPart.AssemblyLinearVelocity.Y <= 2
-		local isHighInAir = not TargetFinder.isNearGround(rootPart, character)
-
-		if isAirborne and isApexOrFalling and isHighInAir then
+		local isAirborne = (humanoid.FloorMaterial == Enum.Material.Air) or (rootPart.AssemblyLinearVelocity.Y > 3)
+		if isAirborne or CombatMelee.comboIndex >= 4 then
 			CombatMelee.performAirGroundSlam(character, rootPart, humanoid, CombatWebs.createCombatWebLines)
 		else
 			CombatMelee.isHoldingAttack = true
