@@ -129,26 +129,38 @@ When Rich needs new 3D assets generated through external LLMs (e.g. GPT-6 Astra 
 
 ---
 
-## 5. Post-Midterm Roadmap & Action Items (When Rich Returns)
+## 5. Active To-Do List & Production Roadmap
+
+### ✅ Completed & Verified (Today's Engineering Wins)
+- [x] **Van ProximityPrompt Removed:** Completely eliminated `Web-Sabotage Engine [E]` prompt from the getaway van in `CrimeService.server.luau`. Zero camera occlusion, zero `[E]` key conflict with Web-Pellets.
+- [x] **Procedural Crime Auto-Clear:** Crime missions complete immediately upon eliminating all living enemies, paying out XP/Cash cleanly without dialog spam.
+- [x] **Dynamic Ability Tray Latch:** In `CombatStyleHUD`, `isTrayLockedHidden` prevents ability pills (`[E]`, `[R]`, `[T]`) from popping back up after combat or quest completion; only intentional combat inputs re-arm visibility.
+- [x] **Floating Comic Damage Numbers:** Client-predicted visual feedback popups (`"-18 FINISHER"`, `"-10"`) with camera billboard tracking and automatic cleanup.
+- [x] **Grounded Combat Purity:** Left-Click kept clean and focused strictly on the 1-2-3 Kinetic Punch Combo (Tap) and Uppercut Launcher (Hold) without clunky mid-air input contention.
+
+---
+
+### 📋 Next Action Items (Tomorrow: Devlog #1 Recording)
 
 ```
-[Post-Midterm Return]
+[Tomorrow's Session]
          │
-         ├── STEP 1: Devlog #1 Voiceover (Top Priority)
-         │   • Script ready: `Devlog_1_Script.md` (~3 minutes)
-         │   • Tool: CapCut
-         │   • Microphone: Rexus Xora-II (calibrated: pop filter, +6dB gain, 30% noise reduction)
-         │   • Goal: Tell the solo indie founder story and show gameplay footage
+         ├── STEP 1: Record Gameplay B-Roll in Studio (15-20 mins)
+         │   • Script ready: `Devlog_1_Script.md` (~3 mins, Dani/Duckable pacing)
+         │   • Clip 1: Web-swinging through Manhattan skyscrapers + release slingshot
+         │   • Clip 2: 1-2-3 kinetic punch combo on thugs with comic damage numbers
+         │   • Clip 3: Web-pellet wall cocooning ([E]) + Spider-Sense dodge ([F])
+         │   • Clip 4: Web-strike zip kick ([R]) + 360° Web Cyclone ultimate ([T])
          │
-         ├── STEP 2: Roblox Studio Scene Dressing
-         │   • Bulk-import 39 FBX assets into Studio via Asset Manager
-         │   • Quick material pass: Rubber on tires, Metal on bumpers, Neon on lamps
-         │   • Construct the Manhattan alleyway & street-level combat testing arena
+         ├── STEP 2: Devlog #1 Voiceover & CapCut Assembly
+         │   • Mic: Rexus Xora-II (calibrated: pop filter, +6dB gain, 30% noise reduction)
+         │   • Tool: CapCut (fast cuts, kinetic sound effects, upbeat pacing)
+         │   • Goal: Tell the 16-year-old solo founder story and showcase the physics engine
          │
-         └── STEP 3: Environmental Combat Interactivity
-             • Wire `electrical_hazard_box` as a web-pullable AOE shock hazard
-             • Make `nypd_sawhorse_barricade` vaultable with parkour impulse
-             • Scatter throwable props (crates, manholes) into the combat area
+         └── STEP 3: Studio Scene Dressing (Post-Recording)
+             • Bulk-import the 39 Blender FBX assets via Asset Manager
+             • Material pass: Rubber on tires, Metal on bumpers, Neon on lamps
+             • Scatter environmental throwables (crates, barricades) for [Q] prop-throwing
 ```
 
 ---
