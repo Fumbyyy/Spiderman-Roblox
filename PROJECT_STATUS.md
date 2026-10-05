@@ -4,8 +4,8 @@
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
 > **Date:** October 5, 2026  
-> **Active Git Head:** `0a9b6b3` (Fully committed & synced with `origin/main`)  
-> **Milestone Status:** Combat Polish, Accidental Slam Fix, Floating Numbers & Crime Auto-Clear Verified  
+> **Active Git Head:** `7064920` (Fully committed & synced with `origin/main`)  
+> **Milestone Status:** Van ProximityPrompt Removed, Combat Polish, Floating Numbers & Crime Auto-Clear Verified  
 
 ---
 
