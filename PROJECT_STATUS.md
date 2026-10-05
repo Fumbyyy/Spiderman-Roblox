@@ -4,6 +4,7 @@
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
 > **Date:** October 5, 2026  
+> **Active Git Head:** `cb38c37` (Fully committed & synced with `origin/main`)  
 > **Milestone Status:** Combat Polish, Floating Comic Damage Numbers, Ability Tray Latch, & Crime Auto-Clear Verified  
 
 ---
