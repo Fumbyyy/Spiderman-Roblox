@@ -76,6 +76,55 @@ local function isCombatBusy(): boolean
 		or (CombatDodge.isDodging == true)
 end
 
+-- 🦘 Jump & Airborne Tracking (Strictly prevents accidental ground slams when stepping/climbing on mobs)
+local lastJumpTime = 0
+UserInputService.JumpRequest:Connect(function()
+	lastJumpTime = os.clock()
+end)
+
+local function isTrulyAirborne(rootPart: BasePart, character: Model, humanoid: Humanoid): boolean
+	if humanoid.FloorMaterial ~= Enum.Material.Air then
+		return false
+	end
+
+	local now = os.clock()
+	local recentJump = (now - lastJumpTime) < 1.25
+
+	-- Raycast down to find true map geometry beneath Spidey (filtering out character and all enemies)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	local filterList: { Instance } = { character }
+	local enemiesFolder = Workspace:FindFirstChild("Enemies")
+	if enemiesFolder then
+		table.insert(filterList, enemiesFolder)
+	end
+	for _, enemy in CollectionService:GetTagged("Enemy") do
+		table.insert(filterList, enemy)
+	end
+	rayParams.FilterDescendantsInstances = filterList
+
+	local groundRay = Workspace:Raycast(rootPart.Position, Vector3.new(0, -20, 0), rayParams)
+	local distToGround = groundRay and (rootPart.Position.Y - groundRay.Position.Y) or 999
+
+	-- Standing height is ~3.0 studs. If stepping/climbing onto an enemy, distToGround is ~3.5 to 5.0 studs.
+	-- If the player did not jump and is within 5.2 studs of the ground, they are just stepping on an enemy mob: STAY IN GROUND COMBAT!
+	if not recentJump and distToGround <= 5.2 then
+		return false
+	end
+
+	-- Jumped recently and genuinely clearing the ground
+	if recentJump and distToGround > 3.8 then
+		return true
+	end
+
+	-- High freefall (falling off rooftop or out of swing)
+	if distToGround > 5.5 then
+		return true
+	end
+
+	return false
+end
+
 -- Character Utility Helper
 local function getCharacterParts(): (Model?, BasePart?, Humanoid?)
 	local character = LocalPlayer.Character
@@ -440,8 +489,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		CombatWebs.isHoldingWebPellet = false
 		registerCombatAction()
 
-		local isAirborne = (humanoid.FloorMaterial == Enum.Material.Air) or (rootPart.AssemblyLinearVelocity.Y > 3)
-		if isAirborne or CombatMelee.comboIndex >= 4 then
+		local isAirborne = isTrulyAirborne(rootPart, character, humanoid)
+		if isAirborne then
 			CombatMelee.performAirGroundSlam(character, rootPart, humanoid, CombatWebs.createCombatWebLines)
 		else
 			CombatMelee.isHoldingAttack = true

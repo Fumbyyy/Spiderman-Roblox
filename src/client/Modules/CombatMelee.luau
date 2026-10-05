@@ -262,6 +262,7 @@ end
 
 -- 3. 💥 WEB-LINE GROUND SLAM (In-Air Attack / 4th Attack after 1-2-3 Combo)
 function CombatMelee.performAirGroundSlam(character: Model, rootPart: BasePart, humanoid: Humanoid, createWebLinesFunc: ((Model, Model, boolean, number) -> ())?)
+	if humanoid.FloorMaterial ~= Enum.Material.Air then return end
 	local now = os.clock()
 	local slamCooldown = CombatConfig.Moves.AirGroundSlam.Cooldown or 1.4
 	if (now - CombatMelee.lastGroundSlamTime) < slamCooldown then return end
