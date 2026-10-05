@@ -971,52 +971,8 @@ local function createGetawayVan(startPos: Vector3, moveDir: Vector3, parentFolde
 		techCrate.Parent = van
 	end
 
-	-- Engine Sabotage Proximity Prompt
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Web-Sabotage Engine [E]"
-	prompt.ObjectText = "Getaway Van Engine"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0.35
-	prompt.MaxActivationDistance = 15
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = engineHood
-
 	van.PrimaryPart = hrp
 	van:SetAttribute("IsDisabled", false)
-
-	-- Engine Sabotage Trigger
-	prompt.Triggered:Connect(function(player)
-		if van:GetAttribute("IsDisabled") == true then return end
-		van:SetAttribute("IsDisabled", true)
-		prompt.Enabled = false
-
-		-- Turn off headlights, turn on damaged smoke
-		hazardBeacon.Color = Color3.fromRGB(255, 50, 50)
-
-		-- Engine Sparks & Smoke VFX
-		local sparkEmitter = Instance.new("ParticleEmitter")
-		sparkEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 50))
-		sparkEmitter.Size = NumberSequence.new(0.5, 0.1)
-		sparkEmitter.Speed = NumberRange.new(8, 22)
-		sparkEmitter.SpreadAngle = Vector2.new(180, 180)
-		sparkEmitter.Rate = 60
-		sparkEmitter.Lifetime = NumberRange.new(0.4, 0.9)
-		sparkEmitter.Parent = engineHood
-
-		local smokeEmitter = Instance.new("ParticleEmitter")
-		smokeEmitter.Color = ColorSequence.new(Color3.fromRGB(40, 40, 45))
-		smokeEmitter.Size = NumberSequence.new(1.0, 3.5)
-		smokeEmitter.Speed = NumberRange.new(3, 8)
-		smokeEmitter.Rate = 25
-		smokeEmitter.Lifetime = NumberRange.new(1.0, 2.0)
-		smokeEmitter.Parent = engineHood
-
-		if CombatVFXRemote then
-			CombatVFXRemote:FireAllClients("ShockwaveVFX", engineHood.Position, 12)
-		end
-
-		CrimeNotificationRemote:FireAllClients("VanDisabled", van)
-	end)
 
 	van.Parent = parentFolder
 	return van
