@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
+local SuitConfig = require(Shared:WaitForChild("SuitConfig"))
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -510,6 +511,16 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 	local isScarlet = (suitId == "ScarletSpider")
 	local is2099 = (suitId == "Cyber2099")
 	local isClassic = (suitId == "ClassicSuit")
+	local isCustom = (suitId == "CustomAvatar")
+
+	if suitTitleLabel then
+		if isCustom then
+			suitTitleLabel.Text = string.upper(LocalPlayer.DisplayName or LocalPlayer.Name)
+		else
+			local sDef = SuitConfig.getSuitById(suitId)
+			suitTitleLabel.Text = sDef and string.upper(sDef.Name) or "SPIDER-MAN"
+		end
+	end
 
 	-- Update Camouflage Meter
 	PlayerHealthHUD.updateCamoHUD()
@@ -532,8 +543,8 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 		classicBadge.Visible = isClassic
 	end
 
-	-- Nanotech Shield Telemetry (Hidden if Symbiote, Miles, Scarlet, 2099, or Classic)
-	local isShieldActive = (shieldBonus > 0) and not isSymbiote and not isMiles and not isScarlet and not is2099 and not isClassic
+	-- Nanotech Shield Telemetry (Hidden if Symbiote, Miles, Scarlet, 2099, Classic, or Custom)
+	local isShieldActive = (shieldBonus > 0) and not isSymbiote and not isMiles and not isScarlet and not is2099 and not isClassic and not isCustom
 	if shieldBarContainer and shieldBarFill and shieldBadge and shieldBadgeText then
 		shieldBarContainer.Visible = isShieldActive
 		shieldBadge.Visible = isShieldActive

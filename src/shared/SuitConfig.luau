@@ -201,6 +201,19 @@ local SuitConfig = {
 				Legs = Color3.fromRGB(25, 60, 195),
 			},
 		},
+		{
+			Id = "CustomAvatar",
+			Name = "Your Custom Avatar",
+			Tagline = "Play as your personal custom Roblox avatar with full Spider-Powers.",
+			UnlockLevel = 1,
+			HeroCashCost = 0,
+			PerkDescription = "Personal Style: Full web-swinging, combat combos & parkour with your own avatar.",
+			PerkType = "Special",
+			PerkValue = 1.0,
+			ThemeColor = Color3.fromRGB(0, 180, 255),
+			AccentColor = Color3.fromRGB(255, 255, 255),
+			Icon = "👤",
+		},
 	} :: { SuitDefinition },
 }
 
@@ -216,6 +229,10 @@ local SUIT_ALIASES: { [string]: string } = {
 	["Cyber2099Suit"] = "Cyber2099",
 	["Classic"] = "ClassicSuit",
 	["Stark"] = "StarkTechSuit",
+	["Avatar"] = "CustomAvatar",
+	["Custom"] = "CustomAvatar",
+	["MyAvatar"] = "CustomAvatar",
+	["PersonalAvatar"] = "CustomAvatar",
 }
 
 function SuitConfig.getSuitById(suitId: string): SuitDefinition?

@@ -62,6 +62,7 @@ local SuitEquippedVFXRemote = getOrCreateRemoteEvent("SuitEquippedVFX")
 -- Player Ownership Tracking: player -> { [suitId]: true }
 local playerUnlockedSuits: { [Player]: { [string]: boolean } } = {}
 local playerEquippedSuit: { [Player]: string } = {}
+local playerOriginalDescription: { [Player]: HumanoidDescription } = {}
 
 -- 🔇 ZERO SFX POLICY: Neutralize any legacy Sound instances lingering in SoundService or Workspace
 local SoundService = game:GetService("SoundService")
@@ -908,6 +909,57 @@ local function applySuitToCharacter(player: Player, character: Model, suitId: st
 	-- Mark character to avoid auto-discovery loops
 	character:SetAttribute("IsPlayerCharacter", true)
 
+	-- 🌟 Custom Avatar Option: Restore player's authentic Roblox avatar appearance!
+	if suit.Id == "CustomAvatar" then
+		stripCharacterAvatar(character)
+
+		local origDesc = playerOriginalDescription[player]
+		if not origDesc then
+			local success, desc = pcall(function()
+				return Players:GetHumanoidDescriptionFromUserId(player.UserId)
+			end)
+			if success and desc then
+				origDesc = desc
+				playerOriginalDescription[player] = desc
+			end
+		end
+
+		if origDesc then
+			pcall(function()
+				humanoid:ApplyDescription(origDesc)
+			end)
+		end
+
+		local head = character:FindFirstChild("Head") :: BasePart?
+		if head then
+			local face = head:FindFirstChildOfClass("Decal")
+			if face then
+				face.Transparency = 0
+				local origFace = character:GetAttribute("OriginalFaceTexture")
+				if origFace and typeof(origFace) == "string" then
+					face.Texture = origFace
+				end
+			end
+		end
+
+		-- Authoritative Health & Level Scaling
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local levelVal = leaderstats and leaderstats:FindFirstChild("Level") :: IntValue?
+		local baseMaxHp = 100 + (levelVal and (levelVal.Value - 1) * 10 or 0)
+		humanoid.MaxHealth = baseMaxHp
+		humanoid.Health = math.clamp(humanoid.Health, 0, humanoid.MaxHealth)
+
+		purgeRogueLimbWelds(character)
+
+		player:SetAttribute("EquippedSuit", "CustomAvatar")
+		player:SetAttribute("SuitPerkType", "Special")
+		player:SetAttribute("SuitPerkValue", 1.0)
+		player:SetAttribute("StarkShieldBonus", 0)
+		character:SetAttribute("EquippedSuit", "CustomAvatar")
+		character:SetAttribute("StarkShieldBonus", 0)
+		return
+	end
+
 	-- 1. Apply dynamic R15 body proportions FIRST so rig dimensions are authoritative before attaching
 	applySuitProportions(humanoid, suit)
 
@@ -1089,7 +1141,7 @@ end
 --------------------------------------------------------------------------------
 
 local function onPlayerAdded(player: Player)
-	local unlocked = { [SuitConfig.DefaultSuitId] = true }
+	local unlocked = { [SuitConfig.DefaultSuitId] = true, ["CustomAvatar"] = true }
 	if RunService:IsStudio() then
 		for _, s in SuitConfig.Suits do
 			unlocked[s.Id] = true
@@ -1100,7 +1152,7 @@ local function onPlayerAdded(player: Player)
 	player:SetAttribute("EquippedSuit", SuitConfig.DefaultSuitId)
 
 	player.CharacterAdded:Connect(function(char)
-		-- Wait for Roblox to finish loading player's personal avatar appearance so we can cleanly replace it
+		-- Wait for Roblox to finish loading player's personal avatar appearance so we can cleanly capture/replace it
 		if not player:HasAppearanceLoaded() then
 			local appearanceLoaded = false
 			local conn
@@ -1119,6 +1171,15 @@ local function onPlayerAdded(player: Player)
 		end
 
 		task.wait(0.05)
+
+		-- Cache authentic player appearance if not yet recorded
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		if humanoid and not playerOriginalDescription[player] then
+			pcall(function()
+				playerOriginalDescription[player] = humanoid:GetAppliedDescription()
+			end)
+		end
+
 		local currentSuit = playerEquippedSuit[player] or SuitConfig.DefaultSuitId
 		applySuitToCharacter(player, char, currentSuit)
 	end)
@@ -1132,6 +1193,7 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	playerUnlockedSuits[player] = nil
 	playerEquippedSuit[player] = nil
+	playerOriginalDescription[player] = nil
 end)
 
 print("🕷️ [SuitService] Spider-Man Wardrobe Authority & Auto-Discovery Rig Engine Online!")

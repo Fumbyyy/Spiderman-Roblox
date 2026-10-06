@@ -285,6 +285,8 @@ local SUIT_KEY_MAP: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.Four] = "SymbioteBlack",
 	[Enum.KeyCode.Five] = "ScarletSpider",
 	[Enum.KeyCode.Six] = "Cyber2099",
+	[Enum.KeyCode.Seven] = "CustomAvatar",
+	[Enum.KeyCode.Zero] = "CustomAvatar",
 }
 
 local CANONICAL_SUIT_ORDER = {
@@ -294,10 +296,12 @@ local CANONICAL_SUIT_ORDER = {
 	"SymbioteBlack",
 	"ScarletSpider",
 	"Cyber2099",
+	"CustomAvatar",
 }
 
 local cachedUnlockedSuits: { [string]: boolean } = {
 	["ClassicSuit"] = true,
+	["CustomAvatar"] = true,
 }
 
 local function refreshUnlockedSuits()
