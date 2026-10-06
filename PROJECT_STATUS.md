@@ -4,8 +4,8 @@
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
 > **Date:** October 6, 2026  
-> **Active Git Head:** `b662bc3` (Fully committed & synced with `origin/main`)  
-> **Milestone Status:** Zero-Flicker Reactive Cursor Suppression & Mouse Lock Active  
+> **Active Git Head:** `002b712` (Fully committed & synced with `origin/main`)  
+> **Milestone Status:** Rich's Authentic Devlog Script Synced & Video Showcase Rendered  
 
 ---
 
