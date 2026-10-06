@@ -62,7 +62,7 @@ local SuitEquippedVFXRemote = getOrCreateRemoteEvent("SuitEquippedVFX")
 -- Player Ownership Tracking: player -> { [suitId]: true }
 local playerUnlockedSuits: { [Player]: { [string]: boolean } } = {}
 local playerEquippedSuit: { [Player]: string } = {}
-local playerOriginalDescription: { [Player]: HumanoidDescription } = {}
+local playerAvatarBackups: { [Player]: Folder } = {}
 
 -- 🔇 ZERO SFX POLICY: Neutralize any legacy Sound instances lingering in SoundService or Workspace
 local SoundService = game:GetService("SoundService")
@@ -301,6 +301,64 @@ local function resolveR15AttachmentName(accessory: Accessory, handle: BasePart):
 
 	-- 5. Standard Hat / Headwear fallback
 	return "HatAttachment", "Head"
+end
+
+local function saveAvatarBackup(player: Player, character: Model): Folder?
+	local existing = playerAvatarBackups[player]
+	if existing and #existing:GetChildren() > 0 then
+		return existing
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return nil end
+
+	-- Check if character currently has authentic personal items
+	local count = 0
+	for _, child in character:GetChildren() do
+		if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("BodyColors") then
+			count += 1
+		end
+	end
+
+	-- If character was already stripped (e.g. from a prior suit), attempt to load authentic appearance from Roblox
+	if count <= 1 then
+		pcall(function()
+			player:LoadCharacterAppearance(character)
+		end)
+		task.wait(0.2)
+	end
+
+	local backupFolder = Instance.new("Folder")
+	backupFolder.Name = "AvatarBackup_" .. tostring(player.UserId)
+
+	for _, child in character:GetChildren() do
+		if (child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("ShirtGraphic") or child:IsA("BodyColors"))
+			and not child:GetAttribute("IsSuitAsset")
+			and not CollectionService:HasTag(child, "SuitAsset")
+		then
+			child:Clone().Parent = backupFolder
+		end
+	end
+
+	local scaleFolder = Instance.new("Folder")
+	scaleFolder.Name = "Scales"
+	scaleFolder.Parent = backupFolder
+	for _, sc in humanoid:GetChildren() do
+		if sc:IsA("NumberValue") then
+			sc:Clone().Parent = scaleFolder
+		end
+	end
+
+	local head = character:FindFirstChild("Head") :: BasePart?
+	if head then
+		local face = head:FindFirstChildOfClass("Decal")
+		if face and face.Texture ~= "" then
+			backupFolder:SetAttribute("FaceTexture", face.Texture)
+		end
+	end
+
+	playerAvatarBackups[player] = backupFolder
+	return backupFolder
 end
 
 local function stripCharacterAvatar(character: Model)
@@ -913,31 +971,96 @@ local function applySuitToCharacter(player: Player, character: Model, suitId: st
 	if suit.Id == "CustomAvatar" then
 		stripCharacterAvatar(character)
 
-		local origDesc = playerOriginalDescription[player]
-		if not origDesc then
-			local success, desc = pcall(function()
-				return Players:GetHumanoidDescriptionFromUserId(player.UserId)
-			end)
-			if success and desc then
-				origDesc = desc
-				playerOriginalDescription[player] = desc
+		local restored = false
+		local backupFolder = playerAvatarBackups[player]
+		if not backupFolder or #backupFolder:GetChildren() == 0 then
+			backupFolder = saveAvatarBackup(player, character)
+		end
+
+		if backupFolder and #backupFolder:GetChildren() > 0 then
+			for _, item in backupFolder:GetChildren() do
+				if item:IsA("Accessory") then
+					humanoid:AddAccessory(item:Clone())
+					restored = true
+				elseif item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") or item:IsA("BodyColors") then
+					local existing = character:FindFirstChildOfClass(item.ClassName)
+					if existing then existing:Destroy() end
+					item:Clone().Parent = character
+					restored = true
+				end
+			end
+
+			local scaleFolder = backupFolder:FindFirstChild("Scales")
+			if scaleFolder then
+				for _, sc in scaleFolder:GetChildren() do
+					if sc:IsA("NumberValue") then
+						local humVal = humanoid:FindFirstChild(sc.Name) :: NumberValue?
+						if humVal then
+							humVal.Value = sc.Value
+						end
+					end
+				end
 			end
 		end
 
-		if origDesc then
+		-- Fallback 1: Native LoadCharacterAppearance
+		if not restored then
 			pcall(function()
-				humanoid:ApplyDescription(origDesc)
+				player:LoadCharacterAppearance(character)
 			end)
+			task.wait(0.1)
+			for _, child in character:GetChildren() do
+				if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") then
+					restored = true
+					break
+				end
+			end
 		end
 
+		-- Fallback 2: HumanoidDescription from UserId
+		if not restored then
+			local targetUserId = player.UserId
+			if targetUserId <= 0 then
+				pcall(function()
+					targetUserId = Players:GetUserIdFromNameAsync(player.Name)
+				end)
+			end
+			if targetUserId > 0 then
+				local sDesc, desc = pcall(function()
+					return Players:GetHumanoidDescriptionFromUserId(targetUserId)
+				end)
+				if sDesc and desc then
+					pcall(function()
+						humanoid:ApplyDescription(desc)
+					end)
+					restored = true
+				end
+			end
+		end
+
+		-- Fallback 3: Clean street clothes so player is NEVER a naked dummy
+		if not character:FindFirstChildOfClass("Shirt") then
+			local shirt = Instance.new("Shirt")
+			shirt.Name = "CasualShirt"
+			shirt.ShirtTemplate = "rbxassetid://382537826"
+			shirt.Parent = character
+		end
+		if not character:FindFirstChildOfClass("Pants") then
+			local pants = Instance.new("Pants")
+			pants.Name = "CasualPants"
+			pants.PantsTemplate = "rbxassetid://382538059"
+			pants.Parent = character
+		end
+
+		-- Ensure Head face decal is visible and unhidden
 		local head = character:FindFirstChild("Head") :: BasePart?
 		if head then
 			local face = head:FindFirstChildOfClass("Decal")
 			if face then
 				face.Transparency = 0
-				local origFace = character:GetAttribute("OriginalFaceTexture")
-				if origFace and typeof(origFace) == "string" then
-					face.Texture = origFace
+				local savedFace = (backupFolder and backupFolder:GetAttribute("FaceTexture")) or character:GetAttribute("OriginalFaceTexture")
+				if savedFace and typeof(savedFace) == "string" and savedFace ~= "" then
+					face.Texture = savedFace
 				end
 			end
 		end
@@ -1151,7 +1274,7 @@ local function onPlayerAdded(player: Player)
 	playerEquippedSuit[player] = SuitConfig.DefaultSuitId
 	player:SetAttribute("EquippedSuit", SuitConfig.DefaultSuitId)
 
-	player.CharacterAdded:Connect(function(char)
+	local function handleCharacter(char: Model)
 		-- Wait for Roblox to finish loading player's personal avatar appearance so we can cleanly capture/replace it
 		if not player:HasAppearanceLoaded() then
 			local appearanceLoaded = false
@@ -1163,26 +1286,26 @@ local function onPlayerAdded(player: Player)
 				end
 			end)
 			local elapsed = 0
-			while not appearanceLoaded and elapsed < 2.5 do
+			while not appearanceLoaded and elapsed < 3.0 do
 				task.wait(0.1)
 				elapsed += 0.1
 			end
 			if conn then conn:Disconnect() end
 		end
 
-		task.wait(0.05)
+		task.wait(0.1)
 
-		-- Cache authentic player appearance if not yet recorded
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if humanoid and not playerOriginalDescription[player] then
-			pcall(function()
-				playerOriginalDescription[player] = humanoid:GetAppliedDescription()
-			end)
-		end
+		-- Capture authentic player appearance into permanent backup before any suit touches the rig!
+		saveAvatarBackup(player, char)
 
 		local currentSuit = playerEquippedSuit[player] or SuitConfig.DefaultSuitId
 		applySuitToCharacter(player, char, currentSuit)
-	end)
+	end
+
+	player.CharacterAdded:Connect(handleCharacter)
+	if player.Character then
+		task.spawn(handleCharacter, player.Character)
+	end
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -1193,7 +1316,10 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	playerUnlockedSuits[player] = nil
 	playerEquippedSuit[player] = nil
-	playerOriginalDescription[player] = nil
+	if playerAvatarBackups[player] then
+		playerAvatarBackups[player]:Destroy()
+		playerAvatarBackups[player] = nil
+	end
 end)
 
 print("🕷️ [SuitService] Spider-Man Wardrobe Authority & Auto-Discovery Rig Engine Online!")
