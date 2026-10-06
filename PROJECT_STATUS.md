@@ -3,9 +3,9 @@
 > **Project:** *Spider-Man: Web of Destiny* (Roblox / Luau / Rojo)  
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
-> **Date:** October 5, 2026  
-> **Active Git Head:** `7064920` (Fully committed & synced with `origin/main`)  
-> **Milestone Status:** Van ProximityPrompt Removed, Combat Polish, Floating Numbers & Crime Auto-Clear Verified  
+> **Date:** October 6, 2026  
+> **Active Git Head:** `b6a34e6` (Fully committed & synced with `origin/main`)  
+> **Milestone Status:** Cinematic Recording Mode active (All UI/HUDs/Beacons hidden by default, H key toggle)  
 
 ---
 
