@@ -175,15 +175,63 @@ PlayerHealthHUD.init(PlayerGui, LocalPlayer)
 local activeThreatEnemy: Model? = nil
 local lastThreatDetectionTime = 0
 
--- 🎬 Clean Recording Mode (Ctrl + H: Hide/Restore CoreGui Chat & PlayerList)
-local isRecordingModeActive = false
+-- 🎬 Clean Recording Mode (Hide/Restore ALL UI: Custom HUDs, Health, Dispatch, Beacons & CoreGui)
+local isRecordingModeActive = true -- Hidden by default as requested for clean B-Roll recording!
+
+local function setUIVisibility(visible: boolean)
+	-- 1. All Custom ScreenGuis in PlayerGui
+	for _, child in PlayerGui:GetChildren() do
+		if child:IsA("ScreenGui") then
+			child.Enabled = visible
+		elseif child:IsA("BillboardGui") then
+			child.Enabled = visible
+		end
+	end
+
+	-- 2. Roblox CoreGui (Chat, PlayerList, Health)
+	pcall(function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, visible)
+	end)
+
+	-- 3. World Holographic Beacons in Workspace
+	local beacon = Workspace:FindFirstChild("CrimeHoloBeacon")
+	if beacon and beacon:IsA("Model") then
+		for _, desc in beacon:GetDescendants() do
+			if desc:IsA("BasePart") then
+				if desc:GetAttribute("OrigTransparency") == nil then
+					desc:SetAttribute("OrigTransparency", desc.Transparency)
+				end
+				desc.Transparency = visible and (desc:GetAttribute("OrigTransparency") :: number) or 1
+			elseif desc:IsA("BillboardGui") or desc:IsA("Beam") or desc:IsA("PointLight") then
+				(desc :: any).Enabled = visible
+			end
+		end
+	end
+end
+
 local function toggleCleanRecordingMode()
 	isRecordingModeActive = not isRecordingModeActive
-	pcall(function()
-		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, not isRecordingModeActive)
-		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, not isRecordingModeActive)
-	end)
+	setUIVisibility(not isRecordingModeActive)
 end
+
+-- Ensure newly added ScreenGuis respect the active recording mode
+PlayerGui.ChildAdded:Connect(function(child)
+	if isRecordingModeActive and (child:IsA("ScreenGui") or child:IsA("BillboardGui")) then
+		task.defer(function()
+			if isRecordingModeActive then
+				(child :: any).Enabled = false
+			end
+		end)
+	end
+end)
+
+-- Initial sweep to hide all UI elements as they finish building
+task.spawn(function()
+	for _ = 1, 10 do
+		setUIVisibility(not isRecordingModeActive)
+		task.wait(0.3)
+	end
+end)
 
 
 --------------------------------------------------------------------------------
@@ -462,8 +510,8 @@ local function cycleNextOwnedSuit()
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	-- 🎬 Clean Recording Mode Toggle (Ctrl + H)
-	if input.KeyCode == Enum.KeyCode.H and (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)) then
+	-- 🎬 Clean Recording Mode Toggle (H or Ctrl + H)
+	if input.KeyCode == Enum.KeyCode.H then
 		toggleCleanRecordingMode()
 		return
 	end
