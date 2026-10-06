@@ -1,88 +1,125 @@
-# 🎬 Devlog #1 Master Script: The 20-Day Spider-Man Journey
-
-> **Working Title:** I Built a Spider-Man Game in Roblox in 20 Days (Without AI Slop)  
-> **Style:** Candid, relatable indie devlog (Inspired by Duckable)  
-> **Target Length:** 3 to 4 Minutes  
-> **Editing Software:** CapCut (Free PC)  
+# 🎬 Spider-Man: Web of Destiny — Official Video Script
+> **Author:** Rich  
+> **Topic:** Building a Roblox Spider-Man Game in 30 Days (From AI Dark Path to Custom Combat)  
+> **Style:** Candid, raw, MS Paint memes, zero corporate filter  
 
 ---
 
-## 📋 Production Checklist
-- [ ] Record Spoken Voiceover (Read naturally, talk like you're on Discord)
-- [ ] Drop the 5 Core Footage Clips into CapCut
-- [ ] Cut out silences & breaths
-- [ ] Add Snap Zooms on punchlines & bugs
-- [ ] Add background music & SFX
-- [ ] Export 1080p 60 FPS (Free, zero watermark)
+## 🎙️ TELEPROMPTER / RECORDING SCRIPT
 
 ---
 
-## 🎙️ The Full Voiceover & Edit Storyboard
+### ACT 1: THE INSPIRATION & THE AI "DARK PATH"
+
+**[Visual]:** Scrolling through Roblox home page, zooming into simulator brainrot cash grabs.  
+**[Voiceover]:**  
+> *"Hmm, what game should I play today? Skip... skip... skip... damn, Roblox is literally just filled with brainrot. Maybe I should just make my own game."*
 
 ---
 
-### ACT 1: THE HOOK (0:00 – 0:30) — *The Dani & Duckable Contrast*
-*Goal: Start raw and funny with brainrot slop ➔ Hit them with the massive Spider-Man beat drop.*
-
-| Timestamp | Visual & Edit Direction | Audio & SFX | Spoken Voiceover (Read this naturally) |
-| :--- | :--- | :--- | :--- |
-| **0:00 - 0:06** | **You playing a terrible brainrot simulator.** You clicking endlessly on a pet egg, a treadmill, or some goofy cash-grab simulator with zero effort. | Boring clicking sounds or goofy elevator music. | *"Roblox right now is literally 99% brainrot simulator slop made by studios to milk kids for Robux."* |
-| **0:06 - 0:14** | **Cut to a bad superhero game.** Character pressing E, getting stuck on a stiff invisible line, floating awkwardly through a wall at 5 studs/s. | Goofy goofy squeak or cartoon fail sound. | *"And most superhero games? Outside of a couple of gems like Web Rush, you literally just press E, your character locks onto an invisible rubber band, and you float through a building at 5 miles per hour."* |
-| **0:14 - 0:19** | **The Fake-Out & Audio Riser.** Snap zoom on your character standing alone on the empty baseplate. Character stops or looks up.<br>*(Micro-tension beat)* | Music cuts low... then a fast rising synth/bass whoosh builds louder and louder! | *"I was so sick of it that 20 days ago, I decided to build my dream Spider-Man game from scratch. Just me, an empty baseplate, and zero budget... wait, what's that?"* |
-| **0:19 - 0:32** | **💥 THE EXPLOSIVE BEAT DROP.** Instant HARD CUT! Bass drops at maximum volume. Your buttery-smooth 220 studs/s pendulum swing diving through skyscrapers.<br>*(File: `Roblox Studio 2026.09.08 - 20.20.04.04.mp4`)* | **FULL BEAT DROP:** Heavy punchy synthwave/phonk drops with crisp wind rushing whoosh. | *(No talking for 3 seconds—just pure buttery swinging gameplay audio)*<br><br>*"Yeah. It actually feels incredible."* |
+**[Visual]:** Standing on an empty default baseplate.  
+**[Voiceover]:**  
+> *"About 30 days ago, I really had no idea what I was doing. But after watching Across the Spider-Verse, I wanted to build my own Roblox Spider-Man game. I mean... it cannot be that hard, RIGHT?"*
 
 ---
 
-### ACT 2: THE PHYSICS & THE MOVEMENT (0:35 – 1:15)
-*Goal: The struggle of early development + The Wall Crash Fail (100% Honest).*
-
-| Timestamp | Visual & Edit Direction | Audio & SFX | Spoken Voiceover (100% Honest & Casual) |
-| :--- | :--- | :--- | :--- |
-| **0:35 - 0:45** | **Early greybox swinging.** Early tests in the white/grey city blocks.<br>*(File: `Roblox Studio 2026.08.30 - 18.21.46.07.mp4` - scrub to last 8 mins)* | Soft wind sounds. | *"Week one was pure physics. There's no swing button in Roblox, so getting the movement to actually feel smooth without crashing into a wall was a complete nightmare..."* |
-| **0:45 - 0:52** | **💥 THE WALL CRASH FAIL.** Cut to a clip of Spider-Man swinging at full speed and slamming face-first directly into a building wall! | **LOUD THUD / SLAP SFX.** | *"...nevermind. You still do. But that's a problem for another day."* |
-| **0:52 - 1:02** | **Fast Studio testing flash.** Quick 1.5s clip of you testing and adjusting speeds in Studio. | Fast "brain overload" or funny ding SFX. | *"I spent days testing, tuning the release speeds, and tweaking numbers until the character stopped breaking in half."* |
-| **1:02 - 1:15** | **The Landing.** Spider-Man lands in front of test dummies, throwing stiff punches.<br>*(File: `Desktop 2026.08.30 - 17.43.47.04.mp4`)* | Light thud sound. | *"It felt good in the air, but on the ground? Spider-Man was just throwing stiff Roblox punches like it's 2014."* |
+**[Visual]:** Standing on the baseplate alone. Flashing complex code scripts across screen.  
+**[Voiceover]:**  
+> *"Now what? Turns out, to make a game, you actually need to learn how to script. And man, scripting is complicated—especially when you want to build your own custom physics and combat from scratch."*
 
 ---
 
-### ACT 3: COMBAT, PROPS & THE SHOEBOX CAR (1:15 – 2:10)
-*Goal: Simple combat rundown + Self-deprecating comedy (Your funny screenshot).*
-
-| Timestamp | Visual & Edit Direction | Audio & SFX | Spoken Voiceover (Casual & Simple) |
-| :--- | :--- | :--- | :--- |
-| **1:15 - 1:30** | **Combat Combo.** Clean punches, uppercut, and dropkick.<br>*(File: `Desktop 2026.09.03 - 19.39.33.01.mp4` - scrub to last 10 mins)* | Punchy hit sounds (Bam! Crack!). | *"So I made actual combat. Basic combos, air launches, and a dropkick that sends enemies across the street."* |
-| **1:30 - 1:45** | **Prop Throwing.** Ripping a dumpster off the ground and throwing it into a heavy brute's shield. | Heavy metallic smash SFX. | *"Brute enemies have shields you can't punch through, so you literally have to throw a dumpster at them."* |
-| **1:45 - 1:55** | **THE JOKE: Zoom on Yuri UI.** Slow zoom in on the sleek high-tech NYPD Dispatch card at the top. | Futuristic radio beep. | *"Then I decided to build a high-tech police dispatch radio for live city crimes..."* |
-| **1:55 - 2:08** | **HARD CUT / FULL REVEAL.** Full screen of your screenshot: Default guy in blue hoodie standing in empty parking lot staring at the blocky car. | **MUSIC CUTS OUT.** Awkward cricket chirps. | *"...and yeah. Look at this. Sleek Marvel UI at the top, and underneath it is just me in a blue hoodie staring at a police car that looks like an Amazon delivery box. Peak game dev."* |
-| **2:08 - 2:18** | **Level-Up Fanfare.** The celebration banner punches across screen with the FOV kick.<br>*(File: `Desktop 2026.09.05 - 17.16.56.01.mp4` - scrub to last 5 mins)* | Music drops back in + triumphant chime. | *"I also added level-up popups and move unlocks so fighting actually feels rewarding."* |
+**[Visual]:** Fast montage of YouTube coding tutorials. Kirby falling into a dark pit of AI.  
+**[Voiceover]:**  
+> *"After trying to learn code for a couple of days, I felt completely lost. So... I fell down the dark path."*
 
 ---
 
-### ACT 4: THE SUITS ARE ALIVE (2:10 – 2:50)
-*Goal: The game's unique selling point (Simple & punchy).*
-
-| Timestamp | Visual & Edit Direction | Audio & SFX | Spoken Voiceover (Casual & Simple) |
-| :--- | :--- | :--- | :--- |
-| **2:10 - 2:22** | **Stark Phone Datapad.** Scrolling the 3D suit locker.<br>*(File: `Desktop 2026.09.04 - 19.12.53.01.mp4`)* | UI swipe clicks. | *"Most Roblox games charge 500 Robux for a skin that does nothing. I wanted suits with actual powers."* |
-| **2:22 - 2:35** | **Symbiote & 2099.** Quick cuts: Symbiote raw damage tendrils ➔ 2099 purple gravity vortex sucking enemies in.<br>*(File: `Desktop 2026.09.06 - 20.50.14.03.mp4`)* | Heavy impact + sci-fi whoosh. | *"Symbiote gives you bonus melee damage. 2099 pulls every enemy into a gravity vortex."* |
-| **2:35 - 2:50** | **Mid-Combat Shift Climax.** Hitting keys 1–6 mid-combo, watching holographic suit toasts pop.<br>*(File: `Roblox Studio 2026.09.08 - 19.44.49.01.mp4` - around min 24)* | Upbeat music crescendo. | *"And you can swap between them mid-fight with number keys. Zero pause menus."* |
+**[Visual]:** Prompting Gemini / Claude: *"heylo gemini pls make a roblox spiderman game"*. HARD CUT to a video of broken raycasting and character flopping: **THIS SUCKS.** Show code errors.  
+**[Voiceover]:**  
+> *"I thought AI was gonna do all the work while I just sat back and relaxed. But I was dead wrong. Turns out, the AI was just as confused as I was."*
 
 ---
 
-### ACT 5: OUTRO (2:50 – 3:15)
-*Goal: Honest connection, high subscriber conversion.*
-
-| Timestamp | Visual & Edit Direction | Audio & SFX | Spoken Voiceover (Casual & Simple) |
-| :--- | :--- | :--- | :--- |
-| **2:50 - 3:05** | **Sunset City Swing.** Panning over the city with the calibrated afternoon lighting.<br>*(File: `Roblox Studio 2026.09.09 - 19.49.31.01.mp4`)* | Warm, mellow outro music. | *"This is 20 days of work as a 16-year-old solo dev. Now I actually have to build New York City instead of swinging around grey blocks."* |
-| **3:05 - 3:15** | **Final Swing & Call to Action.** Spider-Man diving off a high-rise into the sunset. End screen cards pop up. | Fade out. | *"Subscribe if you want to follow the journey. Tell me in the comments what suit I should make next. Peace."* |
+**[Visual]:** MS Paint doodle of a stickman swinging while explaining text. Cut to actual working swinging clip!  
+**[Voiceover]:**  
+> *"So I drew out my ideas, spent days fixing mistakes, and actually built a swinging system I'm proud of. It’s not perfect, but it’ll do for now. At least you don't crash into walls... nevermind. You still do. But that's a problem for future me."*
 
 ---
 
-## 💡 Top 3 Editing Pro-Tips for CapCut:
-1. **The "End-of-File" Rule:** In your 1–2 hour footage files, jump directly to the **last 5 to 10 minutes**. That is where the feature is working and tested!
-2. **Audio Levels:** 
-   - Voiceover: `-3 dB` to `0 dB` (Crisp and clear).
-   - Background Music: `-18 dB` to `-22 dB` (Never drowns your voice).
-   - Sound Effects (punches, whooshes): `-6 dB`.
-3. **Pacing:** Never let a clip sit motionless for more than 4 seconds without a cut or a slight slow zoom.
+### ACT 2: COMBAT & CRIMES
+
+**[Visual]:** Swinging through grey blocks, dropping onto the ground. Crickets chirp.  
+**[Voiceover]:**  
+> *(Awkward cricket silence)*  
+> *"It feels pretty nice in the air... but man does it feel empty down here."*
+
+---
+
+**[Visual]:** Looking at stationary test dummies, walking up to them.  
+**[Voiceover]:**  
+> *"I mean, I added some grunts, but you can't actually do anything to them. Wait, what?"*
+
+---
+
+**[Visual]:** Flashback effect. A god-like voice whispers: *"YOU'RE SPIDER-MAN."* Fast montage of punching, transitioning to MS Paint sketches of each skill (`/ / / /`), scrolling code errors.  
+**[Voiceover]:**  
+> *"That took way longer than I wanted it to. 'Can you stop sucking?' 'You're Spider-Man!' Alright, alright... I guess just regular punching was too boring. So cue the montage."*
+
+---
+
+**[Visual]:** Baseplate demonstration showing each combat move: 1-2-3 combo, uppercut launcher, web-pellets, dropkick.  
+**[Voiceover]:**  
+> *"Yep. After a lot of work and ALOT of red errors, I finally made a full-fledged combat system."*
+
+---
+
+**[Visual]:** MS Paint drawing of thugs, dragging a knife onto them with the selection tool.  
+**[Voiceover]:**  
+> *"Okay, combat is done. What next? 'Boo, Spider-Man doesn't just fight random people!' Fine. I’ll add live city crimes."*
+
+---
+
+**[Visual]:** Freecam showing crime scenes, arms deals, getaway vans. Deep announcer voiceover naming the crimes.  
+**[Voiceover]:**  
+> *"I know y'all get bored easily, so I'll just show you the finished product: live crimes Spider-Man can intercept across the city. And FINALLY, I'M FI—"*
+
+---
+
+### ACT 3: THE BLUE HOODIE & THE SUITS
+
+**[Visual]:** Freeze frame! Snap zoom on your character in a blue hoodie swinging in baseplate. Cut to Scarlet Spider.  
+**[Voiceover]:**  
+> *"WAIT, DON'T LOOK! Fine, you can look. 'Spider-Man doesn't wear a blue hoodie, that's not Spider-Man!' Actually... (pushes glasses up with nerd voice) Spider-Man DOES wear a blue hoodie. But I know what you mean."*
+
+---
+
+**[Visual]:** MS Paint drawings of iconic suits with names in the top corner. Points cursor directly at Roblox catalog store.  
+**[Voiceover]:**  
+> *"These were my ideas for the suits. But... since I suck at 3D modeling, I'm just gonna take a little trip to the catalog store."*
+
+---
+
+**[Visual]:** Lineup of all 6 suits in one screen (Classic, Stark, Miles, Symbiote, Scarlet, 2099).  
+**[Voiceover]:**  
+> *"That’s better. Now time for the hard part: CODING."*
+
+---
+
+**[Visual]:** Fast montage of coding with AI / Rojo. Showcasing all suits in action, swapping between them instantly with keys 1–6 mid-combo.  
+**[Voiceover]:**  
+> *"And done. It actually works. Each suit has its own powers, and the best part? You don't even have to pause the game to change suits."*
+
+---
+
+### ACT 4: OUTRO & BURNOUT
+
+**[Visual]:** Standing on baseplate, showing the current state of the game. Cut to bad low-poly models: "eww".  
+**[Voiceover]:**  
+> *"Finally... I finished all the core mechanics. They're far from perfect, but next on my list is actually modeling and building New York City, because right now it looks like an Amazon warehouse."*
+
+---
+
+**[Visual]:** Spider-Man swinging at full speed, slamming face-first directly into a building wall. Screen instantly closes Roblox Studio to desktop.  
+**[Voiceover]:**  
+> *"Anyway, that’s 30 days of work as a solo dev, and officially my first ever video. I'm completely exhausted, so I'm going to sleep. Subscribe if you want to see Devlog #2, and drop a comment telling me what I should add next. BYEEE!"*
