@@ -11,8 +11,14 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
 
 local LocalPlayer = Players.LocalPlayer
+
+local isUIVisible = not (CombatConfig.CinematicMode == true)
 
 local PlayerHealthHUD = {}
 
@@ -73,6 +79,7 @@ local function buildGUI(playerGui: PlayerGui)
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 15
+	gui.Enabled = isUIVisible
 
 	-- Top-Right Container Anchor
 	local container = Instance.new("Frame")
@@ -853,6 +860,14 @@ function PlayerHealthHUD.init(playerGui: PlayerGui, player: Player)
 		task.wait(0.1)
 		PlayerHealthHUD.setupCharacter(newChar)
 	end)
+end
+
+-- 🎬 Cinematic / Recording UI Master Switch
+function PlayerHealthHUD.setUIVisible(visible: boolean)
+	isUIVisible = visible
+	if screenGui then
+		screenGui.Enabled = visible
+	end
 end
 
 return PlayerHealthHUD

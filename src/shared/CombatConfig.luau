@@ -7,6 +7,9 @@
 ]]
 
 local CombatConfig = {
+	-- 🎬 Cinematic / Devlog Recording Mode (Temporarily hides all HUDs & World Beacons for clean B-Roll)
+	CinematicMode = true,
+
 	-- 🎮 Active Controls & Keybinds (Clean, dedicated inputs with zero conflict)
 	Keybinds = {
 		Attack = Enum.UserInputType.MouseButton1, -- L-Click: 1-2-3 Punch Combo (Ground) / Ground Slam (Air)

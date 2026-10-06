@@ -176,42 +176,39 @@ local activeThreatEnemy: Model? = nil
 local lastThreatDetectionTime = 0
 
 -- 🎬 Clean Recording Mode (Hide/Restore ALL UI: Custom HUDs, Health, Dispatch, Beacons & CoreGui)
-local isRecordingModeActive = true -- Hidden by default as requested for clean B-Roll recording!
+local isRecordingModeActive = (CombatConfig.CinematicMode == true)
 
 local function setUIVisibility(visible: boolean)
+	isRecordingModeActive = not visible
+
 	-- 1. All Custom ScreenGuis in PlayerGui
 	for _, child in PlayerGui:GetChildren() do
-		if child:IsA("ScreenGui") then
-			child.Enabled = visible
-		elseif child:IsA("BillboardGui") then
+		if child:IsA("ScreenGui") or child:IsA("BillboardGui") then
 			child.Enabled = visible
 		end
 	end
 
-	-- 2. Roblox CoreGui (Chat, PlayerList, Health)
+	-- 2. Module HUD Handlers
+	PoliceRadioHUD.setUIVisible(visible)
+	PlayerHealthHUD.setUIVisible(visible)
+	CombatStyleHUD.setUIVisible(visible)
+
+	-- 3. Roblox CoreGui (Chat, PlayerList, Health)
 	pcall(function()
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, visible)
 	end)
 
-	-- 3. World Holographic Beacons in Workspace
+	-- 4. World Holographic Beacons in Workspace
 	local beacon = Workspace:FindFirstChild("CrimeHoloBeacon")
 	if beacon and beacon:IsA("Model") then
-		for _, desc in beacon:GetDescendants() do
-			if desc:IsA("BasePart") then
-				if desc:GetAttribute("OrigTransparency") == nil then
-					desc:SetAttribute("OrigTransparency", desc.Transparency)
-				end
-				desc.Transparency = visible and (desc:GetAttribute("OrigTransparency") :: number) or 1
-			elseif desc:IsA("BillboardGui") or desc:IsA("Beam") or desc:IsA("PointLight") then
-				(desc :: any).Enabled = visible
-			end
+		if not visible then
+			beacon:Destroy()
 		end
 	end
 end
 
 local function toggleCleanRecordingMode()
-	isRecordingModeActive = not isRecordingModeActive
-	setUIVisibility(not isRecordingModeActive)
+	setUIVisibility(isRecordingModeActive) -- flips the state cleanly
 end
 
 -- Ensure newly added ScreenGuis respect the active recording mode
@@ -225,11 +222,36 @@ PlayerGui.ChildAdded:Connect(function(child)
 	end
 end)
 
+-- Ensure newly spawned World Beacons in Workspace respect active recording mode
+Workspace.ChildAdded:Connect(function(child)
+	if isRecordingModeActive and child.Name == "CrimeHoloBeacon" then
+		task.defer(function()
+			if isRecordingModeActive and child and child.Parent then
+				child:Destroy()
+			end
+		end)
+	end
+end)
+
 -- Initial sweep to hide all UI elements as they finish building
 task.spawn(function()
-	for _ = 1, 10 do
-		setUIVisibility(not isRecordingModeActive)
-		task.wait(0.3)
+	for _ = 1, 15 do
+		if isRecordingModeActive then
+			setUIVisibility(false)
+		end
+		task.wait(0.25)
+	end
+end)
+
+-- Continuous CoreGui lock during recording mode (prevents CoreScripts from un-hiding Chat/Menu)
+task.spawn(function()
+	while true do
+		if isRecordingModeActive then
+			pcall(function()
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+			end)
+		end
+		task.wait(1.5)
 	end
 end)
 

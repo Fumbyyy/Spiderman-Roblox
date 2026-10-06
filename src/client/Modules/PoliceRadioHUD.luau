@@ -21,6 +21,9 @@ local SoundService = game:GetService("SoundService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CrimeConfig = require(Shared:WaitForChild("CrimeConfig"))
+local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
+
+local isUIVisible = not (CombatConfig.CinematicMode == true)
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
@@ -94,6 +97,7 @@ end
 
 local function createWorldBeacon(epicenter: Vector3, themeColor: Color3)
 	cleanupWorldBeacon()
+	if not isUIVisible then return end
 
 	local model = Instance.new("Model")
 	model.Name = "CrimeHoloBeacon"
@@ -167,6 +171,7 @@ local function createHUD()
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 15
 	gui.IgnoreGuiInset = true
+	gui.Enabled = isUIVisible
 
 	----------------------------------------------------------------------------
 	-- 📱 1. IN-SUIT GLASSMORPHIC COMM CARD (Dynamic Island Top-Center)
@@ -566,20 +571,20 @@ function PoliceRadioHUD.onCrimeSpawned(data: CrimeData)
 
 		if waypointMarker and waypointMarkerStroke then
 			waypointMarkerStroke.Color = themeColor
-			waypointMarker.Visible = not PoliceRadioHUD.isVisorOpen
+			waypointMarker.Visible = isUIVisible and (not PoliceRadioHUD.isVisorOpen)
 		end
 
 		if pointerArrow then
 			pointerArrow.ImageColor3 = themeColor
-			pointerArrow.Visible = not PoliceRadioHUD.isVisorOpen
+			pointerArrow.Visible = isUIVisible and (not PoliceRadioHUD.isVisorOpen)
 		end
 
 		-- 3D Sky Beacon at Epicenter
-		if data.Epicenter then
+		if data.Epicenter and isUIVisible then
 			createWorldBeacon(data.Epicenter, themeColor)
 		end
 
-		if not PoliceRadioHUD.isRadioMuted and not PoliceRadioHUD.isVisorOpen then
+		if isUIVisible and not PoliceRadioHUD.isRadioMuted and not PoliceRadioHUD.isVisorOpen then
 			-- Play radio squelch
 			playDispatchSound("RadioSquelch")
 
@@ -635,6 +640,10 @@ function PoliceRadioHUD.onCrimeCleared(data: CrimeData)
 		TweenService:Create(commCard, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, 0, 0, -120),
 		}):Play()
+	end
+
+	if not isUIVisible then
+		return
 	end
 
 	if not screenGui or not victoryBanner then
@@ -731,10 +740,29 @@ function PoliceRadioHUD.setVisorOpen(isOpen: boolean)
 		commCard.Visible = not isOpen
 	end
 	if waypointMarker then
-		waypointMarker.Visible = not isOpen and PoliceRadioHUD.isCrimeActive
+		waypointMarker.Visible = not isOpen and PoliceRadioHUD.isCrimeActive and isUIVisible
 	end
 	if pointerArrow then
-		pointerArrow.Visible = not isOpen and PoliceRadioHUD.isCrimeActive
+		pointerArrow.Visible = not isOpen and PoliceRadioHUD.isCrimeActive and isUIVisible
+	end
+end
+
+-- 🎬 Cinematic / Recording UI Master Switch
+function PoliceRadioHUD.setUIVisible(visible: boolean)
+	isUIVisible = visible
+	if screenGui then
+		screenGui.Enabled = visible
+	end
+	if not visible then
+		cleanupWorldBeacon()
+		if commCard then commCard.Visible = false end
+		if waypointMarker then waypointMarker.Visible = false end
+		if pointerArrow then pointerArrow.Visible = false end
+		if victoryBanner then victoryBanner.Visible = false end
+	else
+		if PoliceRadioHUD.isCrimeActive and PoliceRadioHUD.activeCrimeData and PoliceRadioHUD.activeCrimeData.Epicenter then
+			createWorldBeacon(PoliceRadioHUD.activeCrimeData.Epicenter, PoliceRadioHUD.activeCrimeData.ThemeColor or Color3.fromRGB(255, 75, 75))
+		end
 	end
 end
 
@@ -785,6 +813,19 @@ end
 --------------------------------------------------------------------------------
 
 RunService.RenderStepped:Connect(function()
+	if not isUIVisible then
+		if waypointMarker and waypointMarker.Visible then
+			waypointMarker.Visible = false
+		end
+		if pointerArrow and pointerArrow.Visible then
+			pointerArrow.Visible = false
+		end
+		if activeBeaconModel then
+			cleanupWorldBeacon()
+		end
+		return
+	end
+
 	local now = os.clock()
 
 	-- 1. Animated Radio Waveform Bars (Dynamic Equalizer)

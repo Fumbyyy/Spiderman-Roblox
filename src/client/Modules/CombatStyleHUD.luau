@@ -23,6 +23,8 @@ local CombatStyleHUD = {
 	currentRankIndex = 1,
 }
 
+local isUIVisible = not (CombatConfig.CinematicMode == true)
+
 -- GUI Elements
 local screenGui: ScreenGui? = nil
 local mainContainer: Frame? = nil
@@ -48,6 +50,7 @@ local function createHUD()
 	gui.ResetOnSpawn = false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 10
+	gui.Enabled = isUIVisible
 
 	-- Style Container (Right-Center Screen Anchor with safe edge margin)
 	local container = Instance.new("Frame")
@@ -640,5 +643,13 @@ end)
 
 -- Initialize on load
 createHUD()
+
+-- 🎬 Cinematic / Recording UI Master Switch
+function CombatStyleHUD.setUIVisible(visible: boolean)
+	isUIVisible = visible
+	if screenGui then
+		screenGui.Enabled = visible
+	end
+end
 
 return CombatStyleHUD
