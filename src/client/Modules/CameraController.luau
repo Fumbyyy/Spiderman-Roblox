@@ -36,6 +36,45 @@ function CameraController.setUIMode(enabled: boolean)
 	end
 end
 
+-- 🔒 Instantaneous Reactive Cursor & Mouse Lock Controls (Eliminates click & window-focus glitches)
+UserInputService:GetPropertyChangedSignal("MouseIconEnabled"):Connect(function()
+	if not CameraController.isUIMode and UserInputService.MouseIconEnabled then
+		UserInputService.MouseIconEnabled = false
+	end
+end)
+
+UserInputService:GetPropertyChangedSignal("MouseBehavior"):Connect(function()
+	if not CameraController.isUIMode and UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+	end
+end)
+
+UserInputService.WindowFocused:Connect(function()
+	if not CameraController.isUIMode then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		UserInputService.MouseIconEnabled = false
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+	if not CameraController.isUIMode and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2) then
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		end
+		if UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = false
+		end
+	end
+end)
+
+-- Initial cursor lockdown on module load
+task.defer(function()
+	if not CameraController.isUIMode then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		UserInputService.MouseIconEnabled = false
+	end
+end)
+
 -- 🎥 Setup character humanoid camera offset
 function CameraController.setupCharacter(humanoid: Humanoid)
 	humanoid.AutoRotate = true
@@ -44,8 +83,6 @@ end
 
 -- 🎥 RenderStepped Camera Update (Dynamic FOV & Action Camera)
 function CameraController.update(deltaTime: number, camera: Camera, rootPart: BasePart?, humanoid: Humanoid?, isFreeMoving: boolean)
-	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
-
 	-- 🔓 UI Mode: Release mouse lock so player can freely click menus & phone
 	if CameraController.isUIMode then
 		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
@@ -57,13 +94,15 @@ function CameraController.update(deltaTime: number, camera: Camera, rootPart: Ba
 		return
 	end
 
-	-- 🔒 Action Camera Shift-Lock: Smoothly keep mouse locked without constant property re-assignment flickering
+	-- 🔒 Action Camera Shift-Lock: Smoothly keep mouse locked and cursor hidden
 	if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 	end
-	if GrappleConfig.Camera.HideCursor and UserInputService.MouseIconEnabled then
+	if UserInputService.MouseIconEnabled then
 		UserInputService.MouseIconEnabled = false
 	end
+
+	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
 
 	-- Smooth character body rotation towards camera look direction when on the ground & moving freely
 	if isFreeMoving and humanoid.FloorMaterial ~= Enum.Material.Air then
