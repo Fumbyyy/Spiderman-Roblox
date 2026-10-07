@@ -70,6 +70,30 @@ task.spawn(function()
 	end
 end)
 
+local function getSuitDisplayInfo(suitId: string): (string, Color3)
+	if suitId == "CustomAvatar" then
+		return string.upper(LocalPlayer.DisplayName or LocalPlayer.Name), Color3.fromRGB(225, 235, 245)
+	elseif suitId == "MilesSpiderVerse" then
+		return "MILES MORALES", Color3.fromRGB(255, 230, 60)
+	elseif suitId == "SymbioteBlack" then
+		return "SYMBIOTE SUIT", Color3.fromRGB(180, 150, 255)
+	elseif suitId == "ScarletSpider" then
+		return "SCARLET SPIDER", Color3.fromRGB(240, 50, 60)
+	elseif suitId == "Cyber2099" then
+		return "SPIDER-MAN 2099", Color3.fromRGB(255, 50, 85)
+	elseif suitId == "StarkTechSuit" then
+		return "STARK TECH", Color3.fromRGB(75, 235, 255)
+	elseif suitId == "ClassicSuit" then
+		return "CLASSIC SUIT", Color3.fromRGB(225, 45, 55)
+	else
+		local sDef = SuitConfig.getSuitById(suitId)
+		if sDef then
+			return string.upper(sDef.Name), sDef.ThemeColor or Color3.fromRGB(220, 230, 245)
+		end
+		return "SPIDER-MAN", Color3.fromRGB(225, 45, 55)
+	end
+end
+
 local function buildGUI(playerGui: PlayerGui)
 	if playerGui:FindFirstChild("PlayerHealthHUD") then
 		playerGui:FindFirstChild("PlayerHealthHUD"):Destroy()
@@ -82,12 +106,12 @@ local function buildGUI(playerGui: PlayerGui)
 	gui.DisplayOrder = 15
 	gui.Enabled = isUIVisible
 
-	-- Top-Right Container Anchor
+	-- Top-Right Container Anchor (Wider 280px container prevents text collisions)
 	local container = Instance.new("Frame")
 	container.Name = "HealthHUDContainer"
 	container.AnchorPoint = Vector2.new(1, 0)
 	container.Position = UDim2.new(1, -24, 0, 24)
-	container.Size = UDim2.new(0, 260, 0, 72)
+	container.Size = UDim2.new(0, 280, 0, 72)
 	container.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
 	container.BackgroundTransparency = 0.22
 	container.BorderSizePixel = 0
@@ -106,16 +130,17 @@ local function buildGUI(playerGui: PlayerGui)
 	containerStroke.Parent = container
 	hudContainerStroke = containerStroke
 
-	-- Top Row: Suit / Hero Label
+	-- Top Row: Suit / Hero Label (Left-aligned with ellipsis truncate, leaves 100px for HP)
 	local suitLabel = Instance.new("TextLabel")
 	suitLabel.Name = "SuitTitleLabel"
 	suitLabel.Position = UDim2.new(0, 14, 0, 6)
-	suitLabel.Size = UDim2.new(0, 140, 0, 16)
+	suitLabel.Size = UDim2.new(1, -114, 0, 16)
 	suitLabel.BackgroundTransparency = 1
 	suitLabel.Font = Enum.Font.GothamBold
 	suitLabel.Text = "SPIDER-MAN"
 	suitLabel.TextColor3 = Color3.fromRGB(220, 230, 245)
-	suitLabel.TextSize = 12
+	suitLabel.TextSize = 11.5
+	suitLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	suitLabel.TextXAlignment = Enum.TextXAlignment.Left
 	suitLabel.Parent = container
 	suitTitleLabel = suitLabel
@@ -125,12 +150,12 @@ local function buildGUI(playerGui: PlayerGui)
 	hpLabel.Name = "HPTextLabel"
 	hpLabel.AnchorPoint = Vector2.new(1, 0)
 	hpLabel.Position = UDim2.new(1, -14, 0, 6)
-	hpLabel.Size = UDim2.new(0, 90, 0, 16)
+	hpLabel.Size = UDim2.new(0, 95, 0, 16)
 	hpLabel.BackgroundTransparency = 1
 	hpLabel.Font = Enum.Font.GothamBold
 	hpLabel.Text = "100 / 100"
 	hpLabel.TextColor3 = Color3.fromRGB(180, 195, 215)
-	hpLabel.TextSize = 12
+	hpLabel.TextSize = 11.5
 	hpLabel.TextXAlignment = Enum.TextXAlignment.Right
 	hpLabel.Parent = container
 	hpTextLabel = hpLabel
@@ -242,9 +267,11 @@ local function buildGUI(playerGui: PlayerGui)
 	bText.Size = UDim2.new(1, 0, 1, 0)
 	bText.BackgroundTransparency = 1
 	bText.Font = Enum.Font.GothamBold
+	bText.Position = UDim2.new(0, 6, 0, 0)
+	bText.Size = UDim2.new(1, -12, 1, 0)
 	bText.Text = "🛡️ 25 NANOTECH SHIELD"
 	bText.TextColor3 = Color3.fromRGB(75, 235, 255)
-	bText.TextSize = 10
+	bText.TextSize = 9.5
 	bText.TextScaled = false
 	bText.Parent = badge
 	shieldBadgeText = bText
@@ -277,17 +304,18 @@ local function buildGUI(playerGui: PlayerGui)
 
 	local scText = Instance.new("TextLabel")
 	scText.Name = "ScarletText"
-	scText.Size = UDim2.new(1, 0, 1, 0)
+	scText.Position = UDim2.new(0, 6, 0, 0)
+	scText.Size = UDim2.new(1, -12, 1, 0)
 	scText.BackgroundTransparency = 1
 	scText.Font = Enum.Font.GothamBold
-	scText.Text = "[ 🕸️ IMPACT BLAST READY [E]  |  🚀 225m SLINGSHOT ]"
+	scText.Text = "🕸️ IMPACT BLAST [E]  •  🚀 +25% SLINGSHOT"
 	scText.TextColor3 = Color3.fromRGB(255, 120, 130)
 	scText.TextSize = 9
 	scText.TextScaled = false
 	scText.Parent = scBadge
 	scarletBadgeText = scText
 
-	-- 4. Symbiote Alien Status Badge
+	-- 4. Symbiote Alien Status Badge (Concise & padded to prevent card clipping)
 	local sBadge = Instance.new("Frame")
 	sBadge.Name = "SymbioteStatusBadge"
 	sBadge.AnchorPoint = Vector2.new(0, 0)
@@ -314,12 +342,13 @@ local function buildGUI(playerGui: PlayerGui)
 
 	local sText = Instance.new("TextLabel")
 	sText.Name = "SymbioteText"
-	sText.Size = UDim2.new(1, 0, 1, 0)
+	sText.Position = UDim2.new(0, 6, 0, 0)
+	sText.Size = UDim2.new(1, -12, 1, 0)
 	sText.BackgroundTransparency = 1
 	sText.Font = Enum.Font.GothamBold
-	sText.Text = "[ 🌑 SYMBIOTE: +20% BRUTE DAMAGE & PARASITIC SIPHON ]"
+	sText.Text = "🌑 +20% BRUTE DAMAGE • HEALTH SIPHON"
 	sText.TextColor3 = Color3.fromRGB(210, 190, 255)
-	sText.TextSize = 10
+	sText.TextSize = 9
 	sText.TextScaled = false
 	sText.Parent = sBadge
 
@@ -350,12 +379,13 @@ local function buildGUI(playerGui: PlayerGui)
 
 	local c2099Text = Instance.new("TextLabel")
 	c2099Text.Name = "Cyber2099Text"
-	c2099Text.Size = UDim2.new(1, 0, 1, 0)
+	c2099Text.Position = UDim2.new(0, 6, 0, 0)
+	c2099Text.Size = UDim2.new(1, -12, 1, 0)
 	c2099Text.BackgroundTransparency = 1
 	c2099Text.Font = Enum.Font.GothamBold
-	c2099Text.Text = "[ 🤖 2099: TALON SLASHES, LASER WEBS & GRAVITY VORTEX ]"
-	c2099Text.TextColor3 = Color3.fromRGB(255, 80, 110)
-	c2099Text.TextSize = 8.5
+	c2099Text.Text = "⚡ 2099: TALON SLASHES & VORTEX"
+	c2099Text.TextColor3 = Color3.fromRGB(255, 100, 130)
+	c2099Text.TextSize = 9
 	c2099Text.TextScaled = false
 	c2099Text.Parent = c2099Badge
 
@@ -387,12 +417,13 @@ local function buildGUI(playerGui: PlayerGui)
 
 	local clText = Instance.new("TextLabel")
 	clText.Name = "ClassicText"
-	clText.Size = UDim2.new(1, 0, 1, 0)
+	clText.Position = UDim2.new(0, 6, 0, 0)
+	clText.Size = UDim2.new(1, -12, 1, 0)
 	clText.BackgroundTransparency = 1
 	clText.Font = Enum.Font.GothamBold
-	clText.Text = "[ 🕷️ PETER: DOUBLE WEB-SLAM & RAPID SILK (0.16s) ]"
+	clText.Text = "🕷️ DOUBLE WEB-SLAM • RAPID SILK"
 	clText.TextColor3 = Color3.fromRGB(240, 245, 255)
-	clText.TextSize = 8.5
+	clText.TextSize = 9
 	clText.TextScaled = false
 	clText.Parent = clBadge
 	classicBadgeText = clText
@@ -437,8 +468,8 @@ local function buildGUI(playerGui: PlayerGui)
 	local cGrad = Instance.new("UIGradient")
 	cGrad.Name = "CamoFillGradient"
 	cGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 235, 70)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 25)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 45)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 175, 25)),
 	})
 	cGrad.Parent = cFill
 	camoBarFillGrad = cGrad
@@ -451,8 +482,8 @@ local function buildGUI(playerGui: PlayerGui)
 	cText.BackgroundTransparency = 1
 	cText.Font = Enum.Font.GothamBold
 	cText.Text = "⚡ CAMOUFLAGE READY [PRESS F]"
-	cText.TextColor3 = Color3.fromRGB(255, 235, 70)
-	cText.TextSize = 10
+	cText.TextColor3 = Color3.fromRGB(18, 20, 26)
+	cText.TextSize = 9.5
 	cText.TextScaled = false
 	cText.Parent = cTrack
 	camoBarText = cText
@@ -460,8 +491,8 @@ local function buildGUI(playerGui: PlayerGui)
 	local ctStroke = Instance.new("UIStroke")
 	ctStroke.Name = "CamoTextStroke"
 	ctStroke.Thickness = 1.0
-	ctStroke.Color = Color3.fromRGB(255, 215, 50)
-	ctStroke.Transparency = 0.2
+	ctStroke.Color = Color3.fromRGB(255, 255, 255)
+	ctStroke.Transparency = 1
 	ctStroke.Parent = cText
 	camoTextStroke = ctStroke
 
@@ -514,12 +545,9 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 	local isCustom = (suitId == "CustomAvatar")
 
 	if suitTitleLabel then
-		if isCustom then
-			suitTitleLabel.Text = string.upper(LocalPlayer.DisplayName or LocalPlayer.Name)
-		else
-			local sDef = SuitConfig.getSuitById(suitId)
-			suitTitleLabel.Text = sDef and string.upper(sDef.Name) or "SPIDER-MAN"
-		end
+		local titleText, titleColor = getSuitDisplayInfo(suitId)
+		suitTitleLabel.Text = titleText
+		suitTitleLabel.TextColor3 = titleColor
 	end
 
 	-- Update Camouflage Meter
@@ -550,7 +578,7 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 		shieldBadge.Visible = isShieldActive
 
 		if isShieldActive then
-			hudContainer.Size = UDim2.new(0, 260, 0, 76)
+			hudContainer.Size = UDim2.new(0, 280, 0, 76)
 			local shieldRatio = math.clamp(curShield / shieldBonus, 0, 1)
 
 			TweenService:Create(shieldBarFill, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -575,9 +603,9 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 			end
 		else
 			if isMiles or isSymbiote or isScarlet or is2099 or isClassic then
-				hudContainer.Size = UDim2.new(0, 260, 0, 72)
+				hudContainer.Size = UDim2.new(0, 280, 0, 72)
 			else
-				hudContainer.Size = UDim2.new(0, 260, 0, 48)
+				hudContainer.Size = UDim2.new(0, 280, 0, 48)
 			end
 		end
 	end
@@ -609,7 +637,7 @@ function PlayerHealthHUD.updateCamoHUD()
 		return
 	end
 
-	hudContainer.Size = UDim2.new(0, 260, 0, 72)
+	hudContainer.Size = UDim2.new(0, 280, 0, 72)
 
 	local camoState = LocalPlayer:GetAttribute("MilesCamoState") or "Ready"
 	local camoEnergy = LocalPlayer:GetAttribute("MilesCamoEnergy")
@@ -619,62 +647,51 @@ function PlayerHealthHUD.updateCamoHUD()
 	camoEnergy = math.clamp(camoEnergy, 0, 1)
 
 	if camoState == "Ready" then
-		-- State: Ready (100%)
+		-- State: Ready (100% full, electric amber gradient, high-contrast dark text)
 		camoBarFill.Size = UDim2.new(1, 0, 1, 0)
 		camoBarFillGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 235, 70)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 25)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 45)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 175, 25)),
 		})
 		camoBarText.Text = "⚡ CAMOUFLAGE READY [PRESS F]"
-		camoBarText.TextColor3 = Color3.fromRGB(255, 235, 70)
-		camoTextStroke.Color = Color3.fromRGB(255, 215, 50)
+		camoBarText.TextColor3 = Color3.fromRGB(18, 20, 26)
+		camoTextStroke.Transparency = 1
 
-		-- Pulsing yellow outline
-		if not camoPulseTween then
-			camoTextStroke.Transparency = 0.1
-			camoTextStroke.Thickness = 1.0
-			camoPulseTween = TweenService:Create(camoTextStroke, TweenInfo.new(0.65, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-				Transparency = 0.75,
-				Thickness = 1.8,
-			})
-			camoPulseTween:Play()
+		if camoPulseTween then
+			camoPulseTween:Cancel()
+			camoPulseTween = nil
 		end
 
 	elseif camoState == "Active" then
-		-- State: Active (Draining over 5.0s)
+		-- State: Active (Cyan stealth glow with crisp high-contrast dark text)
 		if camoPulseTween then
 			camoPulseTween:Cancel()
 			camoPulseTween = nil
 		end
-		camoTextStroke.Transparency = 0.3
-		camoTextStroke.Thickness = 1.0
-		camoTextStroke.Color = Color3.fromRGB(15, 30, 45)
-
 		camoBarFill.Size = UDim2.new(camoEnergy, 0, 1, 0)
 		camoBarFillGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 240, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 180, 245)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 230, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 175, 245)),
 		})
-		camoBarText.Text = "👤 INVISIBLE: ATTACK TO DETONATE VENOM NOVA!"
-		camoBarText.TextColor3 = Color3.fromRGB(100, 245, 255)
+		camoBarText.Text = "👤 INVISIBLE • VENOM NOVA READY"
+		camoBarText.TextColor3 = Color3.fromRGB(15, 25, 36)
+		camoTextStroke.Transparency = 1
 
 	elseif camoState == "Recharging" then
-		-- State: Recharging (Refilling over 8.0s)
+		-- State: Recharging
 		if camoPulseTween then
 			camoPulseTween:Cancel()
 			camoPulseTween = nil
 		end
-		camoTextStroke.Transparency = 0.4
-		camoTextStroke.Thickness = 1.0
-		camoTextStroke.Color = Color3.fromRGB(20, 18, 10)
-
 		camoBarFill.Size = UDim2.new(camoEnergy, 0, 1, 0)
 		camoBarFillGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(210, 185, 60)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 135, 30)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 150, 45)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 110, 20)),
 		})
 		camoBarText.Text = "⚡ RECHARGING..."
-		camoBarText.TextColor3 = Color3.fromRGB(215, 195, 110)
+		camoBarText.TextColor3 = Color3.fromRGB(255, 235, 160)
+		camoTextStroke.Color = Color3.fromRGB(20, 18, 10)
+		camoTextStroke.Transparency = 0.5
 	end
 end
 
@@ -691,12 +708,12 @@ function PlayerHealthHUD.updateScarletHUD()
 
 	local isReady = LocalPlayer:GetAttribute("ScarletImpactReady") ~= false
 	if isReady then
-		scarletBadgeText.Text = "[ 🕸️ IMPACT BLAST READY [E]  |  🚀 225m SLINGSHOT ]"
+		scarletBadgeText.Text = "🕸️ IMPACT BLAST [E]  •  🚀 +25% SLINGSHOT"
 		scarletBadgeText.TextColor3 = Color3.fromRGB(255, 120, 130)
 		scarletBadgeStroke.Color = Color3.fromRGB(240, 50, 60)
 		scarletBadgeStroke.Transparency = 0.2
 	else
-		scarletBadgeText.Text = "[ 🕸️ IMPACT BLAST RECHARGING... ]"
+		scarletBadgeText.Text = "⏳ IMPACT BLAST RECHARGING..."
 		scarletBadgeText.TextColor3 = Color3.fromRGB(160, 165, 175)
 		scarletBadgeStroke.Color = Color3.fromRGB(75, 45, 55)
 		scarletBadgeStroke.Transparency = 0.5
@@ -756,28 +773,9 @@ function PlayerHealthHUD.setupCharacter(character: Model)
 
 	local suitId = character:GetAttribute("EquippedSuit") or LocalPlayer:GetAttribute("EquippedSuit") or "ClassicSuit"
 	if suitTitleLabel then
-		if suitId == "StarkTechSuit" then
-			suitTitleLabel.Text = "STARK TECH ADVANCED"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(75, 235, 255)
-		elseif suitId == "MilesSpiderVerse" then
-			suitTitleLabel.Text = "MILES MORALES (SPIDER-VERSE)"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
-		elseif suitId == "SymbioteBlack" then
-			suitTitleLabel.Text = "SYMBIOTE ALIEN SUIT"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(180, 150, 255)
-		elseif suitId == "ScarletSpider" then
-			suitTitleLabel.Text = "SCARLET SPIDER (BEN REILLY)"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(240, 50, 60)
-		elseif suitId == "Cyber2099" then
-			suitTitleLabel.Text = "SPIDER-MAN 2099 (MIGUEL O'HARA)"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(255, 50, 85)
-		elseif suitId == "ClassicSuit" then
-			suitTitleLabel.Text = "CLASSIC PETER PARKER"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(225, 45, 55)
-		else
-			suitTitleLabel.Text = "CLASSIC PETER PARKER"
-			suitTitleLabel.TextColor3 = Color3.fromRGB(225, 45, 55)
-		end
+		local titleText, titleColor = getSuitDisplayInfo(suitId)
+		suitTitleLabel.Text = titleText
+		suitTitleLabel.TextColor3 = titleColor
 	end
 
 	updateHUDDisplay(humanoid, character)
@@ -831,30 +829,11 @@ function PlayerHealthHUD.setupCharacter(character: Model)
 	end)
 
 	character:GetAttributeChangedSignal("EquippedSuit"):Connect(function()
-		local newSuit = character:GetAttribute("EquippedSuit")
+		local newSuit = character:GetAttribute("EquippedSuit") or LocalPlayer:GetAttribute("EquippedSuit") or "ClassicSuit"
 		if suitTitleLabel then
-			if newSuit == "StarkTechSuit" then
-				suitTitleLabel.Text = "STARK TECH ADVANCED"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(75, 235, 255)
-			elseif newSuit == "MilesSpiderVerse" then
-				suitTitleLabel.Text = "MILES MORALES (SPIDER-VERSE)"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
-			elseif newSuit == "SymbioteBlack" then
-				suitTitleLabel.Text = "SYMBIOTE ALIEN SUIT"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(180, 150, 255)
-			elseif newSuit == "ScarletSpider" then
-				suitTitleLabel.Text = "SCARLET SPIDER (BEN REILLY)"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(240, 50, 60)
-			elseif newSuit == "Cyber2099" then
-				suitTitleLabel.Text = "SPIDER-MAN 2099 (MIGUEL O'HARA)"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(255, 50, 85)
-			elseif newSuit == "ClassicSuit" then
-				suitTitleLabel.Text = "CLASSIC PETER PARKER"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(225, 45, 55)
-			else
-				suitTitleLabel.Text = "CLASSIC PETER PARKER"
-				suitTitleLabel.TextColor3 = Color3.fromRGB(225, 45, 55)
-			end
+			local titleText, titleColor = getSuitDisplayInfo(newSuit)
+			suitTitleLabel.Text = titleText
+			suitTitleLabel.TextColor3 = titleColor
 		end
 		updateHUDDisplay(humanoid, character)
 	end)

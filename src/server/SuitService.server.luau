@@ -1124,30 +1124,9 @@ local function applySuitToCharacter(player: Player, character: Model, suitId: st
 	character:SetAttribute("StarkShieldBonus", if suit.Id == "StarkTechSuit" then 25 else 0)
 end
 
--- ⚡ High-Tech Holographic Nanotech Equip VFX
-local function triggerEquipVFX(character: Model, themeColor: Color3)
-	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then return end
-
-	local ring = Instance.new("Part")
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.2, 1, 1)
-	ring.CFrame = root.CFrame * CFrame.Angles(0, 0, math.rad(90))
-	ring.Material = Enum.Material.Neon
-	ring.Color = themeColor
-	ring.Transparency = 0.2
-	ring.CanCollide = false
-	ring.CanTouch = false
-	ring.CanQuery = false
-	ring.Anchored = true
-	ring.Parent = Workspace.Terrain
-
-	local tw = TweenService:Create(ring, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = Vector3.new(0.2, 16, 16),
-		Transparency = 1,
-	})
-	tw:Play()
-	Debris:AddItem(ring, 0.5)
+-- ⚡ High-Tech Equip VFX (Light beam removed per user preference)
+local function triggerEquipVFX(_character: Model, _themeColor: Color3)
+	-- Suppressed: Clean, seamless suit swapping without floor light rings or beams
 end
 
 --------------------------------------------------------------------------------

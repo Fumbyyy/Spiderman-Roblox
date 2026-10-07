@@ -402,54 +402,24 @@ function CombatStyleHUD.setCooldown(skillName: string, duration: number)
 	end
 end
 
-CombatStyleHUD.isTrayLockedHidden = false
+CombatStyleHUD.isTrayLockedHidden = true
 
--- 🎮 Dynamic Ability Tray Visibility (Slides in on combat, slides out when clear)
+-- 🎮 Dynamic Ability Tray Visibility (Permanently suppressed per user preference)
 function CombatStyleHUD.unlockAbilityTray()
-	CombatStyleHUD.isTrayLockedHidden = false
+	CombatStyleHUD.isTrayLockedHidden = true
 end
 
 function CombatStyleHUD.showAbilityTray()
-	if CombatStyleHUD.isTrayLockedHidden then return end
-	local tray = abilityTrayFrame or (screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?)
-	if not tray then return end
-	abilityTrayFrame = tray
-
-	if not tray.Visible or tray.Position.Y.Scale > 0.98 then
-		if abilityTrayTween then abilityTrayTween:Cancel() end
-		tray.Visible = true
-		abilityTrayTween = TweenService:Create(tray, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.98, 0, 0.96, 0),
-		})
-		abilityTrayTween:Play()
-	end
+	-- Suppressed: Ability pills [E], [R], [T] removed from screen
+	return
 end
 
 function CombatStyleHUD.hideAbilityTray(isImmediateLock: boolean?)
 	local tray = abilityTrayFrame or (screenGui and screenGui:FindFirstChild("AbilityTray") :: Frame?)
-	if not tray then return end
-	abilityTrayFrame = tray
-
-	if isImmediateLock then
-		CombatStyleHUD.isTrayLockedHidden = true
-		if abilityTrayTween then abilityTrayTween:Cancel() end
+	if tray then
 		tray.Visible = false
 		tray.Position = UDim2.new(0.98, 0, 1.15, 0)
-		return
 	end
-
-	if not tray.Visible and tray.Position.Y.Scale >= 1.10 then return end
-	if abilityTrayTween then abilityTrayTween:Cancel() end
-	abilityTrayTween = TweenService:Create(tray, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-		Position = UDim2.new(0.98, 0, 1.15, 0),
-	})
-	abilityTrayTween:Play()
-	abilityTrayTween.Completed:Connect(function(playbackState: Enum.PlaybackState)
-		-- Cancelled tweens also fire Completed (deferred); only hide on a true finish
-		if playbackState == Enum.PlaybackState.Completed and abilityTrayFrame and abilityTrayFrame.Position.Y.Scale >= 1.05 then
-			abilityTrayFrame.Visible = false
-		end
-	end)
 end
 
 -- 🥊 Register a successful attack hit on enemy
