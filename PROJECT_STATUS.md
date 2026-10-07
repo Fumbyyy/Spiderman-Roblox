@@ -4,8 +4,8 @@
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
 > **Date:** October 7, 2026  
-> **Active Git Head:** `c9d68c5` (Fully committed & synced with `origin/main`)  
-> **Milestone Status:** HUD & Suit Switching Polish Complete (Zero Clutter, Clean Titles, Readable Camo HUD)  
+> **Active Git Head:** `2dc0b51` (Fully committed & synced with `origin/main`)  
+> **Milestone Status:** Full On-Screen UI Overhaul (Shared EnemyOverheadUI, Ghost Trails, Suit Accents, Auto-Flow Combos)  
 
 ---
 
