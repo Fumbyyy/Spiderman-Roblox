@@ -50,6 +50,22 @@ local camoPulseTween: Tween? = nil
 local hpTextLabel: TextLabel? = nil
 local suitTitleLabel: TextLabel? = nil
 local shieldGlowStroke: UIStroke? = nil
+local hpGhostBar: Frame? = nil
+local suitAccentBar: Frame? = nil
+local lastHpRatio = 1
+local ghostToken = 0
+local extraConns: { RBXScriptConnection } = {}
+
+-- 🎨 Design Tokens
+local PANEL_COLOR = Color3.fromRGB(11, 13, 19)
+local STROKE_COLOR = Color3.fromRGB(255, 255, 255)
+local STROKE_TRANSPARENCY = 0.88
+local STROKE_THICKNESS = 1
+local TRACK_STROKE_COLOR = Color3.fromRGB(0, 0, 0)
+local HP_GREEN = Color3.fromRGB(52, 220, 120)
+local HP_AMBER = Color3.fromRGB(255, 180, 50)
+local HP_RED = Color3.fromRGB(240, 60, 65)
+local SHADE_GRADIENT = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(185, 185, 185))
 
 local currentShieldBonus: number = 0
 local activeHealthConn: RBXScriptConnection? = nil
@@ -112,23 +128,43 @@ local function buildGUI(playerGui: PlayerGui)
 	container.AnchorPoint = Vector2.new(1, 0)
 	container.Position = UDim2.new(1, -24, 0, 24)
 	container.Size = UDim2.new(0, 280, 0, 72)
-	container.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
-	container.BackgroundTransparency = 0.22
+	container.BackgroundColor3 = PANEL_COLOR
+	container.BackgroundTransparency = 0.18
 	container.BorderSizePixel = 0
 	container.Parent = gui
 
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = UDim.new(0, 10)
+	containerCorner.CornerRadius = UDim.new(0, 8)
 	containerCorner.Parent = container
 
 	local containerStroke = Instance.new("UIStroke")
 	containerStroke.Name = "ContainerStroke"
-	containerStroke.Thickness = 1.5
-	containerStroke.Color = Color3.fromRGB(45, 55, 75)
-	containerStroke.Transparency = 0.35
+	containerStroke.Thickness = STROKE_THICKNESS
+	containerStroke.Color = STROKE_COLOR
+	containerStroke.Transparency = STROKE_TRANSPARENCY
 	containerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	containerStroke.Parent = container
 	hudContainerStroke = containerStroke
+
+	-- Subtle top-down sheen for depth against bright skies
+	local panelGrad = Instance.new("UIGradient")
+	panelGrad.Rotation = 90
+	panelGrad.Transparency = NumberSequence.new(0, 0.25)
+	panelGrad.Parent = container
+
+	-- Suit identity accent strip (left edge, tinted per suit)
+	local accent = Instance.new("Frame")
+	accent.Name = "SuitAccent"
+	accent.Position = UDim2.new(0, 0, 0, 10)
+	accent.Size = UDim2.new(0, 3, 1, -20)
+	accent.BackgroundColor3 = Color3.fromRGB(225, 45, 55)
+	accent.BorderSizePixel = 0
+	accent.Parent = container
+	suitAccentBar = accent
+
+	local accentCorner = Instance.new("UICorner")
+	accentCorner.CornerRadius = UDim.new(1, 0)
+	accentCorner.Parent = accent
 
 	-- Top Row: Suit / Hero Label (Left-aligned with ellipsis truncate, leaves 100px for HP)
 	local suitLabel = Instance.new("TextLabel")
@@ -154,7 +190,7 @@ local function buildGUI(playerGui: PlayerGui)
 	hpLabel.BackgroundTransparency = 1
 	hpLabel.Font = Enum.Font.GothamBold
 	hpLabel.Text = "100 / 100"
-	hpLabel.TextColor3 = Color3.fromRGB(180, 195, 215)
+	hpLabel.TextColor3 = Color3.fromRGB(205, 215, 230)
 	hpLabel.TextSize = 11.5
 	hpLabel.TextXAlignment = Enum.TextXAlignment.Right
 	hpLabel.Parent = container
@@ -165,8 +201,9 @@ local function buildGUI(playerGui: PlayerGui)
 	hpTrack.Name = "HPBarTrack"
 	hpTrack.Position = UDim2.new(0, 14, 0, 26)
 	hpTrack.Size = UDim2.new(1, -28, 0, 12)
-	hpTrack.BackgroundColor3 = Color3.fromRGB(25, 30, 42)
+	hpTrack.BackgroundColor3 = Color3.fromRGB(22, 26, 36)
 	hpTrack.BorderSizePixel = 0
+	hpTrack.ClipsDescendants = true
 	hpTrack.Parent = container
 
 	local hpTrackCorner = Instance.new("UICorner")
@@ -176,18 +213,34 @@ local function buildGUI(playerGui: PlayerGui)
 	local hpTrackStroke = Instance.new("UIStroke")
 	hpTrackStroke.Name = "HPTrackStroke"
 	hpTrackStroke.Thickness = 1.0
-	hpTrackStroke.Color = Color3.fromRGB(45, 55, 75)
+	hpTrackStroke.Color = TRACK_STROKE_COLOR
 	hpTrackStroke.Transparency = 0.5
 	hpTrackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	hpTrackStroke.Parent = hpTrack
 	hpBarStroke = hpTrackStroke
 
-	-- Base Health Bar Fill (Emerald Green)
+	-- Damage-trail ghost bar (lags behind real HP so every hit reads clearly)
+	local hpGhost = Instance.new("Frame")
+	hpGhost.Name = "HPGhostFill"
+	hpGhost.Size = UDim2.new(1, 0, 1, 0)
+	hpGhost.BackgroundColor3 = Color3.fromRGB(255, 236, 220)
+	hpGhost.BackgroundTransparency = 0.1
+	hpGhost.BorderSizePixel = 0
+	hpGhost.ZIndex = 1
+	hpGhost.Parent = hpTrack
+	hpGhostBar = hpGhost
+
+	local hpGhostCorner = Instance.new("UICorner")
+	hpGhostCorner.CornerRadius = UDim.new(0, 4)
+	hpGhostCorner.Parent = hpGhost
+
+	-- Base Health Bar Fill (hue lives on BackgroundColor3; gradient only shades)
 	local hpFill = Instance.new("Frame")
 	hpFill.Name = "HPBarFill"
 	hpFill.Size = UDim2.new(1, 0, 1, 0)
-	hpFill.BackgroundColor3 = Color3.fromRGB(46, 213, 115)
+	hpFill.BackgroundColor3 = HP_GREEN
 	hpFill.BorderSizePixel = 0
+	hpFill.ZIndex = 2
 	hpFill.Parent = hpTrack
 	hpBarFill = hpFill
 
@@ -196,10 +249,8 @@ local function buildGUI(playerGui: PlayerGui)
 	hpFillCorner.Parent = hpFill
 
 	local hpGrad = Instance.new("UIGradient")
-	hpGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(56, 230, 130)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(36, 185, 95)),
-	})
+	hpGrad.Rotation = 90
+	hpGrad.Color = SHADE_GRADIENT
 	hpGrad.Parent = hpFill
 
 	-- 2. Nanotech Shield Segment Bar (Stacked directly underneath HP bar)
@@ -230,10 +281,8 @@ local function buildGUI(playerGui: PlayerGui)
 	sFillCorner.Parent = sFill
 
 	local sGrad = Instance.new("UIGradient")
-	sGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 240, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 175, 245)),
-	})
+	sGrad.Rotation = 90
+	sGrad.Color = SHADE_GRADIENT
 	sGrad.Parent = sFill
 
 	-- 3. Glowing Nanotech Pill Badge (e.g., "[🛡️ 25 NANOTECH SHIELD]")
@@ -456,7 +505,7 @@ local function buildGUI(playerGui: PlayerGui)
 	local cFill = Instance.new("Frame")
 	cFill.Name = "CamoBarFill"
 	cFill.Size = UDim2.new(1, 0, 1, 0)
-	cFill.BackgroundColor3 = Color3.fromRGB(255, 235, 70)
+	cFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- neutral: gradient defines the hue per camo state
 	cFill.BorderSizePixel = 0
 	cFill.Parent = cTrack
 	camoBarFill = cFill
@@ -525,16 +574,28 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 	local hpRatio = math.clamp(curBaseHp / baseMax, 0, 1)
 	TweenService:Create(hpBarFill, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Size = UDim2.new(hpRatio, 0, 1, 0),
+		BackgroundColor3 = if hpRatio <= 0.25 then HP_RED elseif hpRatio <= 0.5 then HP_AMBER else HP_GREEN,
 	}):Play()
 
-	-- Dynamic Color Shifts for Base HP (Low Health Warning)
-	if hpRatio <= 0.25 then
-		hpBarFill.BackgroundColor3 = Color3.fromRGB(235, 55, 60)
-	elseif hpRatio <= 0.50 then
-		hpBarFill.BackgroundColor3 = Color3.fromRGB(255, 175, 45)
-	else
-		hpBarFill.BackgroundColor3 = Color3.fromRGB(46, 213, 115)
+	-- Damage trail: hold the ghost briefly, then drain it; heals snap the ghost forward
+	if hpGhostBar then
+		ghostToken += 1
+		local token = ghostToken
+		if hpRatio < lastHpRatio then
+			task.delay(0.3, function()
+				if token == ghostToken and hpGhostBar then
+					TweenService:Create(hpGhostBar, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Size = UDim2.new(hpRatio, 0, 1, 0),
+					}):Play()
+				end
+			end)
+		else
+			hpGhostBar.Size = UDim2.new(hpRatio, 0, 1, 0)
+		end
 	end
+	lastHpRatio = hpRatio
+
+	hpTextLabel.TextColor3 = if hpRatio <= 0.25 then Color3.fromRGB(255, 120, 120) else Color3.fromRGB(205, 215, 230)
 
 	local suitId = character:GetAttribute("EquippedSuit") or LocalPlayer:GetAttribute("EquippedSuit") or "ClassicSuit"
 	local isMiles = (suitId == "MilesSpiderVerse")
@@ -544,10 +605,13 @@ local function updateHUDDisplay(humanoid: Humanoid, character: Model)
 	local isClassic = (suitId == "ClassicSuit")
 	local isCustom = (suitId == "CustomAvatar")
 
+	local titleText, titleColor = getSuitDisplayInfo(suitId)
 	if suitTitleLabel then
-		local titleText, titleColor = getSuitDisplayInfo(suitId)
 		suitTitleLabel.Text = titleText
 		suitTitleLabel.TextColor3 = titleColor
+	end
+	if suitAccentBar then
+		suitAccentBar.BackgroundColor3 = titleColor
 	end
 
 	-- Update Camouflage Meter
@@ -726,7 +790,7 @@ function PlayerHealthHUD.pulseSymbioteHeal()
 		hpBarStroke.Thickness = 2.2
 		hpBarStroke.Transparency = 0.05
 		TweenService:Create(hpBarStroke, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = Color3.fromRGB(45, 55, 75),
+			Color = TRACK_STROKE_COLOR,
 			Thickness = 1.0,
 			Transparency = 0.5,
 		}):Play()
@@ -736,9 +800,9 @@ function PlayerHealthHUD.pulseSymbioteHeal()
 		hudContainerStroke.Thickness = 2.2
 		hudContainerStroke.Transparency = 0.1
 		TweenService:Create(hudContainerStroke, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Color = Color3.fromRGB(45, 55, 75),
-			Thickness = 1.5,
-			Transparency = 0.35,
+			Color = STROKE_COLOR,
+			Thickness = STROKE_THICKNESS,
+			Transparency = STROKE_TRANSPARENCY,
 		}):Play()
 	end
 end
@@ -767,6 +831,11 @@ function PlayerHealthHUD.setupCharacter(character: Model)
 	if activeCamoStateConn then activeCamoStateConn:Disconnect() activeCamoStateConn = nil end
 	if activePlayerSuitConn then activePlayerSuitConn:Disconnect() activePlayerSuitConn = nil end
 	if activeScarletConn then activeScarletConn:Disconnect() activeScarletConn = nil end
+	for _, conn in extraConns do
+		conn:Disconnect()
+	end
+	table.clear(extraConns)
+	lastHpRatio = 1
 
 	local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
 	if not humanoid then return end
@@ -802,13 +871,13 @@ function PlayerHealthHUD.setupCharacter(character: Model)
 		updateHUDDisplay(humanoid, character)
 	end)
 
-	character:GetAttributeChangedSignal("MilesCamouflaged"):Connect(function()
+	table.insert(extraConns, character:GetAttributeChangedSignal("MilesCamouflaged"):Connect(function()
 		updateHUDDisplay(humanoid, character)
-	end)
+	end))
 
-	LocalPlayer:GetAttributeChangedSignal("MilesCamouflaged"):Connect(function()
+	table.insert(extraConns, LocalPlayer:GetAttributeChangedSignal("MilesCamouflaged"):Connect(function()
 		updateHUDDisplay(humanoid, character)
-	end)
+	end))
 
 	activeCamoEnergyConn = LocalPlayer:GetAttributeChangedSignal("MilesCamoEnergy"):Connect(function()
 		PlayerHealthHUD.updateCamoHUD()
@@ -828,15 +897,9 @@ function PlayerHealthHUD.setupCharacter(character: Model)
 		PlayerHealthHUD.updateScarletHUD()
 	end)
 
-	character:GetAttributeChangedSignal("EquippedSuit"):Connect(function()
-		local newSuit = character:GetAttribute("EquippedSuit") or LocalPlayer:GetAttribute("EquippedSuit") or "ClassicSuit"
-		if suitTitleLabel then
-			local titleText, titleColor = getSuitDisplayInfo(newSuit)
-			suitTitleLabel.Text = titleText
-			suitTitleLabel.TextColor3 = titleColor
-		end
+	table.insert(extraConns, character:GetAttributeChangedSignal("EquippedSuit"):Connect(function()
 		updateHUDDisplay(humanoid, character)
-	end)
+	end))
 end
 
 function PlayerHealthHUD.init(playerGui: PlayerGui, player: Player)

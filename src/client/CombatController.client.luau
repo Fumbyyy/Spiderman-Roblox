@@ -126,13 +126,15 @@ local function isTrulyAirborne(rootPart: BasePart, character: Model, humanoid: H
 end
 
 -- Character Utility Helper
+local configuredHumanoid: Humanoid? = nil
 local function getCharacterParts(): (Model?, BasePart?, Humanoid?)
 	local character = LocalPlayer.Character
 	if not character then return nil, nil, nil end
 	local rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		-- Prevent accidental physics tripping/ragdolling during ground combat maneuvers
+	if humanoid and humanoid ~= configuredHumanoid then
+		-- Prevent accidental physics tripping/ragdolling during ground combat maneuvers (once per humanoid)
+		configuredHumanoid = humanoid
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
 	end
@@ -196,6 +198,9 @@ local function setUIVisibility(visible: boolean)
 	-- 3. Roblox CoreGui (Chat, PlayerList, Health)
 	pcall(function()
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, visible)
+		-- Custom HUD owns health; suit hotkeys own 1-6. Never let these come back.
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 	end)
 
 	-- 4. World Holographic Beacons in Workspace

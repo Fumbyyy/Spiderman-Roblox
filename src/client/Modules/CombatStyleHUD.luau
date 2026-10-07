@@ -62,6 +62,25 @@ local function createHUD()
 	container.Visible = false
 	container.Parent = gui
 
+	-- Soft readability backdrop (fades out toward the screen center)
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "Backdrop"
+	backdrop.AnchorPoint = Vector2.new(1, 0.5)
+	backdrop.Position = UDim2.new(1, 24, 0.42, 0)
+	backdrop.Size = UDim2.new(1, 70, 0, 96)
+	backdrop.BackgroundColor3 = Color3.fromRGB(6, 8, 12)
+	backdrop.BorderSizePixel = 0
+	backdrop.ZIndex = 0
+	backdrop.Parent = container
+
+	local backdropGrad = Instance.new("UIGradient")
+	backdropGrad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.45, 0.55),
+		NumberSequenceKeypoint.new(1, 0.45),
+	})
+	backdropGrad.Parent = backdrop
+
 	-- Rank Badge Container
 	local badge = Instance.new("Frame")
 	badge.Name = "RankBadge"
@@ -113,36 +132,59 @@ local function createHUD()
 	rTitle.TextXAlignment = Enum.TextXAlignment.Left
 	rTitle.Parent = container
 
+	-- Combo Row: number + "HITS" auto-flow (no overlap at 100x+ or during hit bounce)
+	local comboRow = Instance.new("Frame")
+	comboRow.Name = "ComboRow"
+	comboRow.Position = UDim2.new(0, 74, 0, 26)
+	comboRow.Size = UDim2.new(0, 150, 0, 44)
+	comboRow.BackgroundTransparency = 1
+	comboRow.Parent = container
+
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rowLayout.Padding = UDim.new(0, 6)
+	rowLayout.Parent = comboRow
+
 	-- Combo Number Text (e.g. "24x")
 	local cLabel = Instance.new("TextLabel")
 	cLabel.Name = "ComboLabel"
-	cLabel.Position = UDim2.new(0, 74, 0, 26)
-	cLabel.Size = UDim2.new(0, 85, 0, 42)
+	cLabel.LayoutOrder = 1
+	cLabel.Size = UDim2.new(0, 0, 1, 0)
+	cLabel.AutomaticSize = Enum.AutomaticSize.X
 	cLabel.BackgroundTransparency = 1
 	cLabel.Font = Enum.Font.GothamBlack
 	cLabel.Text = "1x"
 	cLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	cLabel.TextSize = 38
 	cLabel.TextXAlignment = Enum.TextXAlignment.Left
-	cLabel.Parent = container
+	cLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+	cLabel.Parent = comboRow
 
 	local cLabelStroke = Instance.new("UIStroke")
 	cLabelStroke.Thickness = 2.5
-	cLabelStroke.Color = Color3.fromRGB(15, 18, 25)
+	cLabelStroke.Color = Color3.fromRGB(10, 12, 18)
 	cLabelStroke.Parent = cLabel
 
-	-- "COMBO" Sub-label
+	-- "HITS" Sub-label (baseline-aligned to the big number)
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Name = "HitsSubLabel"
-	subLabel.Position = UDim2.new(0, 160, 0, 36)
-	subLabel.Size = UDim2.new(0, 65, 0, 24)
+	subLabel.LayoutOrder = 2
+	subLabel.Size = UDim2.new(0, 0, 0, 22)
+	subLabel.AutomaticSize = Enum.AutomaticSize.X
 	subLabel.BackgroundTransparency = 1
 	subLabel.Font = Enum.Font.GothamBold
 	subLabel.Text = "HITS"
-	subLabel.TextColor3 = Color3.fromRGB(190, 210, 235)
-	subLabel.TextSize = 14
+	subLabel.TextColor3 = Color3.fromRGB(190, 205, 225)
+	subLabel.TextSize = 13
 	subLabel.TextXAlignment = Enum.TextXAlignment.Left
-	subLabel.Parent = container
+	subLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+	subLabel.Parent = comboRow
+
+	local subPad = Instance.new("UIPadding")
+	subPad.PaddingBottom = UDim.new(0, 6)
+	subPad.Parent = subLabel
 
 	-- Combo Decay Bar Background
 	local decayBg = Instance.new("Frame")

@@ -20,6 +20,7 @@ local Debris = game:GetService("Debris")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatConfig = require(Shared:WaitForChild("CombatConfig"))
+local EnemyOverheadUI = require(Shared:WaitForChild("EnemyOverheadUI"))
 local RemotesFolder = ReplicatedStorage:WaitForChild("CombatRemotes")
 local CombatVFXRemote = RemotesFolder:WaitForChild("CombatVFX") :: RemoteEvent
 
@@ -38,109 +39,8 @@ export type EnemyArchetype = "Gunner" | "Brute" | "Brawler"
 -- ?? TACTICAL OVERHEAD HEALTH BAR
 --------------------------------------------------------------------------------
 
-local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: EnemyArchetype, maxHp: number)
-	local head = enemyModel:FindFirstChild("Head") :: BasePart?
-	local humanoid = enemyModel:FindFirstChildOfClass("Humanoid")
-	if not head or not humanoid then return end
-
-	local existingGui = head:FindFirstChild("HealthGui")
-	if existingGui then existingGui:Destroy() end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "HealthGui"
-	billboard.Size = UDim2.new(2.8, 0, 0.42, 0)
-	billboard.StudsOffset = Vector3.new(0, archetype == "Brute" and 2.8 or 2.2, 0)
-	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 55
-	billboard.Parent = head
-
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 1, 0)
-	frame.BackgroundTransparency = 1
-	frame.Parent = billboard
-
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 0.52, 0)
-	nameLabel.Position = UDim2.new(0, 0, 0, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 10
-	nameLabel.TextStrokeTransparency = 0.4
-
-	local archetypeTag = if archetype == "Gunner" then "MARKSMAN" elseif archetype == "Brute" then "ENFORCER" else "BRAWLER"
-	local defaultTextColor = if archetype == "Gunner" then Color3.fromRGB(255, 95, 95) elseif archetype == "Brute" then Color3.fromRGB(120, 215, 255) else Color3.fromRGB(240, 245, 255)
-
-	nameLabel.TextColor3 = defaultTextColor
-	nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
-	nameLabel.Parent = frame
-
-	local barBackground = Instance.new("Frame")
-	barBackground.Size = UDim2.new(1, 0, 0.28, 0)
-	barBackground.Position = UDim2.new(0, 0, 0.65, 0)
-	barBackground.BackgroundColor3 = Color3.fromRGB(14, 18, 26)
-	barBackground.BackgroundTransparency = 0.25
-	barBackground.BorderSizePixel = 0
-	barBackground.Parent = frame
-
-	local barStroke = Instance.new("UIStroke")
-	barStroke.Thickness = 1.0
-	barStroke.Color = Color3.fromRGB(35, 50, 75)
-	barStroke.Transparency = 0.5
-	barStroke.Parent = barBackground
-
-	local corner1 = Instance.new("UICorner")
-	corner1.CornerRadius = UDim.new(0, 2)
-	corner1.Parent = barBackground
-
-	local healthFill = Instance.new("Frame")
-	healthFill.Name = "HealthFill"
-	healthFill.Size = UDim2.new(1, 0, 1, 0)
-	healthFill.BackgroundColor3 = if archetype == "Brute" then Color3.fromRGB(60, 180, 255) elseif archetype == "Gunner" then Color3.fromRGB(240, 65, 65) else Color3.fromRGB(225, 75, 75)
-	healthFill.BorderSizePixel = 0
-	healthFill.Parent = barBackground
-
-	local corner2 = Instance.new("UICorner")
-	corner2.CornerRadius = UDim.new(0, 2)
-	corner2.Parent = healthFill
-
-	humanoid.HealthChanged:Connect(function(newHealth)
-		local healthPercent = math.clamp(newHealth / humanoid.MaxHealth, 0, 1)
-		healthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-		if newHealth <= 0 then
-			billboard:Destroy()
-		end
-	end)
-
-	enemyModel:GetAttributeChangedSignal("GuardBroken"):Connect(function()
-		local isBroken = enemyModel:GetAttribute("GuardBroken") == true
-		if archetype == "Brute" and humanoid.Health > 0 then
-			if isBroken then
-				nameLabel.Text = string.format("%s // [GUARD BROKEN]", string.upper(enemyName))
-				nameLabel.TextColor3 = Color3.fromRGB(255, 175, 50)
-				healthFill.BackgroundColor3 = Color3.fromRGB(255, 175, 50)
-			else
-				nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
-				nameLabel.TextColor3 = defaultTextColor
-				healthFill.BackgroundColor3 = Color3.fromRGB(60, 180, 255)
-			end
-		end
-	end)
-
-	-- ⚡ Overhead Venom Stunned Visual Tag
-	enemyModel:GetAttributeChangedSignal("VenomStunned"):Connect(function()
-		local isStunned = enemyModel:GetAttribute("VenomStunned") == true
-		if humanoid.Health > 0 then
-			if isStunned then
-				nameLabel.Text = string.format("⚡ STUNNED // %s", string.upper(enemyName))
-				nameLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
-				healthFill.BackgroundColor3 = Color3.fromRGB(255, 230, 60)
-			else
-				nameLabel.Text = string.format("%s // %s", string.upper(enemyName), archetypeTag)
-				nameLabel.TextColor3 = defaultTextColor
-				healthFill.BackgroundColor3 = if archetype == "Brute" then Color3.fromRGB(60, 180, 255) elseif archetype == "Gunner" then Color3.fromRGB(240, 65, 65) else Color3.fromRGB(225, 75, 75)
-			end
-		end
-	end)
+local function attachHealthBar(enemyModel: Model, enemyName: string, archetype: EnemyArchetype, _maxHp: number)
+	EnemyOverheadUI.attach(enemyModel, enemyName, archetype)
 end
 
 --------------------------------------------------------------------------------

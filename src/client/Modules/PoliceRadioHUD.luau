@@ -18,6 +18,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local GuiService = game:GetService("GuiService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CrimeConfig = require(Shared:WaitForChild("CrimeConfig"))
@@ -84,6 +85,7 @@ local victoryRewardsLabel: TextLabel? = nil
 local victorySubLabel: TextLabel? = nil
 local isVictoryBannerShowing = false
 local lastLevelUpTime = 0
+local lastWaypointMode: string? = nil
 
 -- 🌌 3D Holographic World Beacon (Insomniac Manhattan Sky Pillar)
 local activeBeaconModel: Model? = nil
@@ -501,6 +503,7 @@ local function createHUD()
 	victoryTitleLabel = vTitle
 	victoryRewardsLabel = vRewards
 	victorySubLabel = vSub
+	lastWaypointMode = nil
 end
 
 --------------------------------------------------------------------------------
@@ -515,27 +518,32 @@ local function runTypewriterDialogue(fullText: string, durationSeconds: number)
 	PoliceRadioHUD.isRadioSpeaking = true
 
 	if intelDialogueLabel then
-		intelDialogueLabel.Text = ""
+		intelDialogueLabel.Text = fullText
+		intelDialogueLabel.MaxVisibleGraphemes = 0
 	end
 
-	local textLen = string.len(fullText)
-	if textLen == 0 then
+	-- utf8-aware length: emoji are multi-byte, so byte-slicing would render broken glyphs
+	local glyphCount = utf8.len(fullText) or string.len(fullText)
+	if glyphCount == 0 then
 		PoliceRadioHUD.isRadioSpeaking = false
 		return
 	end
 
-	local stepDelay = math.clamp(durationSeconds / textLen, 0.015, 0.065)
+	local stepDelay = math.clamp(durationSeconds / glyphCount, 0.015, 0.065)
 
 	task.spawn(function()
-		for i = 1, textLen do
+		for i = 1, glyphCount do
 			if currentToken ~= activeTypewriterToken then break end
 			if intelDialogueLabel then
-				intelDialogueLabel.Text = string.sub(fullText, 1, i)
+				intelDialogueLabel.MaxVisibleGraphemes = i
 			end
 			task.wait(stepDelay)
 		end
 
 		if currentToken == activeTypewriterToken then
+			if intelDialogueLabel then
+				intelDialogueLabel.MaxVisibleGraphemes = -1
+			end
 			task.wait(1.5)
 			if currentToken == activeTypewriterToken then
 				PoliceRadioHUD.isRadioSpeaking = false
@@ -809,6 +817,42 @@ local function calculateScreenPoint(targetWorldPos: Vector3, margin: number, top
 end
 
 --------------------------------------------------------------------------------
+-- 🧭 WAYPOINT LAYOUT MODES (applied only on change, never per-frame)
+--------------------------------------------------------------------------------
+
+local function applyWaypointLayout(mode: string)
+	if not waypointMarker then return end
+	local isFull = mode == "Full"
+	local isMini = mode == "Mini"
+
+	if waypointTitleLabel then
+		waypointTitleLabel.Visible = isFull
+	end
+	waypointMarker.Size = if isFull then UDim2.fromOffset(150, 34) elseif isMini then UDim2.fromOffset(72, 24) else UDim2.fromOffset(124, 26)
+	waypointMarker.BackgroundTransparency = if isFull then 0.18 elseif isMini then 0.35 else 0.22
+	if waypointMarkerStroke then
+		waypointMarkerStroke.Transparency = if isFull then 0.2 elseif isMini then 0.45 else 0.25
+	end
+	if waypointIconLabel then
+		waypointIconLabel.Position = if isFull then UDim2.new(0, 6, 0.5, -9) else UDim2.new(0, if isMini then 4 else 6, 0.5, -8)
+		waypointIconLabel.Size = if isFull then UDim2.fromOffset(18, 18) else UDim2.fromOffset(16, 16)
+		waypointIconLabel.TextSize = if isFull then 13 elseif isMini then 11 else 12
+	end
+	if waypointDistLabel then
+		if isFull then
+			waypointDistLabel.Position = UDim2.fromOffset(28, 17)
+			waypointDistLabel.Size = UDim2.new(1, -32, 0, 14)
+			waypointDistLabel.TextSize = 9.5
+		else
+			local left = if isMini then 22 else 24
+			waypointDistLabel.Position = UDim2.fromOffset(left, 0)
+			waypointDistLabel.Size = UDim2.new(1, -(left + 4), 1, 0)
+			waypointDistLabel.TextSize = 10
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- 🔄 RENDERSTEPPED LOOP (3D Waypoint Tracking, Elevation & Equalizer Waveform)
 --------------------------------------------------------------------------------
 
@@ -856,6 +900,7 @@ RunService.RenderStepped:Connect(function()
 		-- Waypoint Proximity Combat Fade: When within 35 studs of the crime epicenter, hide 2D waypoint to avoid cluttering melee combat
 		if distStuds <= 35 or PoliceRadioHUD.isVisorOpen then
 			waypointMarker.Visible = false
+			lastWaypointMode = nil
 			if pointerArrow then
 				pointerArrow.Visible = false
 			end
@@ -877,79 +922,22 @@ RunService.RenderStepped:Connect(function()
 
 			-- Detect if commCard is displayed (Task 3)
 			local isCommCardVisible = (commCard ~= nil and commCard.Position.Y.Offset > 0)
-			local isDistant = distMeters > 90
-
-			if isCommCardVisible then
-				-- Suppress redundant title when Yuri Dispatch card is active on screen! (Task 3)
-				if waypointTitleLabel and waypointTitleLabel.Visible then
-					waypointTitleLabel.Visible = false
-				end
-				waypointMarker.Size = UDim2.new(0, 114, 0, 26)
-				waypointMarker.BackgroundTransparency = 0.22
-				if waypointMarkerStroke then
-					waypointMarkerStroke.Transparency = 0.25
-				end
-				if waypointIconLabel then
-					waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -8)
-					waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
-					waypointIconLabel.TextSize = 12
-				end
-				if waypointDistLabel then
-					waypointDistLabel.Position = UDim2.new(0, 24, 0, 0)
-					waypointDistLabel.Size = UDim2.new(1, -28, 1, 0)
-					waypointDistLabel.TextSize = 10
-					waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
-				end
-			elseif isDistant then
-				if waypointTitleLabel and waypointTitleLabel.Visible then
-					waypointTitleLabel.Visible = false
-				end
-				waypointMarker.Size = UDim2.new(0, 68, 0, 24)
-				waypointMarker.BackgroundTransparency = 0.35
-				if waypointMarkerStroke then
-					waypointMarkerStroke.Transparency = 0.45
-				end
-				if waypointIconLabel then
-					waypointIconLabel.Position = UDim2.new(0, 4, 0.5, -8)
-					waypointIconLabel.Size = UDim2.new(0, 16, 0, 16)
-					waypointIconLabel.TextSize = 11
-				end
-				if waypointDistLabel then
-					waypointDistLabel.Position = UDim2.new(0, 22, 0, 0)
-					waypointDistLabel.Size = UDim2.new(1, -24, 1, 0)
-					waypointDistLabel.TextSize = 10
-					waypointDistLabel.Text = string.format("%s %dm", elevationSymbol, distMeters)
-				end
-			else
-				if waypointTitleLabel and not waypointTitleLabel.Visible then
-					waypointTitleLabel.Visible = true
-				end
-				waypointMarker.Size = UDim2.new(0, 150, 0, 34)
-				waypointMarker.BackgroundTransparency = 0.18
-				if waypointMarkerStroke then
-					waypointMarkerStroke.Transparency = 0.20
-				end
-				if waypointIconLabel then
-					waypointIconLabel.Position = UDim2.new(0, 6, 0.5, -9)
-					waypointIconLabel.Size = UDim2.new(0, 18, 0, 18)
-					waypointIconLabel.TextSize = 13
-				end
-				if waypointDistLabel then
-					waypointDistLabel.Position = UDim2.new(0, 28, 0, 17)
-					waypointDistLabel.Size = UDim2.new(1, -32, 0, 14)
-					waypointDistLabel.TextSize = 9.5
-					waypointDistLabel.Text = string.format("%s %dm (%s)", elevationSymbol, distMeters, elevationDesc)
-				end
+			local mode = if isCommCardVisible then "Compact" elseif distMeters > 90 then "Mini" else "Full"
+			if mode ~= lastWaypointMode then
+				lastWaypointMode = mode
+				applyWaypointLayout(mode)
 			end
 
 			if waypointDistLabel then
-				if deltaY > 18 then
-					waypointDistLabel.TextColor3 = Color3.fromRGB(255, 195, 60)
-				elseif deltaY < -18 then
-					waypointDistLabel.TextColor3 = Color3.fromRGB(255, 95, 95)
-				else
-					waypointDistLabel.TextColor3 = Color3.fromRGB(85, 220, 255)
+				local distText = if mode == "Mini"
+					then string.format("%s %dm", elevationSymbol, distMeters)
+					else string.format("%s %dm  ·  %s", elevationSymbol, distMeters, elevationDesc)
+				if waypointDistLabel.Text ~= distText then
+					waypointDistLabel.Text = distText
 				end
+				waypointDistLabel.TextColor3 = if deltaY > 18 then Color3.fromRGB(255, 195, 60)
+					elseif deltaY < -18 then Color3.fromRGB(255, 95, 95)
+					else Color3.fromRGB(85, 220, 255)
 			end
 
 			-- Target World Anchor (Head height over crime scene)
@@ -958,8 +946,19 @@ RunService.RenderStepped:Connect(function()
 			local topMargin = if isCommCardVisible then 135 else 90
 			local screenPos2D, onScreen, angleDeg, dirVector = calculateScreenPoint(targetWorldPos, 90, topMargin)
 
+			-- Keep the pill clear of the top-right Health HUD and fully inside the viewport
+			local viewport = (Workspace.CurrentCamera or Camera).ViewportSize
+			local healthHudBottom = GuiService:GetGuiInset().Y + 112
+			local pillX, pillY = screenPos2D.X, screenPos2D.Y
+			if pillX > viewport.X - 330 and pillY < healthHudBottom then
+				pillY = healthHudBottom
+			end
+			local halfW = waypointMarker.AbsoluteSize.X / 2 + 8
+			pillX = math.clamp(pillX, halfW, math.max(halfW, viewport.X - halfW))
+			screenPos2D = Vector2.new(pillX, pillY)
+
 			-- Position the main pill
-			waypointMarker.Position = UDim2.new(0, screenPos2D.X, 0, screenPos2D.Y)
+			waypointMarker.Position = UDim2.fromOffset(screenPos2D.X, screenPos2D.Y)
 			waypointMarker.Visible = true
 
 			if pointerArrow then
@@ -1051,6 +1050,7 @@ function PoliceRadioHUD.init()
 			if commCard and intelSubheadLabel and intelDialogueLabel then
 				intelSubheadLabel.Text = "⚡ GETAWAY VAN ENGINE DISABLED!"
 				intelSubheadLabel.TextColor3 = Color3.fromRGB(255, 205, 50)
+				intelDialogueLabel.MaxVisibleGraphemes = -1
 				intelDialogueLabel.Text = "Great work! Suspects are bailing out of the vehicle. Neutralize all remaining hostiles to secure the stolen tech!"
 
 				commCard.Position = UDim2.new(0.5, 0, 0, -80)

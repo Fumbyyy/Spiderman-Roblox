@@ -28,6 +28,74 @@ local promptGui: BillboardGui? = nil
 local promptFrame: Frame? = nil
 local isPromptVisible = false
 
+-- 🎯 Soft-Lock Target Marker State
+local LOCK_MARKER_RANGE = 35
+local lockGui: BillboardGui? = nil
+local lockIcon: TextLabel? = nil
+local lockedModel: Model? = nil
+
+local function ensureLockGui(): (BillboardGui, TextLabel)
+	if lockGui and lockIcon and lockGui.Parent then
+		return lockGui, lockIcon
+	end
+
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	local existing = playerGui:FindFirstChild("TargetLockGui")
+	if existing then existing:Destroy() end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "TargetLockGui"
+	billboard.Size = UDim2.fromOffset(28, 22)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.ResetOnSpawn = false
+	billboard.Enabled = false
+	billboard.Parent = playerGui
+
+	local icon = Instance.new("TextLabel")
+	icon.Name = "Chevron"
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(1, 1)
+	icon.BackgroundTransparency = 1
+	icon.Font = Enum.Font.GothamBlack
+	icon.Text = "▼"
+	icon.TextSize = 16
+	icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	icon.TextStrokeColor3 = Color3.fromRGB(215, 35, 50)
+	icon.TextStrokeTransparency = 0
+	icon.Parent = billboard
+
+	lockGui = billboard
+	lockIcon = icon
+	return billboard, icon
+end
+
+local function updateLockMarker(target: Model?)
+	if target == lockedModel then return end
+	lockedModel = target
+
+	local gui, icon = ensureLockGui()
+	local head = target and target:FindFirstChild("Head") :: BasePart?
+	if not target or not head then
+		gui.Enabled = false
+		gui.Adornee = nil
+		return
+	end
+
+	-- Sits just above the enemy overhead tag (Brutes carry a taller tag offset)
+	gui.StudsOffset = Vector3.new(0, if target:GetAttribute("Archetype") == "Brute" then 4.3 else 3.7, 0)
+	gui.Adornee = head
+	gui.Enabled = true
+
+	icon.TextSize = 26
+	icon.TextTransparency = 0.7
+	TweenService:Create(icon, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		TextSize = 16,
+		TextTransparency = 0,
+	}):Play()
+end
+
 local function ensurePromptGui(): (BillboardGui, Frame)
 	if promptGui and promptFrame and promptGui.Parent then
 		return promptGui, promptFrame
@@ -158,6 +226,7 @@ function CombatReticle.update(camera: Camera, rootPart: BasePart?): (Model?, Ins
 		currentThrowableInstance = nil
 		currentThrowablePart = nil
 		updatePromptVisibility(nil)
+		updateLockMarker(nil)
 		return nil, nil
 	end
 
@@ -229,6 +298,16 @@ function CombatReticle.update(camera: Camera, rootPart: BasePart?): (Model?, Ins
 	end
 
 	currentTarget = bestEnemy
+
+	-- Lock chevron only in melee-relevant range (no clutter while swinging over the city)
+	local markerTarget: Model? = nil
+	if bestEnemy then
+		local markerRoot = (bestEnemy:FindFirstChild("HumanoidRootPart") or bestEnemy:FindFirstChild("Torso")) :: BasePart?
+		if markerRoot and (markerRoot.Position - playerPos).Magnitude <= LOCK_MARKER_RANGE then
+			markerTarget = bestEnemy
+		end
+	end
+	updateLockMarker(markerTarget)
 
 	----------------------------------------------------------------------------
 	-- 2. 📦 CONTEXTUAL THROWABLE PROP SCANNER ([Q] WEB-YANK & HURL)
