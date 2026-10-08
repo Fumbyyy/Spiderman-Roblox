@@ -3,9 +3,9 @@
 > **Project:** *Spider-Man: Web of Destiny* (Roblox / Luau / Rojo)  
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia)  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
-> **Date:** October 7, 2026  
-> **Active Git Head:** `2dc0b51` (Fully committed & synced with `origin/main`)  
-> **Milestone Status:** Full On-Screen UI Overhaul (Shared EnemyOverheadUI, Ghost Trails, Suit Accents, Auto-Flow Combos)  
+> **Date:** October 8, 2026  
+> **Active Git Head:** `2dc0b51` (Updating to Giveaway Release Head)  
+> **Milestone Status:** Public Giveaway & Open-Source Release Showcase Ready (MIT License, Showstopper README, 1-Click Studio Playtest)  
 
 ---
 

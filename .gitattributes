@@ -1,0 +1,18 @@
+# Auto-detect text files and normalize line endings
+* text=auto eol=lf
+
+# Explicit text file formats
+*.luau text eol=lf
+*.lua text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+
+# Binary files - preserve exact byte structure
+*.rbxl binary
+*.rbxlx binary
+*.fbx binary
+*.mp4 binary
+*.png binary
+*.jpg binary
