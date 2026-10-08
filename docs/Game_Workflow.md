@@ -1,4 +1,4 @@
-﻿# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
+# 🕸️ Spider-Man: Web of Destiny — Master Game Architecture & Workflow
 
 > **Vision:** An accessible, high-momentum Spider-Man sandbox combining **fluid physics traversal**, **tactile Arkham/Insomniac combat**, and **seamless multiplayer crime-fighting** across an authentic 5,000 × 5,000 stud Manhattan city.
 >
@@ -230,7 +230,7 @@ LEVEL 5-6+ (2 – 4+ hours)    ➔ THE PINNACLE: True dedication. Spider-Armor M
 * [x] **Milestone 4: 39-Model Bespoke 3D Production Arsenal** (Completed ✅).
   * 7 complete asset categories authored via Blender 5.1 at 1:1 Roblox stud scale (Weapons, Throwables, Rooftop Ambience, Spidey Gadgets, Thug Wearables, Street Props, and Civilian Vehicles).
 * [ ] **Milestone 5 (🎯 ACTIVE NEXT): Devlog #1 Voiceover & Video Release:**
-  * Record 3-minute voiceover in CapCut using [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md) with calibrated Rexus Xora-II mic.
+  * Record 3-minute voiceover in CapCut using [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/docs/Devlog_1_Script.md) with calibrated Rexus Xora-II mic.
   * Align 5 indexed gameplay clips and publish video to YouTube.
 * [ ] **Milestone 6: Steep Bullet Dive-Bomb (`Left-Shift` in Air):**
   * Tucks limbs into a 165+ studs/s plunge, converting vertical drop into explosive forward swing momentum.

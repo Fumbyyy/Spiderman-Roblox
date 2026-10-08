@@ -88,7 +88,7 @@
     - Sound synthesis hooked up for radio squelch and victory fanfare.
     - Stark Phone / Visor isolation so HUDs never overlap.
   - **Mic Calibration:** Tuned Rexus Xora-II in SteelSeries Sonar (`Deep Voice` broadcast EQ, ClearCast AI at 45%, Compressor 0.40, Noise Gate).
-  - **Master YouTube Script:** Locked in [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/Devlog_1_Script.md) using the Dani & Duckable contrast formula, complete with exact video file timestamps.
+  - **Master YouTube Script:** Locked in [Devlog_1_Script.md](file:///c:/Users/richc/Documents/Grapple/docs/Devlog_1_Script.md) using the Dani & Duckable contrast formula, complete with exact video file timestamps.
 - **Verdict:** Massive multi-front victory! System and script are locked. Time to rest and crush homework.
 
 ---

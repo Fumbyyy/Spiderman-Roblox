@@ -67,16 +67,16 @@ Rich operates with a clear two-tier AI setup:
 ---
 
 ## 3. The 39-Model Bespoke 3D Asset Library
-Authored via headless Blender 5.1 with procedural Python generators (`generate_*.py`). All models enforce **1 Blender Unit = 1 Roblox Stud** relative to 5-stud avatars, zero degenerate faces, manifold geometry, and strict 500–1,400 triangle budgets.
+Authored via headless Blender 5.1 with procedural Python generators (`tools/blender/generate_*.py`). All models enforce **1 Blender Unit = 1 Roblox Stud** relative to 5-stud avatars, zero degenerate faces, manifold geometry, and strict 500–1,400 triangle budgets.
 
 | Category & Folder | Asset Name | FBX File | Triangles | Dimensions (Studs) | Gameplay Role / Attachment |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Thug Weapons**<br>`thug_weapons/` | Baseball Bat | `baseball_bat.fbx` | ~650 | $0.5 \times 0.5 \times 4.2$ | Melee thug weapon (taped handle) |
+| **1. Thug Weapons**<br>`assets/models/thug_weapons/` | Baseball Bat | `baseball_bat.fbx` | ~650 | $0.5 \times 0.5 \times 4.2$ | Melee thug weapon (taped handle) |
 | | Crowbar | `crowbar.fbx` | ~720 | $0.4 \times 0.6 \times 3.6$ | Melee thug weapon (angled pry claw) |
 | | Combat Knife | `combat_knife.fbx` | ~580 | $0.3 \times 0.6 \times 2.0$ | Fast melee thug weapon (serrated edge) |
 | | Handgun | `handgun.fbx` | ~810 | $0.4 \times 1.5 \times 1.1$ | Ranged thug firearm (slide, trigger, grip) |
 | | Riot Shield | `riot_shield.fbx` | ~890 | $3.0 \times 1.2 \times 5.4$ | Brute thug shield (ballistic viewport) |
-| **2. Throwable Props**<br>`throwable_props/` | Manhole Cover | `manhole_cover.fbx` | ~740 | $3.6 \times 3.6 \times 0.3$ | Heavy throwable disc (crosshatch grip) |
+| **2. Throwable Props**<br>`assets/models/throwable_props/` | Manhole Cover | `manhole_cover.fbx` | ~740 | $3.6 \times 3.6 \times 0.3$ | Heavy throwable disc (crosshatch grip) |
 | | Trash Can + Lid | `trash_can.fbx` | ~1,260 | $2.1 \times 2.1 \times 4.2$ | Throwable street prop with separate lid |
 | | Wooden Crate | `wooden_crate.fbx` | ~1,008 | $4.8 \times 4.8 \times 4.8$ | Breakable throwable container (cross-braced) |
 | | Construction Barrel | `construction_barrel.fbx` | ~944 | $2.4 \times 2.4 \times 4.8$ | Heavy street obstacle / throwable |
@@ -85,27 +85,27 @@ Authored via headless Blender 5.1 with procedural Python generators (`generate_*
 | | Dented Combat Mailbox| `mailbox_combat_dented.fbx`| ~940 | $1.9 \times 1.6 \times 3.8$ | Battered street combat cover |
 | | Green Relay Mailbox | `mailbox_relay_green.fbx` | ~860 | $2.0 \times 1.8 \times 3.9$ | Storage relay box (olive/brass) |
 | | Vintage Pillar Mailbox| `mailbox_vintage_pillar.fbx`| ~1,020 | $1.8 \times 1.8 \times 4.2$ | Victorian fluted pillar postbox |
-| **3. Rooftop Props**<br>`rooftop_props/` | Rooftop Water Tower | `rooftop_water_tower.fbx` | 1,086 | $7.7 \times 7.7 \times 16.4$ | Multi-story skyline landmark / perch |
+| **3. Rooftop Props**<br>`assets/models/rooftop_props/` | Rooftop Water Tower | `rooftop_water_tower.fbx` | 1,086 | $7.7 \times 7.7 \times 16.4$ | Multi-story skyline landmark / perch |
 | | HVAC AC Unit | `hvac_air_conditioner.fbx` | 888 | $6.3 \times 3.9 \times 4.1$ | Industrial rooftop exhaust fan & vents |
 | | Fire Escape Balcony | `fire_escape_balcony.fbx` | 1,308 | $6.1 \times 3.7 \times 5.7$ | Wall-mounted iron balcony with drop ladder |
 | | NYC Fire Hydrant | `nyc_fire_hydrant.fbx` | 808 | $1.4 \times 1.4 \times 2.35$ | Curbside red cast-iron hydrant |
 | | Industrial Dumpster | `industrial_dumpster.fbx` | 760 | $6.1 \times 4.3 \times 4.6$ | Alleyway steel dumpster (lid ajar) |
-| **4. Spidey Gadgets**<br>`spidey_gadgets/` | Web Shooter Bracer | `web_shooter_bracer.fbx` | 888 | $1.4 \times 1.4 \times 1.6$ | Rigid forearm accessory (dual wrists) |
+| **4. Spidey Gadgets**<br>`assets/models/spidey_gadgets/` | Web Shooter Bracer | `web_shooter_bracer.fbx` | 888 | $1.4 \times 1.4 \times 1.6$ | Rigid forearm accessory (dual wrists) |
 | | Web Bomb Canister | `web_bomb_canister.fbx` | 896 | $1.0 \times 1.0 \times 1.2$ | Impact web grenade projectile |
 | | Spider-Tracer Dart | `spider_tracer_dart.fbx` | 648 | $0.8 \times 0.8 \times 0.2$ | Arachnid tracking beacon pickup |
 | | Classic Pizza Box | `classic_pizza_box.fbx` | 724 | $2.4 \times 2.4 \times 0.5$ | NYC delivery pizza box (heal / collectible) |
 | | Webbed Backpack | `webbed_backpack.fbx` | 1,048 | $1.8 \times 1.4 \times 2.2$ | Peter Parker collectible daypack |
-| **5. Thug Wearables**<br>`thug_wearables/` | Ballistic Hockey Mask | `ballistic_hockey_mask.fbx` | 804 | $1.3 \times 1.1 \times 1.4$ | Thug face mask (`FaceFrontAttachment`) |
+| **5. Thug Wearables**<br>`assets/models/thug_wearables/` | Ballistic Hockey Mask | `ballistic_hockey_mask.fbx` | 804 | $1.3 \times 1.1 \times 1.4$ | Thug face mask (`FaceFrontAttachment`) |
 | | Thug Ski Mask | `thug_ski_mask.fbx` | 888 | $1.3 \times 1.3 \times 1.6$ | Full knit balaclava (`HatAttachment`) |
 | | Tactical Plate Carrier| `tactical_plate_carrier.fbx`| 1,088 | $2.2 \times 1.3 \times 2.2$ | Ceramic torso armor (`BodyFrontAttachment`) |
 | | Street Gang Beanie | `street_gang_beanie.fbx` | 728 | $1.3 \times 1.3 \times 0.9$ | Slouchy folded cuff beanie (`HatAttachment`) |
 | | Spiked Arm Bracers | `spiked_arm_bracers.fbx` | 1,064 | $1.4 \times 1.4 \times 1.6$ | Dual leather/steel studded forearm cuffs |
-| **6. Street Props**<br>`street_props/` | NYPD Sawhorse Barricade| `nypd_sawhorse_barricade.fbx`| 888 | $4.6 \times 1.4 \times 2.8$ | Vaultable cover / crowd control barricade |
+| **6. Street Props**<br>`assets/models/street_props/` | NYPD Sawhorse Barricade| `nypd_sawhorse_barricade.fbx`| 888 | $4.6 \times 1.4 \times 2.8$ | Vaultable cover / crowd control barricade |
 | | NYC Street Lamp | `nyc_street_lamp.fbx` | 956 | $2.8 \times 1.6 \times 12.5$ | 12.5-stud lamppost with top perch finial |
 | | Vintage Payphone Kiosk| `vintage_payphone_kiosk.fbx`| 1,004 | $2.2 \times 2.0 \times 6.4$ | Curbside acoustic hood & coiled handset |
 | | Traffic Hazard Cones | `traffic_hazard_cones.fbx` | 616 | $2.4 \times 1.8 \times 2.2$ | Upright cone + knocked cone pair |
 | | Electrical Hazard Box | `electrical_hazard_box.fbx` | 948 | $2.2 \times 1.2 \times 3.0$ | Web-pull environmental shock hazard |
-| **7. Civilian Vehicles**<br>`civilian_vehicles/` | NYC Yellow Taxi | `nyc_yellow_taxi.fbx` | 1,200 | $6.6 \times 15.0 \times 5.0$ | Crown Vic taxi, roof fare box, tinted glass |
+| **7. Civilian Vehicles**<br>`assets/models/civilian_vehicles/` | NYC Yellow Taxi | `nyc_yellow_taxi.fbx` | 1,200 | $6.6 \times 15.0 \times 5.0$ | Crown Vic taxi, roof fare box, tinted glass |
 | | Civilian Family Sedan | `civilian_family_sedan.fbx` | 1,124 | $6.5 \times 14.5 \times 4.8$ | Slate blue commuter sedan, taillight bar |
 | | Civilian Pickup Truck | `civilian_pickup_truck.fbx` | 1,284 | $7.0 \times 16.0 \times 5.6$ | Crew-cab with open ribbed cargo bed |
 | | City Box Delivery Truck| `city_box_delivery_truck.fbx`| 1,344 | $7.2 \times 18.5 \times 7.8$ | Flat-nose truck with large cargo parkour box |
@@ -146,7 +146,7 @@ When Rich needs new 3D assets generated through external LLMs (e.g. GPT-6 Astra 
 [Tomorrow's Session]
          │
          ├── STEP 1: Record Gameplay B-Roll in Studio (15-20 mins)
-         │   • Script ready: `Devlog_1_Script.md` (~3 mins, Dani/Duckable pacing)
+         │   • Script ready: `docs/Devlog_1_Script.md` (~3 mins, Dani/Duckable pacing)
          │   • Clip 1: Web-swinging through Manhattan skyscrapers + release slingshot
          │   • Clip 2: 1-2-3 kinetic punch combo on thugs with comic damage numbers
          │   • Clip 3: Web-pellet wall cocooning ([E]) + Spider-Sense dodge ([F])

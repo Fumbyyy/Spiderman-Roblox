@@ -44,7 +44,7 @@ When drafting 3D generation prompts for external LLMs (like GPT-6 Astra Medium o
 ## 4. How to Resume Work
 When starting any turn or new session:
 1. Review `PROJECT_STATUS.md` for current asset inventory, git commit, and active milestone.
-2. Review `Devlog_1_Script.md` for the current marketing/video production task.
+2. Review `docs/Devlog_1_Script.md` for the current marketing/video production task.
 3. Keep answers concise, actionable, and formatted in GitHub Markdown with clickable file links.
 
 ---

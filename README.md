@@ -137,17 +137,38 @@ Grapple/
 │       ├── GrappleConfig.luau             # Physical constants (mass, forces, max line distance)
 │       └── SuitConfig.luau                # Suit stat multipliers, perk descriptions, colors
 │
-├── civilian_vehicles/          # 5 traffic vehicle FBX models (Sedan, Pickup, NYC Taxi, etc.)
-├── rooftop_props/              # 5 rooftop skyline props (Water tower, HVAC, Fire escape)
-├── street_props/               # 5 NYC street props (Street lamps, NYPD barricades, payphones)
-├── throwable_props/            # 9 environmental props (Crates, manholes, 5 mailbox styles)
-├── spidey_gadgets/             # 5 Spider-Man accessories (Web shooters, backpack, pizza box)
-├── thug_weapons/               # 5 thug combat weapons (Baseball bat, crowbar, knife, handgun, riot shield)
-├── thug_wearables/             # 5 enemy cosmetic meshes (Ski mask, hockey mask, beanie, plate carrier)
+├── assets/                     # Modular 3D game models & gameplay showcase media
+│   ├── media/                  # Gameplay showcase footage (showcase_video.mp4)
+│   └── models/                 # 39 production FBX models across 7 categories
+│       ├── civilian_vehicles/  # 5 traffic vehicles (Taxi, Truck, Sedan, Pickup, Hatchback)
+│       ├── rooftop_props/      # 5 rooftop skyline props (Water tower, HVAC, Fire escape)
+│       ├── spidey_gadgets/     # 5 Spider-Man accessories (Web shooters, backpack, pizza box)
+│       ├── street_props/       # 5 NYC street props (Street lamps, NYPD barricades, payphones)
+│       ├── throwable_props/    # 9 environmental props (Crates, manholes, 5 mailbox styles)
+│       ├── thug_weapons/       # 5 thug combat weapons (Baseball bat, crowbar, knife, handgun, riot shield)
+│       └── thug_wearables/     # 5 enemy cosmetic meshes (Ski mask, hockey mask, beanie, plate carrier)
 │
-├── generate_*.py               # Headless Python Blender 5.1 procedural generation scripts
+├── docs/                       # Production roadmaps, creator logs, and devlog scripts
+│   ├── Daily_Checkpoints.md    # Creator's daily engineering log & milestone wins
+│   ├── Devlog_1_Script.md      # YouTube Devlog #1 voiceover production script
+│   └── Game_Workflow.md        # Master game architecture & workflow documentation
+│
+├── tools/                      # Build automation & procedural generation pipelines
+│   └── blender/                # Headless Blender 5.1 procedural generation scripts
+│       ├── generate_civilian_vehicles.py
+│       ├── generate_rooftop_props.py
+│       ├── generate_spidey_gadgets.py
+│       ├── generate_street_props.py
+│       ├── generate_throwable_props.py
+│       ├── generate_thug_weapons.py
+│       └── generate_thug_wearables.py
+│
+├── default.project.json        # Rojo project mapping configuration
+├── aftman.toml                 # Toolchain version lock (Rojo, Selene, StyLua)
+├── selene.toml                 # Strict Luau linter rules & globals
+├── Grapple Obby.rbxl           # Complete 1-click playable Roblox Studio place file
 ├── PROJECT_STATUS.md           # Deep architectural documentation & changelog history
-├── Devlog_1_Script.md          # Creator's 4-act devlog script for YouTube
+├── AGENTS.md                   # AI co-founder directives & RTCC prompt engineering standards
 └── LICENSE                     # Open-source MIT License
 ```
 
@@ -157,15 +178,15 @@ Grapple/
 
 Authored at **1:1 Roblox stud scale** ($1\text{ Blender Unit} = 1\text{ Stud}$), triangulated with zero sliver polygons, and optimized for high-performance rendering on mobile and PC:
 
-1. **Civilian Traffic (`civilian_vehicles/`):** NYC Yellow Taxi, City Delivery Box Truck, Family Sedan, Pickup Truck, Compact Urban Hatchback.
-2. **Rooftop Ambience (`rooftop_props/`):** Wooden Water Tower, HVAC Air Conditioner, Industrial Dumpster, Fire Escape Balcony, NYC Fire Hydrant.
-3. **Street Props (`street_props/`):** NYC Cast-Iron Street Lamp, NYPD Sawhorse Barricade, Vintage Payphone Kiosk, Traffic Hazard Cones, Electrical Hazard Box.
-4. **Throwable Props (`throwable_props/`):** Wooden Crate, Construction Barrel, Metal Trash Can, Cast-Iron Manhole Cover, and 5 distinct USPS Mailbox variants.
-5. **Spidey Gadgets & Items (`spidey_gadgets/`):** Web-Shooter Bracer, Webbed Backpack, Classic Pizza Delivery Box, Web Bomb Canister, Spider-Tracer Dart.
-6. **Thug Weapons (`thug_weapons/`):** Street Baseball Bat, Tactical Combat Knife, Steel Crowbar, 9mm Handgun, Riot Shield.
-7. **Thug Wearables (`thug_wearables/`):** Knit Ski Mask, Ballistic Hockey Mask, Gang Beanie, Tactical Plate Carrier, Spiked Arm Bracers.
+1. **Civilian Traffic (`assets/models/civilian_vehicles/`):** NYC Yellow Taxi, City Delivery Box Truck, Family Sedan, Pickup Truck, Compact Urban Hatchback.
+2. **Rooftop Ambience (`assets/models/rooftop_props/`):** Wooden Water Tower, HVAC Air Conditioner, Industrial Dumpster, Fire Escape Balcony, NYC Fire Hydrant.
+3. **Street Props (`assets/models/street_props/`):** NYC Cast-Iron Street Lamp, NYPD Sawhorse Barricade, Vintage Payphone Kiosk, Traffic Hazard Cones, Electrical Hazard Box.
+4. **Throwable Props (`assets/models/throwable_props/`):** Wooden Crate, Construction Barrel, Metal Trash Can, Cast-Iron Manhole Cover, and 5 distinct USPS Mailbox variants.
+5. **Spidey Gadgets & Items (`assets/models/spidey_gadgets/`):** Web-Shooter Bracer, Webbed Backpack, Classic Pizza Delivery Box, Web Bomb Canister, Spider-Tracer Dart.
+6. **Thug Weapons (`assets/models/thug_weapons/`):** Street Baseball Bat, Tactical Combat Knife, Steel Crowbar, 9mm Handgun, Riot Shield.
+7. **Thug Wearables (`assets/models/thug_wearables/`):** Knit Ski Mask, Ballistic Hockey Mask, Gang Beanie, Tactical Plate Carrier, Spiked Arm Bracers.
 
-*All models can be regenerated headlessly from source using the included `generate_<category>.py` Blender automation scripts.*
+*All models can be regenerated headlessly from source using the Blender automation scripts in [`tools/blender/`](./tools/blender).*
 
 ---
 
