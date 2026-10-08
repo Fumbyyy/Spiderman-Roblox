@@ -4,7 +4,7 @@
 > **Solo Founder & Creative Director:** Rich (16-year-old solo indie developer, Indonesia · 𝕏 [@fumby123](https://x.com/fumby123))  
 > **Senior Technical Co-Founder & Mentor:** Ponytail (Luau Architect, Systems Engineer & Quality Auditor)  
 > **Date:** October 8, 2026  
-> **Active Git Head:** `f404bee` (Fully committed & synced with `origin/main`)  
+> **Active Git Head:** `05732d3` (Fully committed & synced with `origin/main`)  
 > **Milestone Status:** Public Giveaway & Open-Source Release Showcase Ready (MIT License, Showstopper README, 1-Click Studio Playtest)  
 
 ---
