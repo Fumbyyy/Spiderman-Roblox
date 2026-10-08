@@ -25,7 +25,7 @@
 
 ```bash
 # Clone the repository and inspect the toolchain
-git clone https://github.com/richclintonmozartkurnia-byte/Grapple.git && cd Grapple
+git clone https://github.com/richclintonmozartkurnia-byte/Spiderman-Roblox.git && cd Spiderman-Roblox
 ```
 
 > ⚡ **1-Click Playtest Included:** Double-click [`Grapple Obby.rbxl`](./Grapple%20Obby.rbxl) in this repo to open the complete, pre-configured place immediately in **Roblox Studio** and press **`F5`**!
