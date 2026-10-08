@@ -25,7 +25,7 @@
 
 ```bash
 # Clone the repository and inspect the toolchain
-git clone https://github.com/richclintonmozartkurnia-byte/Spiderman-Roblox.git && cd Spiderman-Roblox
+git clone https://github.com/Fumbyyy/Spiderman-Roblox.git && cd Spiderman-Roblox
 ```
 
 > ⚡ **1-Click Playtest Included:** Double-click [`Grapple Obby.rbxl`](./Grapple%20Obby.rbxl) in this repo to open the complete, pre-configured place immediately in **Roblox Studio** and press **`F5`**!
@@ -203,7 +203,7 @@ All gameplay parameters are decoupled into typed configurations under `src/share
 
 ## Creator & Community
 
-- **Creator & Solo Founder:** **Rich** · Follow updates on [𝕏 @fumby123](https://x.com/fumby123) · GitHub: [@richclintonmozartkurnia-byte](https://github.com/richclintonmozartkurnia-byte)
+- **Creator & Solo Founder:** **Rich** · Follow updates on [𝕏 @fumby123](https://x.com/fumby123) · GitHub: [@Fumbyyy](https://github.com/Fumbyyy)
 - **Technical Co-Founder Directives:** Built with **Ponytail** (Senior Luau Architect & Mentor).
 - **License:** Open-sourced under the **[MIT License](./LICENSE)**. You are free to study, play, fork, adapt, and build upon this code for your own Roblox experiences. If you use this engine in your project, a credit shoutout to [@fumby123](https://x.com/fumby123) is appreciated!
 
