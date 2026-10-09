@@ -38,26 +38,6 @@
 | **Clean Recording Mode (`[H]`)** | One hotkey suppresses all on-screen HUDs, Roblox CoreGui, and in-world holographic beacons on the fly for crisp devlog video capture. |
 
 ---
-
-## Quick start
-
-### 1. Direct Playtest (Fastest)
-1. Clone or download this repository.
-2. Double-click [`Grapple Obby.rbxl`](./Grapple%20Obby.rbxl) to launch in **Roblox Studio**.
-3. Press **`F5`** (or click **Play**) to start swinging through Manhattan.
-
-### 2. Live Sync via Rojo 7
-For developers using VS Code, Antigravity, or external editors with [Aftman](https://github.com/LPGhatguy/aftman):
-
-```bash
-aftman install          # installs rojo 7.7.0 & selene
-rojo serve              # starts the local sync server at localhost:34872
-```
-
-In Roblox Studio, open the **Rojo** plugin and click **Connect**. Code in `src/` will sync bidirectionally in real time.
-
----
-
 ## Controls
 
 | Action | Keyboard & Mouse | Gamepad / Controller | Description |
