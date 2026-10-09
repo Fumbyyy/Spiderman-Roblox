@@ -21,14 +21,7 @@
 
 <br/>
 
-*Spider-Man: Web of Destiny* is an open-source, production-grade superhero sandbox built in modern strict Luau. Built from the ground up on native engine constraints, it features dynamic pendulum swinging physics, Arkham/Insomniac-inspired kinetic melee combat, a living Manhattan crime dispatch system, 6 iconic canonical suits with live in-game hot-swapping, and a bespoke 39-model low-poly 3D asset library authored at 1:1 Roblox stud scale.
-
-```bash
-# Clone the repository and inspect the toolchain
-git clone https://github.com/Fumbyyy/Spiderman-Roblox.git && cd Spiderman-Roblox
-```
-
-> ⚡ **1-Click Playtest Included:** Double-click [`Grapple Obby.rbxl`](./Grapple%20Obby.rbxl) in this repo to open the complete, pre-configured place immediately in **Roblox Studio** and press **`F5`**!
+*Spider-Man: Web of Destiny* is an Roblox game that is made by a 16 year old developer built in modern strict Luau. Built from the ground up on native engine constraints, it features dynamic pendulum swinging physics, Arkham/Insomniac-inspired kinetic melee combat, a living Manhattan crime dispatch system, 6 iconic canonical suits with live in-game hot-swapping, and a bespoke 39-model low-poly 3D asset library authored at 1:1 Roblox stud scale.
 
 ---
 
