@@ -95,5 +95,3 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	end
 end)
 
-print("[GrappleService] Server initialized with Web-Rush visual replication.")
-

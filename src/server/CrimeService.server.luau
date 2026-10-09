@@ -230,7 +230,6 @@ local function spawnProceduralCrime(specificArchetypeId: string?): ActiveCrimeIn
 		Timeout = CrimeConfig.Scheduler.CrimeTimeout,
 	})
 
-	print(string.format("🚨 [NYPD DISPATCH] Active Crime Triggered: %s at (%d, %d, %d)", archConfig.Title, epicenter.X, epicenter.Y, epicenter.Z))
 	return crimeInstance
 end
 
@@ -279,8 +278,6 @@ local function clearActiveCrime(crimeInstance: ActiveCrimeInstance)
 		ParticipantCount = math.max(1, participantCount),
 	})
 
-	print(string.format("🎉 Crime Cleared: %s (+%d XP, +$%d Hero Cash)", crimeInstance.Archetype.Title, finalXP, finalCash))
-
 	-- Cleanup after delay (Destroys folder and any remaining enemy instances)
 	task.delay(CrimeConfig.Scheduler.DespawnCleanupDelay or 5.0, function()
 		for _, enemy in crimeInstance.Enemies do
@@ -308,8 +305,6 @@ local function failActiveCrime(crimeInstance: ActiveCrimeInstance, reason: strin
 		Title = crimeInstance.Archetype.Title,
 		Reason = reason,
 	})
-
-	print(string.format("⚠️ Crime Expired/Failed: %s (%s)", crimeInstance.Archetype.Title, reason))
 
 	task.delay(CrimeConfig.Scheduler.DespawnCleanupDelay or 5.0, function()
 		for _, enemy in crimeInstance.Enemies do
@@ -454,5 +449,3 @@ task.delay(6.0, function()
 		spawnProceduralCrime()
 	end
 end)
-
-print("🚨 CrimeService (Modularized: PlayerProgression, CrimeEntityFactory, CrimeLocationFinder) Online!")

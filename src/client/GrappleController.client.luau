@@ -694,5 +694,3 @@ RunService.RenderStepped:Connect(function(deltaTime)
 	local isFreeMoving = not isSwinging and not isSlingshot and not isFreeGliding and not WallMovement.isActive()
 	CameraController.update(deltaTime, Camera, rootPart, humanoid, isFreeMoving)
 end)
-
-print("🕸️ Spider-Man Movement Engine active! Clean Modular Architecture online.")

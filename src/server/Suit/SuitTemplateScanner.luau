@@ -68,7 +68,6 @@ function SuitTemplateScanner.scanAndCacheTemplates()
 				end
 
 				clone.Parent = suitsFolder
-				print(string.format("🎯 [SuitTemplateScanner] Automatically linked '%s' as template for suit '%s'!", child.Name, matchedSuitId))
 			end
 		end
 	end

@@ -816,4 +816,3 @@ end
 _G.SpawnCriminal = spawnCriminal
 
 initEnemyWaves()
-print("?? [EnemySpawner] Tactical Criminal AI & Avatar Template Rig System Online!")

@@ -563,5 +563,3 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
-
-print("🕷️ Spider-Man Modular Combat Architecture Online! (Melee, Webs, Dodge, VFX)")

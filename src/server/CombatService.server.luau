@@ -97,5 +97,3 @@ end)
 
 -- 📦 Initialize environmental throwable prop scanner
 ThrowableManager.init()
-
-print("⚔️ Spider-Man Combat Service (Modularized: CombatDamage, MeleeCombat, WebAbilities, ThrowableManager) online!")

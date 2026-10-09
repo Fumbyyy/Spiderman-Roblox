@@ -145,7 +145,6 @@ SuitPurchaseRF.OnServerInvoke = function(player: Player, suitId: string): (boole
 	cashVal.Value -= suit.HeroCashCost
 	unlocked[suit.Id] = true
 
-	print(string.format("🛍️ [SuitService] %s purchased '%s' for $%d Hero Cash!", player.Name, suit.Name, suit.HeroCashCost))
 	return true, "Suit unlocked!"
 end
 
@@ -183,7 +182,6 @@ SuitEquipRF.OnServerInvoke = function(player: Player, suitId: string): (boolean,
 		SuitEquippedVFXRemote:FireAllClients(player, canonicalId, suit.ThemeColor)
 	end
 
-	print(string.format("🧬 [SuitService] %s equipped '%s'", player.Name, suit.Name))
 	return true, "Suit equipped!"
 end
 
@@ -249,5 +247,3 @@ Players.PlayerRemoving:Connect(function(player)
 		playerAvatarBackups[player] = nil
 	end
 end)
-
-print("🕷️ [SuitService] Spider-Man Wardrobe Authority (Modularized: TemplateScanner, AvatarFitter, ProceduralBuilder, SuitApplier) Online!")
